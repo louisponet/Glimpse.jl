@@ -13,6 +13,7 @@ struct Canvas
     id::Int
     area::Area
     native_window::GLFW.Window
+    background::Colorant
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 function Canvas(name, id, area, depth::Type{<:DepthFormat} = Depth{Float32}, background::Colorant = RGBA(0.0f0);
@@ -45,10 +46,11 @@ function Canvas(name, id, area, depth::Type{<:DepthFormat} = Depth{Float32}, bac
         glClearColor(background.r, background.g, background.b, background.alpha)
     elseif typeof(background) <: RGB
         glClearColor(background.r, background.g, background.b, GLfloat(1))
+        background = RGBA(background)
     end
     glClear(GL_COLOR_BUFFER_BIT)
 
     # fbo = canvas_fbo(area, depth, fbo_color)
     # return Canvas(Symbol(name), id, area, nw, fbo)
-    return Canvas(Symbol(name), id, area, nw)
+    return Canvas(Symbol(name), id, area, nw, background)
 end
