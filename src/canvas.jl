@@ -13,10 +13,10 @@ struct Canvas
     id::Int
     area::Area
     native_window::GLFW.Window
-    framebuffer::FrameBuffer
+    # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 function Canvas(name, id, area, depth::Type{<:DepthFormat} = Depth{Float32}, background::Colorant = RGBA(0.0f0);
-                fbo_color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0),
+                # fbo_color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0),
                 debugging = false,
                 major = 3,
                 minor = 3,# this is what GLVisualize needs to offer all features
@@ -46,7 +46,9 @@ function Canvas(name, id, area, depth::Type{<:DepthFormat} = Depth{Float32}, bac
     elseif typeof(background) <: RGB
         glClearColor(background.r, background.g, background.b, GLfloat(1))
     end
-    glClear(GL_FRAMEBUFFER)
-    fbo = canvas_fbo(area, depth, fbo_color)
-    return Canvas(Symbol(name), id, area, nw, fbo)
+    glClear(GL_COLOR_BUFFER_BIT)
+
+    # fbo = canvas_fbo(area, depth, fbo_color)
+    # return Canvas(Symbol(name), id, area, nw, fbo)
+    return Canvas(Symbol(name), id, area, nw)
 end
