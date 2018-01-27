@@ -25,8 +25,8 @@ Returns a signal, which is true as long as the window is open.
 returns `Bool`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaade9264e79fae52bdb78e2df11ee8d6a)
 """
-function window_open(window::Window, s::Bool=false)
-    GLFW.SetWindowCloseCallback(window, (window,) -> s)
+function window_open(window::Window, s::Ref{Bool}=Ref(false))
+    GLFW.SetWindowCloseCallback(window, (window,) -> s[])
     s
 end
 
@@ -36,9 +36,9 @@ This is why there is also framebuffer_size.
 returns `NTuple{2,Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaaca1c2715759d03da9834eac19323d4a)
 """
-function window_size(window::Window, s::NTuple{2, Int}=Int.(GLFW.GetWindowSize(window)))
+function window_size(window::Window, s::Ref{NTuple{2, Int}}=Ref(Int.(GLFW.GetWindowSize(window))))
     GLFW.SetWindowSizeCallback(window, (window, w::Cint, h::Cint,) -> begin
-        s = Vec{2,Int}(Int(w), Int(h))
+        s[] = (Int(w), Int(h))
     end)
     s
 end
@@ -47,9 +47,9 @@ Size of window in pixel.
 returns `NTuple{2,Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#ga311bb32e578aa240b6464af494debffc)
 """
-function framebuffer_size(window::Window, s::NTuple{2, Int}=Int.(GLFW.GetFramebufferSize(window)))
+function framebuffer_size(window::Window, s::Ref{NTuple{2, Int}}=Ref(Int.(GLFW.GetFramebufferSize(window))))
     GLFW.SetFramebufferSizeCallback(window, (window, w::Cint, h::Cint) -> begin
-        s = (Int(w), Int(h))
+        s[] = (Int(w), Int(h))
     end)
     s
 end
@@ -58,9 +58,9 @@ Position of the window in screen coordinates.
 returns `NTuple{2,Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#ga1c36e52549efd47790eb3f324da71924)
 """
-function window_position(window::Window, s::NTuple{2, Int}=(0,0))
+function window_position(window::Window, s::Ref{NTuple{2, Int}}=Ref((0,0)))
     GLFW.SetWindowPosCallback(window, (window, x::Cint, y::Cint,) -> begin
-        s = (Int(x), Int(y))
+        s[] = (Int(x), Int(y))
     end)
     s
 end
@@ -69,10 +69,10 @@ Registers a callback for the mouse buttons + modifiers
 returns `NTuple{4, Int}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
-function keyboard_buttons(window::Window, s::NTuple{4, Int}=(0,0,0,0))
+function keyboard_buttons(window::Window, s::Ref{NTuple{4, Int}}=Ref((0,0,0,0)))
     keydict = Dict{Int, Bool}()
     GLFW.SetKeyCallback(window, (window, button::Cint, scancode::Cint, action::Cint, mods::Cint) -> begin
-        s = (Int(button), Int(scancode), Int(action), Int(mods))
+        s[] = (Int(button), Int(scancode), Int(action), Int(mods))
     end)
     s
 end
@@ -82,9 +82,9 @@ returns an `NTuple{3, Int}`,
 containing the pressed button the action and modifiers.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
-function mouse_buttons(window::Window, s::NTuple{3, Int}=(0,0,0))
+function mouse_buttons(window::Window, s::Ref{NTuple{3, Int}}=Ref((0,0,0)))
     GLFW.SetMouseButtonCallback(window, (window, button::Cint, action::Cint, mods::Cint) -> begin
-        s = (Int(button), Int(action), Int(mods))
+        s[] = (Int(button), Int(action), Int(mods))
     end)
     s
 end
@@ -108,7 +108,7 @@ containing the pressed char. Is empty, if no key is pressed.
 """
 function unicode_input(window::Window, s::Vector{Char}=Char[])
     GLFW.SetCharCallback(window, (window, c::Char) -> begin
-        push!(s, c)
+        s = c
     end)
     s
 end
@@ -118,9 +118,9 @@ returns an `NTuple{2, Float64}`,
 which is not in screen coordinates, with the upper left window corner being 0
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
-function cursor_position(window::Window, s::NTuple{2, Float64}=(0.,0.))
+function cursor_position(window::Window, s::Ref{NTuple{2, Float64}}=Ref((0.,0.)))
     GLFW.SetCursorPosCallback(window, (window, x::Cdouble, y::Cdouble) -> begin
-        s = (x, y)
+        s[] = (x, y)
     end)
     s
 end
@@ -130,9 +130,9 @@ returns an `NTuple{2, Float64}`,
 which is an x and y offset.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
-function scroll(window::Window, s::NTuple{2, Float64}=(0.,0.))
+function scroll(window::Window, s::Ref{NTuple{2, Float64}}=Ref((0.,0.)))
     GLFW.SetScrollCallback(window, (window, xoffset::Cdouble, yoffset::Cdouble) -> begin
-        s = (xoffset, yoffset)
+        s[] = (xoffset, yoffset)
     end)
     s
 end
@@ -142,9 +142,9 @@ returns a `Bool`,
 which is true whenever the window has focus.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#ga6b5f973531ea91663ad707ba4f2ac104)
 """
-function hasfocus(window::Window, s::Bool=false)
+function hasfocus(window::Window, s::Ref{Bool}=Ref(false))
     GLFW.SetWindowFocusCallback(window, (window, focus::Bool) -> begin
-        s = focus
+        s[] = focus
     end)
     s
 end
@@ -154,9 +154,9 @@ returns a `Bool`,
 which is true whenever the cursor enters the window.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga762d898d9b0241d7e3e3b767c6cf318f)
 """
-function entered_window(window::Window, s::Bool=false)
+function entered_window(window::Window, s::Ref{Bool}=Ref(false))
     GLFW.SetCursorEnterCallback(window, (window, entered::Bool) -> begin
-        s = entered
+        s[] = entered
     end)
     s
 end

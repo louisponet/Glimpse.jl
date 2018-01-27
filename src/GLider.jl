@@ -10,9 +10,10 @@ import GLAbstraction: FrameBuffer
 include("typedefs.jl")
 include("color_utils.jl")
 include("canvas.jl")
-include("callbacks.jl")
 include("screen.jl")
+include("callbacks.jl")
 export Screen
+export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!, 
 # package code goes here
 
 end # module

@@ -1,5 +1,5 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer
-import GLAbstraction: bind, unbind, clear!
+import GLAbstraction: bind, unbind
 #TODO Framebuffer context
 
 function canvas_fbo(area::Area, depthformat::Type{<:DepthFormat} = Depth{Float32}, color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
@@ -8,7 +8,9 @@ function canvas_fbo(area::Area, depthformat::Type{<:DepthFormat} = Depth{Float32
     return fbo
 end
 
-struct Canvas
+standard_screen_resolution() = div.(GLFW.GetMonitorPhysicalSize(GLFW.GetPrimaryMonitor()),2)
+
+mutable struct Canvas
     name::Symbol
     id::Int
     area::Area
@@ -16,8 +18,8 @@ struct Canvas
     background::Colorant
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
-function Canvas(name, id, area, depth::Type{<:DepthFormat} = Depth{Float32}, background::Colorant = RGBA(0.0f0);
-                # fbo_color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0),
+function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0), depth::Type{<:DepthFormat} = Depth{Float32};
+                # fbo_color = background,
                 debugging = false,
                 major = 3,
                 minor = 3,# this is what GLVisualize needs to offer all features
@@ -51,6 +53,73 @@ function Canvas(name, id, area, depth::Type{<:DepthFormat} = Depth{Float32}, bac
     glClear(GL_COLOR_BUFFER_BIT)
 
     # fbo = canvas_fbo(area, depth, fbo_color)
-    # return Canvas(Symbol(name), id, area, nw, fbo)
+    # return Canvas(Symbol(name), id, area, nw, background, fbo)
     return Canvas(Symbol(name), id, area, nw, background)
+end
+
+function swapbuffers(c::Canvas)
+    if c.native_window.handle == C_NULL
+        warn("Native Window handle of canvas $(c.name) == C_NULL!")
+        return
+    end
+    GLFW.SwapBuffers(c.native_window)
+    return
+end
+
+make_current(c::Canvas) = GLFW.MakeContextCurrent(c.native_window)
+
+
+function Base.isopen(canvas::Canvas) 
+    canvas.native_window.handle == C_NULL && return false
+    !GLFW.WindowShouldClose(canvas.native_window)
+end
+function Base.clear!(c::Canvas)
+    glClearColor(c.background.r, c.background.b, c.background.g, c.background.alpha)
+    # glClearColor(1,1,1,1)
+    glClear(GL_COLOR_BUFFER_BIT)
+end
+
+pollevents(c::Canvas) = GLFW.PollEvents()
+waitevents(c::Canvas) = GLFW.WaitEvents()
+destroy!(c::Canvas)   = GLFW.DestroyWindow(c.native_window)
+bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+nativewindow(c::Canvas) = c.native_window
+
+function Base.resize!(c::Canvas, w::Int, h::Int, resize_window=false)
+    nw = c.native_window
+    area = c.area
+    f = scaling_factor(c)
+    # There was some performance issue with round.(Int, SVector) - not sure if resolved.
+    wf, hf = Int.(round.(f .* Vec(w, h)))
+    c.area = Area(area.x, area.y, wf, hf)
+    if resize_window
+        GLFW.SetWindowSize(c.native_window, wf, hf)
+    end
+    return c.area
+end
+
+"""
+On OSX retina screens, the window size is different from the
+pixel size of the actual framebuffer. With this function we
+can find out the scaling factor.
+"""
+function scaling_factor(window::Vec{2, Int}, fb::Vec{2, Int})
+    (window[1] == 0 || window[2] == 0) && return Vec{2, Float64}(1.0)
+    Vec{2, Float64}(fb) ./ Vec{2, Float64}(window)
+end
+function scaling_factor(c::Canvas)
+    w, fb = GLFW.GetWindowSize(c.native_window), GLFW.GetFramebufferSize(c.native_window)
+    scaling_factor(Vec{2, Int}(w), Vec{2, Int}(fb))
+end
+
+"""
+Correct OSX scaling issue and move the 0,0 coordinate to left bottom.
+"""
+function corrected_coordinates(
+        window_size::Vec{2,Int},
+        framebuffer_width::Vec{2,Int},
+        mouse_position::Vec{2,Float64}
+    )
+    s = scaling_factor(window_size.value, framebuffer_width.value)
+    Vec{2,Float64}(mouse_position[1], window_size.value[2] - mouse_position[2]) .* s
 end
