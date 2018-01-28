@@ -1,4 +1,4 @@
-import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer
+import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
 import GLAbstraction: bind, unbind
 #TODO Framebuffer context
 
@@ -10,7 +10,7 @@ end
 
 standard_screen_resolution() = div.(GLFW.GetMonitorPhysicalSize(GLFW.GetPrimaryMonitor()),2)
 
-mutable struct Canvas
+mutable struct Canvas <: AbstractContext
     name::Symbol
     id::Int
     area::Area
@@ -66,8 +66,10 @@ function swapbuffers(c::Canvas)
     return
 end
 
-make_current(c::Canvas) = GLFW.MakeContextCurrent(c.native_window)
-
+function make_current(c::Canvas)
+    GLFW.MakeContextCurrent(c.native_window)
+    set_context!(c)
+end
 
 function Base.isopen(canvas::Canvas) 
     canvas.native_window.handle == C_NULL && return false
@@ -81,7 +83,13 @@ end
 
 pollevents(c::Canvas) = GLFW.PollEvents()
 waitevents(c::Canvas) = GLFW.WaitEvents()
-destroy!(c::Canvas)   = GLFW.DestroyWindow(c.native_window)
+
+function destroy!(c::Canvas)
+    GLFW.DestroyWindow(c.native_window)
+    if is_current_context(c)
+        clear_context!(c)
+    end
+end
 bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
 nativewindow(c::Canvas) = c.native_window
 

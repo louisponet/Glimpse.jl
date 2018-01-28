@@ -22,7 +22,9 @@ mutable struct Screen
                     children  ::Vector{Screen},
                     callbacks ::Dict{Symbol, Any},
                     hidden    ::Bool)
-        return new(name, new_screen_id(), area, canvas, parent, children, callbacks, hidden)
+        id = new_screen_id()
+        canvas.id = id
+        return new(name, id, area, canvas, parent, children, callbacks, hidden)
     end
 end
 function Screen(name = "GLider", area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0);
@@ -30,6 +32,9 @@ function Screen(name = "GLider", area=Area(0, 0, standard_screen_resolution()...
                 hidden    = false,
                 canvas_kwargs...)
     canvas = Canvas(name, 1, area, background; canvas_kwargs...)
+    if !hidden
+        make_current(canvas)
+    end
     callback_dict = register_callbacks(canvas.native_window, standard_callbacks())
     return Screen(Symbol(name), area, canvas, nothing, Screen[], callback_dict, hidden) 
 end
