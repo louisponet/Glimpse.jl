@@ -1,4 +1,4 @@
-import GLAbstraction: VertexArray, bind, draw, unbind
+import GLAbstraction: VertexArray, draw, unbind
 import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 
 # struct ColorVertex{Dim, T, ColorT} <: AbstractVertex
@@ -19,7 +19,7 @@ import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 mutable struct Renderable{D, FaceLength} #D for dimensions
     id::Int
     name::Symbol
-    verts::AbstractMesh{<:StaticVector{D, GLfloat}, Face{FaceLength,Int}}
+    verts::AbstractMesh{<:StaticVector{D, GLfloat}, <:Face{FaceLength,<:Integer}}
     uniforms::Dict{Symbol, Any}
     vao::Union{VertexArray, Void}
 end
@@ -27,19 +27,35 @@ end
 #it's required to at least have key positions
 function Renderable(id, name, attributes::Dict{Symbol, Any}, uniforms=Dict{Symbol, Any}())
     mesh = homogenousmesh(attributes)
-    println(supertype(typeof(mesh)))
     Renderable(id, name, mesh, uniforms, nothing)
 end
 
-function to_gpu(renderable::Renderable{D, FaceLength} where D) where FaceLength
-    renderable.vao = VertexArray((renderable.verts.vertices, renderable.verts.color), facelength=FaceLength)
+function VertexArray(mesh::AbstractMesh; kwargs...)
+    to_vao = []
+    indices = nothing
+    for name in fieldnames(mesh)
+        field = getfield(mesh, name)
+        if field == nothing || field == Void[]
+            continue
+        end
+        if name == :faces
+            indices = field
+        else
+            push!(to_vao, field)
+        end
+    end
+    return VertexArray((to_vao...), indices; kwargs...)
 end
 
-function bind(renderable::Renderable)
+function to_gpu(renderable::Renderable{D, FaceLength} where D) where FaceLength
+    renderable.vao = VertexArray(renderable.verts, facelength=FaceLength)
+end
+
+function Base.bind(renderable::Renderable)
     if renderable.vao == nothing
         to_gpu(renderable)
     end
-    bind(renderable.vao)
+    Base.bind(renderable.vao)
 end
 
 draw(renderable::Renderable) = draw(renderable.vao)

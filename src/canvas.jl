@@ -1,5 +1,5 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
-import GLAbstraction: bind, unbind, swapbuffers
+import GLAbstraction: unbind, swapbuffers
 #TODO Framebuffer context
 
 function canvas_fbo(area::Area, depthformat::Type{<:DepthFormat} = Depth{Float32}, color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
@@ -90,7 +90,7 @@ function destroy!(c::Canvas)
         clear_context!()
     end
 end
-bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+Base.bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
 nativewindow(c::Canvas) = c.native_window
 
 function Base.resize!(c::Canvas, w::Int, h::Int, resize_window=false)

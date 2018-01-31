@@ -44,7 +44,7 @@ Base.isopen(screen::Screen) = isopen(screen.canvas)
 clearcanvas!(s::Screen) = clear!(s.canvas)
 
 focus(s::Screen)        = make_current(s.canvas)
-bind(s::Screen)         = bind(s.canvas)
+Base.bind(s::Screen)         = Base.bind(s.canvas)
 nativewindow(s::Screen) = nativewindow(s.canvas)
 swapbuffers(s::Screen)  = swapbuffers(s.canvas)
 pollevents(s::Screen)   = pollevents(s.canvas)

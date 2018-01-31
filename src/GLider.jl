@@ -8,9 +8,7 @@ using FixedPointNumbers
 using ModernGL
 using Quaternions
 using GLAbstraction 
-import GLAbstraction: FrameBuffer
-export RenderPass, Pipeline
-export render
+ 
 include("typedefs.jl")
 include("maths/matrices.jl")
 include("color_utils.jl")
@@ -23,9 +21,19 @@ include("program.jl")
 include("renderable.jl")
 include("camera.jl")
 include("scene.jl")
-export Screen, Scene, Renderable, Camera, CamKind
+
+#GLAbstraction exports
+import GLAbstraction: RenderPass, Pipeline
+import GLAbstraction: render, @comp_str, @frag_str, @vert_str, @geom_str
+    
+export RenderPass, Pipeline
+export render
+export @comp_str, @frag_str, @vert_str, @geom_str
+
+export Screen, Scene, Renderable, Camera
+export pixel, orthographic, perspective
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-       bind, unbind, draw
+       unbind, draw, current_context
 # package code goes here
 
 end # module
