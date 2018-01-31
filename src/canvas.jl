@@ -1,5 +1,5 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
-import GLAbstraction: bind, unbind
+import GLAbstraction: bind, unbind, swapbuffers
 #TODO Framebuffer context
 
 function canvas_fbo(area::Area, depthformat::Type{<:DepthFormat} = Depth{Float32}, color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
@@ -87,7 +87,7 @@ waitevents(c::Canvas) = GLFW.WaitEvents()
 function destroy!(c::Canvas)
     GLFW.DestroyWindow(c.native_window)
     if is_current_context(c)
-        clear_context!(c)
+        clear_context!()
     end
 end
 bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)

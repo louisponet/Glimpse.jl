@@ -1,83 +1,65 @@
 using GLider
 screen = Screen()
+using GeometryTypes
+using ColorTypes
+testrenderable = Renderable(1,:test, Dict(:vertices => Point{2,Float32}[(-0.5, -0.5),
+                                                                           ( 0.5, -0.5),
+                                                                           ( 0.0,  0.5)],
+                                             :color    => [RGB(0.2f0,0.9f0,0.5f0),RGB(0.9f0,0.2f0,0.5f0),RGB(0.5f0,0.2f0,0.9f0)],
+                                             :faces => Face{3,Int}[(1,2,3)]))
+camera = Camera{perspective}(Vec3f0(0), Vec3f0(1), Vec3f0(0.0f0,0.0f0,1.0f0),Vec3f0(-1.0f0,0.0f0,0.0f0),screen.area)
+testscene = Scene(:test, [testrenderable], camera)
+
+vertex_shader = vert"""
+#version 410
+
+layout(location = 0) in vec2 position;
+layout(location = 1) in vec3 color;
+
+out vec3 outcolor;
+
+void main()
+{
+    outcolor = color;
+    gl_Position = vec4(position, 0.0, 1.0);
+}
+"""
+
+# The fragment shader
+fragment_shader = frag"""
+# version 410
+
+in vec3 outcolor;
+out vec4 outColor;
+
+void main()
+{
+    outColor = vec4(outcolor.xyz, 1.0);
+}
+"""
+
+renderpass = RenderPass(:test, [vertex_shader, fragment_shader])
+pipeline   = Pipeline(:test, [renderpass], screen.canvas) 
+
+#I am still on the fence about using Base.clear!
+#I think everything should be in the namespace of GLAbstraction, 
+#so it's clear that you have to overload GLAbstraction.clear!
+function (rp::GLAbstraction.RenderPass{:test})(context, scene::Scene)
+    clear!(context)
+    for renderable in scene.renderables
+        bind(renderable)
+        draw(renderable)
+    end
+    unbind(scene.renderables[1])
+end
+
 try
 while isopen(screen)
-    clearcanvas!(screen)
-    swapbuffers(screen)
+    render(pipeline, testscene) 
     waitevents(screen)
-    println(screen.callbacks[:window_size][])
 end
 finally
 destroy!(screen)
-end
-
-test = """
-#version 330
-in vec3 testin;
-out vec3 testout;
-void main (){
-    testout = testin;
-}
-"""
-testshader = GLider.Shader(Vector{UInt8}(test), GLider.GL_VERTEX_SHADER, :test)
-testprogram = GLider.Program([testshader],Tuple{Int,String}[])
-using GeometryTypes
-struct UVWVertex
-    position::Vec3f0
-    uvw::Vec3f0
-end
-
-struct Uniforms
-    model::Mat4f0
-    modelinv::Mat4f0
-    isovalue::Float32
-end
-
-function vert_volume(lr,test)
-    out = lr
-    return out
-end
-
-test_shader = GLider.Shader((:vertex, vert_volume),(Float32,Float32))
-
-function is_outside(position::Vec3f0)
-    position[1] > 1f0 || position[2] > 1f0 ||
-    position[3] > 1f0 || position[1] < 0f0 ||
-    position[2] < 0f0 || position[3] < 0f0
-end
-
-function mip(accum, pos, stepdir, intensities, uniforms)
-    max(accum, intensities[pos][1])
-end
-
-function raycast_loop(
-        front::Vec3f0, dir::Vec3f0, num_samples, stepsize::Float32,
-        uniforms, intensities
-    )
-    stepsize_dir = dir * stepsize
-    pos = front
-    pos += stepsize_dir; # apply first, to padd
-    accumulator = uniforms.startvalue
-    for i = 1:num_samples
-        if uniforms.breakloop(accumulator) || is_outside(pos)
-            break
-        end
-        accumulator = uniforms.accumulation(
-            accumulator, pos, stepsize_dir, intensities, uniforms
-        )
-        pos += stepsize_dir
-    end
-    return uniforms.to_color(accumulator, uniforms)
-end
-
-function frag_volume(vertex_out, canvas, uniforms, intensities)
-    max_distance = 1.73f0
-    num_samples = 128
-    step_size = max_distance / Float32(num_samples)
-    dir = normalize(vertex_out.position - canvas.eyeposition)
-    dir = (uniforms.modelinv * Vec4f0(dir[1], dir[2], dir[3], 0f0))[Vec(1, 2, 3)]
-    color = raycast_loop(vertex_out.uvw, dir, num_samples, step_size, uniforms, intensities)
-    (color, )
 end
 
 

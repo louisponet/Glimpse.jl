@@ -1,3 +1,4 @@
+
 #Came from GLAbstraction/GLMatrixmath.jl
 function scalematrix(s::Vec{3, T}) where T
     T0, T1 = zero(T), one(T)
@@ -9,11 +10,11 @@ function scalematrix(s::Vec{3, T}) where T
     )
 end
 
-translationmatrix_x(x::T) where {T} = translationmatrix(Vec{3, T}(x, 0, 0))
-translationmatrix_y(y::T) where {T} = translationmatrix(Vec{3, T}(0, y, 0))
-translationmatrix_z(z::T) where {T} = translationmatrix(Vec{3, T}(0, 0, z))
+transmat_x(x::T) where {T} = transmat(Vec{3, T}(x, 0, 0))
+transmat_y(y::T) where {T} = transmat(Vec{3, T}(0, y, 0))
+transmat_z(z::T) where {T} = transmat(Vec{3, T}(0, 0, z))
 
-function translationmatrix(t::Vec{3, T}) where T
+function transmat(t::Vec{3, T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         T1,  T0,  T0,  T0,
@@ -79,7 +80,7 @@ end
 function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
     (right == left || bottom == top || znear == zfar) && return eye(Mat{4,4,T})
     T0, T1, T2 = zero(T), one(T), T(2)
-    return Mat{4}(
+    return Mat{4, T}(
         T2 * znear / (right - left), T0, T0, T0,
         T0, T2 * znear / (top - bottom), T0, T0,
         (right + left) / (right - left), (top + bottom) / (top - bottom), -(zfar + znear) / (zfar - znear), -T1,
@@ -88,46 +89,46 @@ function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where 
 end
 
 """
-`proj = perspectiveprojection([T], fovy, aspect, znear, zfar)` defines
+`proj = projmatpersp([T], fovy, aspect, znear, zfar)` defines
 a projection matrix with a given angular field-of-view `fovy` along
 the y-axis (measured in degrees), the specified `aspect` ratio, and
 near and far clipping planes `znear`, `zfar`. Optionally specify the
 element type `T` of the matrix.
 """
-function perspectiveprojection(fovy::T, aspect::T, znear::T, zfar::T) where T
+function projmatpersp(fovy::T, aspect::T, znear::T, zfar::T) where T
     (znear == zfar) && error("znear ($znear) must be different from tfar ($zfar)")
     h = T(tan(fovy / 360.0 * pi) * znear)
     w = T(h * aspect)
     return frustum(-w, w, -h, h, znear, zfar)
 end
-function perspectiveprojection(
+function projmatpersp(
         ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
     ) where T
-    perspectiveprojection(T(fovy), T(aspect), T(znear), T(zfar))
+    projmatpersp(T(fovy), T(aspect), T(znear), T(zfar))
 end
 """
-`proj = perspectiveprojection([T], rect, fov, near, far)` defines the
+`proj = projmatpersp([T], rect, fov, near, far)` defines the
 projection ratio in terms of the rectangular view size `rect` rather
 than the aspect ratio.
 """
-function perspectiveprojection(wh::SimpleRectangle, fov::T, near::T, far::T) where T
-    perspectiveprojection(fov, T(wh.w/wh.h), near, far)
+function projmatpersp(wh::SimpleRectangle, fov::T, near::T, far::T) where T
+    projmatpersp(fov, T(wh.w/wh.h), near, far)
 end
-function perspectiveprojection(
+function projmatpersp(
         ::Type{T}, wh::SimpleRectangle, fov::Number, near::Number, far::Number
     ) where T
-    perspectiveprojection(T(fov), T(wh.w/wh.h), T(near), T(far))
+    projmatpersp(T(fov), T(wh.w/wh.h), T(near), T(far))
 end
 
 """
-`view = lookat(eyeposition, lookat, up)` creates a view matrix with
-the eye located at `eyeposition` and looking at position `lookat`,
+`view = lookatmat(eyeposition, lookatmat, up)` creates a view matrix with
+the eye located at `eyeposition` and looking at position `lookatmat`,
 with the top of the window corresponding to the direction `up`. Only
 the component of `up` that is perpendicular to the vector pointing
-from `eyeposition` to `lookat` will be used.  All inputs must be
+from `eyeposition` to `lookatmat` will be used.  All inputs must be
 supplied as 3-vectors.
 """
-function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+function lookatmat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
     zaxis  = normalize(eyePos-lookAt)
     xaxis  = normalize(cross(up,    zaxis))
     yaxis  = normalize(cross(zaxis, xaxis))
@@ -137,21 +138,23 @@ function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         xaxis[2], yaxis[2], zaxis[2], T0,
         xaxis[3], yaxis[3], zaxis[3], T0,
         T0,       T0,       T0,       T1
-    ) * translationmatrix(-eyePos)
+    ) * transmat(-eyePos)
 end
-function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
-    lookat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
-end
-function orthographicprojection(wh::SimpleRectangle, near::T, far::T) where T
-    orthographicprojection(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
-end
-function orthographicprojection(
-        ::Type{T}, wh::SimpleRectangle, near::Number, far::Number
-    ) where T
-    orthographicprojection(wh, T(near), T(far))
+function lookatmat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
+    lookatmat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
 end
 
-function orthographicprojection(
+
+function projmatortho(wh::SimpleRectangle, near::T, far::T) where T
+    projmatortho(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
+end
+function projmatortho(
+        ::Type{T}, wh::SimpleRectangle, near::Number, far::Number
+    ) where T
+    projmatortho(wh, T(near), T(far))
+end
+
+function projmatortho(
         left  ::T, right::T,
         bottom::T, top  ::T,
         znear ::T, zfar ::T
@@ -165,17 +168,18 @@ function orthographicprojection(
         -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(zfar+znear)/(zfar-znear), T1
     )
 end
-function orthographicprojection(::Type{T},
+function projmatortho(::Type{T},
         left  ::Number, right::Number,
         bottom::Number, top  ::Number,
         znear ::Number, zfar ::Number
     ) where T
-    orthographicprojection(
+    projmatortho(
         T(left),   T(right),
         T(bottom), T(top),
         T(znear),  T(zfar)
     )
 end
+
 
 import Base: (*)
 function (*)(q::Quaternions.Quaternion{T}, v::Vec{3, T}) where T
@@ -229,10 +233,10 @@ function (::Type{M})(q::Quaternions.Quaternion) where M <: Mat3
     )
 end
 function transformationmatrix(p::Pivot)
-    translationmatrix(p.origin) * #go to origin
+    transmat(p.origin) * #go to origin
     rotationmatrix4(p.rotation) * #apply rotation
-    translationmatrix(-p.origin)* # go back to origin
-    translationmatrix(p.translation) #apply translation
+    transmat(-p.origin)* # go back to origin
+    transmat(p.translation) #apply translation
 end
 
 function transformationmatrix(translation, scale)

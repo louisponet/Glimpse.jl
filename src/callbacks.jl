@@ -83,7 +83,7 @@ containing the pressed button the action and modifiers.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
 function mouse_buttons(window::Window, s::Ref{NTuple{3, Int}}=Ref((0,0,0)))
-    GLFW.SetMouseButtonCallback(window, (window, button::Cint, action::Cint, mods::Cint) -> begin
+    GLFW.SetMouseButtonCallback(window, (window, button::Cint, action::GLFW.Action, mods::Cint) -> begin
         s[] = (Int(button), Int(action), Int(mods))
     end)
     s
