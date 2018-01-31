@@ -1,5 +1,4 @@
 using GLider
-screen = Screen()
 using GeometryTypes
 using ColorTypes
 testrenderable = Renderable(1,:test, Dict(:vertices => Point{2,Float32}[(-0.5, -0.5),
@@ -38,6 +37,7 @@ void main()
 }
 """
 
+screen = Screen()
 renderpass = RenderPass(:test, [vertex_shader, fragment_shader])
 pipeline   = Pipeline(:test, [renderpass], screen.canvas) 
 
@@ -61,6 +61,8 @@ while isopen(screen)
 end
 finally
     destroy!(screen)
+    free!(pipeline)
+    free!(testscene)
 end
 
 

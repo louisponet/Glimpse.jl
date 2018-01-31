@@ -1,4 +1,4 @@
-import GLAbstraction: VertexArray, draw, unbind
+import GLAbstraction: VertexArray, draw, unbind, free!
 import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 
 # struct ColorVertex{Dim, T, ColorT} <: AbstractVertex
@@ -61,4 +61,8 @@ end
 draw(renderable::Renderable) = draw(renderable.vao)
 unbind(renderable::Renderable) = unbind(renderable.vao)
 
-
+function free!(r::Renderable)
+    if r.vao != nothing
+        r.vao = free!(r.vao)
+    end
+end

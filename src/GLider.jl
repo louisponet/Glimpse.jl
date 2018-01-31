@@ -24,10 +24,11 @@ include("scene.jl")
 
 #GLAbstraction exports
 import GLAbstraction: RenderPass, Pipeline
-import GLAbstraction: render, @comp_str, @frag_str, @vert_str, @geom_str
-    
+import GLAbstraction: render, @comp_str, @frag_str, @vert_str, @geom_str,
+                      free!
+
 export RenderPass, Pipeline
-export render
+export render, free!
 export @comp_str, @frag_str, @vert_str, @geom_str
 
 export Screen, Scene, Renderable, Camera
