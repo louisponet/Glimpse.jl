@@ -4,8 +4,9 @@ using ColorTypes
 testrenderable = Renderable(1,:test, Dict(:vertices => Point{2,Float32}[(-0.5, -0.5),
                                                                            ( 0.5, -0.5),
                                                                            ( 0.0,  0.5)],
-                                             :color    => [RGB(0.2f0,0.9f0,0.5f0),RGB(0.9f0,0.2f0,0.5f0),RGB(0.5f0,0.2f0,0.9f0)],
-                                             :faces => Face{3,UInt32}[(0,1,2)]))
+                                             :color    => [RGB(0.2f0,0.9f0,0.5f0),RGB(0.9f0,0.2f0,0.5f0),RGB(0.5f0,0.2f0,0.9f0)]),
+                                             facelength=3)
+                                            #  :faces => Face{3,UInt32}[(0,1,2)]))
 camera = Camera{perspective}(Vec3f0(0), Vec3f0(1), Vec3f0(0.0f0,0.0f0,1.0f0),Vec3f0(-1.0f0,0.0f0,0.0f0),screen.area)
 testscene = Scene(:test, [testrenderable], camera)
 

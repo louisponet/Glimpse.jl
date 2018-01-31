@@ -19,15 +19,18 @@ import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 mutable struct Renderable{D, FaceLength} #D for dimensions
     id::Int
     name::Symbol
-    verts::AbstractMesh{<:StaticVector{D, GLfloat}, <:Face{FaceLength,<:Integer}}
+    verts::AbstractMesh{<:StaticVector{D, GLfloat}}
     uniforms::Dict{Symbol, Any}
     vao::Union{VertexArray, Void}
 end
 
 #it's required to at least have key positions
-function Renderable(id, name, attributes::Dict{Symbol, Any}, uniforms=Dict{Symbol, Any}())
+function Renderable(id, name, attributes::Dict{Symbol, Any}, uniforms=Dict{Symbol, Any}(); facelength=1) # not too happy about this facelength
     mesh = homogenousmesh(attributes)
-    Renderable(id, name, mesh, uniforms, nothing)
+    if mesh.faces != Void[]
+        facelength = length(eltype(mesh.faces))
+    end
+    Renderable{length(eltype(mesh.vertices)), facelength}(id, name, mesh, uniforms, nothing)
 end
 
 function VertexArray(mesh::AbstractMesh; kwargs...)
@@ -44,7 +47,11 @@ function VertexArray(mesh::AbstractMesh; kwargs...)
             push!(to_vao, field)
         end
     end
-    return VertexArray((to_vao...), indices; kwargs...)
+    if indices == nothing
+        return VertexArray((to_vao...); kwargs...)
+    else
+        return VertexArray((to_vao...), indices; kwargs...)
+    end
 end
 
 function to_gpu(renderable::Renderable{D, FaceLength} where D) where FaceLength
