@@ -32,7 +32,7 @@ function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), bac
                 fullscreen = false,
                 monitor = nothing)
 
-    nw = GLFW.Window(name,
+    nw = GLFW.Window(String(name),
                      resolution = (area.w,area.h),
                      debugging = debugging,
                      major = major,
@@ -54,7 +54,7 @@ function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), bac
 
     # fbo = canvas_fbo(area, depth, fbo_color)
     # return Canvas(Symbol(name), id, area, nw, background, fbo)
-    return Canvas(Symbol(name), id, area, nw, background)
+    return Canvas(name, id, area, nw, background)
 end
 
 function swapbuffers(c::Canvas)

@@ -10,6 +10,7 @@ using Quaternions
 using GLAbstraction 
  
 include("typedefs.jl")
+include("utils.jl")
 include("maths/matrices.jl")
 include("color_utils.jl")
 include("canvas.jl")
@@ -21,7 +22,9 @@ include("program.jl")
 include("renderable.jl")
 include("camera.jl")
 include("scene.jl")
-
+include("vista.jl")
+include("defaults/renderpass.jl")
+include("defaults/shader.jl")
 #GLAbstraction exports
 import GLAbstraction: RenderPass, Pipeline
 import GLAbstraction: render, @comp_str, @frag_str, @vert_str, @geom_str,
@@ -31,10 +34,10 @@ export RenderPass, Pipeline
 export render, free!
 export @comp_str, @frag_str, @vert_str, @geom_str
 
-export Screen, Scene, Renderable, Camera
+export Screen, Scene, Renderable, Camera, Vista, Area
 export pixel, orthographic, perspective
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-       unbind, draw, current_context
+       unbind, draw, current_context, renderloop, add!
 # package code goes here
 
 end # module

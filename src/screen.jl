@@ -27,7 +27,7 @@ mutable struct Screen
         return new(name, id, area, canvas, parent, children, callbacks, hidden)
     end
 end
-function Screen(name = "GLider", area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0);
+function Screen(name = :GLider, area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0);
                 callbacks = standard_callbacks(),
                 hidden    = false,
                 canvas_kwargs...)
@@ -36,9 +36,9 @@ function Screen(name = "GLider", area=Area(0, 0, standard_screen_resolution()...
         make_current(canvas)
     end
     callback_dict = register_callbacks(canvas.native_window, standard_callbacks())
-    return Screen(Symbol(name), area, canvas, nothing, Screen[], callback_dict, hidden) 
+    return Screen(name, area, canvas, nothing, Screen[], callback_dict, hidden) 
 end
-Screen(name::String, resolution::Tuple{Int, Int}, args...;kwargs...) = Screen(name, Area(0, 0, resolution...), args...; kwargs...)
+Screen(name::Symbol, resolution::Tuple{Int, Int}, args...;kwargs...) = Screen(name, Area(0, 0, resolution...), args...; kwargs...)
 
 Base.isopen(screen::Screen) = isopen(screen.canvas)
 clearcanvas!(s::Screen) = clear!(s.canvas)

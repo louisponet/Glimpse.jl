@@ -30,30 +30,22 @@ mutable struct Camera{Kind, Dim, T}
     end
 end 
 
-# function Camera{Kind}(eyepos::SVector{Dim, T}, lookat::SVector{Dim,T}, up::SVector{Dim, T}, left::SVector{Dim, T}; 
-#                 fov  = T(41.0),
-#                 near = T(0.0),
-#                 far  = T(100.),
-#                 rotation_speed    = T(1.0),
-#                 translation_speed = T(1.0)) where {Kind, Dim, T}
-#     println("ping") 
-#     projm = projmat(Kind, area, near, far, fov)
-#     viewm = lookatmat(eyepos, lookat, up)
-#     return Camera(eyepos, up, left, lookat, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed)
-# end
-function Camera{perspective}(eyepos, lookat, up, left,area; 
+function (::Type{Camera{perspective}})(eyepos, lookat, up, left,area; 
                 fov  = 41.0f0,
                 near = 0.0f0,
                 far  = 100.0f0,
                 rotation_speed    = 1.0f0,
-                translation_speed = 1.0f0) where perspective
+                translation_speed = 1.0f0)
     projm = projmat(perspective, area, near, far, fov)
     viewm = lookatmat(eyepos, lookat, up)
     return Camera{perspective}(eyepos, up, left, lookat, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed)
 end
 
-Camera{pixel}(center::Vec{2, Float32}, up, left, area) where pixel = 
-    Camera{pixel}(center, up, left, center, 0f0, 0f0, 0f0, Eye4f0(), Eye4f0(), Eye4f0(), 0f0, 0f0)
+(::Type{Camera{perspective}})() = Camera{perspective}(Vec3f0(0,-1,0), Vec3f0(0), Vec3f0(0,0,1), Vec3f0(-1,0,0), current_context().area)
 
+
+(::Type{Camera{pixel}})(center::Vec{2, Float32}, up, left, area) where pixel = 
+    Camera{pixel}(center, up, left, center, 0f0, 0f0, 0f0, Eye4f0(), Eye4f0(), Eye4f0(), 0f0, 0f0)
+(::Type{Camera{pixel}})() where pixel = Camera{pixel}(Vec2f0(0), Vec2f0(0,1), Vec2f0(-1,0), area)
 
 

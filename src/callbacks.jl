@@ -71,7 +71,7 @@ returns `NTuple{4, Int}`
 """
 function keyboard_buttons(window::Window, s::Ref{NTuple{4, Int}}=Ref((0,0,0,0)))
     keydict = Dict{Int, Bool}()
-    GLFW.SetKeyCallback(window, (window, button::Cint, scancode::Cint, action::Cint, mods::Cint) -> begin
+    GLFW.SetKeyCallback(window, (window, button::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint) -> begin
         s[] = (Int(button), Int(scancode), Int(action), Int(mods))
     end)
     s
