@@ -33,6 +33,8 @@ function Renderable(id, name, attributes::Dict{Symbol, Any}, uniforms=Dict{Symbo
     Renderable{length(eltype(mesh.vertices)), facelength}(id, name, mesh, uniforms, nothing)
 end
 
+Renderable{FaceLength}(args...) where FaceLength = Renderable(args...; facelength=FaceLength)
+
 function VertexArray(mesh::AbstractMesh; kwargs...)
     to_vao = []
     indices = nothing
@@ -64,6 +66,8 @@ function Base.bind(renderable::Renderable)
     end
     Base.bind(renderable.vao)
 end
+
+Base.eltype(::Type{Renderable{D, F}}) where {D, F} = (D, F)
 
 draw(renderable::Renderable) = draw(renderable.vao)
 unbind(renderable::Renderable) = unbind(renderable.vao)

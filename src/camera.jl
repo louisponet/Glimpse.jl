@@ -26,9 +26,7 @@ mutable struct Camera{Kind, Dim, T}
     rotation_speed    ::T
     translation_speed ::T
     function (::Type{Camera{Kind}})(eyepos::Vec{Dim, T}, up, left, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed) where {Kind, Dim, T} 
-        temp = new{Kind, Dim, T}()
-        temp.eyepos = eyepos
-        return temp
+        new{Kind, Dim, T}(eyepos, up, left, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed)
     end
 end 
 
@@ -43,15 +41,19 @@ end
 #     viewm = lookatmat(eyepos, lookat, up)
 #     return Camera(eyepos, up, left, lookat, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed)
 # end
-function Camera{Kind}(eyepos, lookat, up, left,area; 
+function Camera{perspective}(eyepos, lookat, up, left,area; 
                 fov  = 41.0f0,
                 near = 0.0f0,
                 far  = 100.0f0,
                 rotation_speed    = 1.0f0,
-                translation_speed = 1.0f0) where Kind
-    projm = projmat(Kind, area, near, far, fov)
+                translation_speed = 1.0f0) where perspective
+    projm = projmat(perspective, area, near, far, fov)
     viewm = lookatmat(eyepos, lookat, up)
-    return Camera{Kind}(eyepos, up, left, lookat, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed)
+    return Camera{perspective}(eyepos, up, left, lookat, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed)
 end
+
+Camera{pixel}(center::Vec{2, Float32}, up, left, area) where pixel = 
+    Camera{pixel}(center, up, left, center, 0f0, 0f0, 0f0, Eye4f0(), Eye4f0(), Eye4f0(), 0f0, 0f0)
+
 
 

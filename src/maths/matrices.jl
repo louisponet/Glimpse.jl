@@ -1,4 +1,4 @@
-
+Eye4f0() = Mat4f0(eye(Float32, 4)) 
 #Came from GLAbstraction/GLMatrixmath.jl
 function scalematrix(s::Vec{3, T}) where T
     T0, T1 = zero(T), one(T)
