@@ -1,3 +1,5 @@
+import ColorTypes: Colorant
+import GLAbstraction: free!
 
 using Base.RefValue
 const screen_id_counter = RefValue(0)
@@ -10,33 +12,31 @@ mutable struct Screen
     name      ::Symbol
     id        ::Int
     area      ::Area
-    canvas    ::Canvas
+    canvas    ::Union{Canvas, Void}
+    background::Colorant
     parent    ::Union{Screen, Void}
     children  ::Vector{Screen}
-    callbacks ::Dict{Symbol, Any}
     hidden    ::Bool # if window is hidden. Will not render
     function Screen(name      ::Symbol,
-                    area      ::Area, 
+                    area      ::Area,
                     canvas    ::Canvas,
+                    background::Colorant,
                     parent    ::Union{Screen, Void},
                     children  ::Vector{Screen},
-                    callbacks ::Dict{Symbol, Any},
                     hidden    ::Bool)
         id = new_screen_id()
         canvas.id = id
-        return new(name, id, area, canvas, parent, children, callbacks, hidden)
+        return new(name, id, area, canvas,background, parent, children, hidden)
     end
 end
 function Screen(name = :GLider, area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0);
-                callbacks = standard_callbacks(),
                 hidden    = false,
                 canvas_kwargs...)
     canvas = Canvas(name, 1, area, background; canvas_kwargs...)
     if !hidden
         make_current(canvas)
     end
-    callback_dict = register_callbacks(canvas.native_window, standard_callbacks())
-    return Screen(name, area, canvas, nothing, Screen[], callback_dict, hidden) 
+    return Screen(name, area, canvas, background, nothing, Screen[], hidden)
 end
 Screen(name::Symbol, resolution::Tuple{Int, Int}, args...;kwargs...) = Screen(name, Area(0, 0, resolution...), args...; kwargs...)
 
@@ -44,15 +44,18 @@ Base.isopen(screen::Screen) = isopen(screen.canvas)
 clearcanvas!(s::Screen) = clear!(s.canvas)
 
 focus(s::Screen)        = make_current(s.canvas)
-Base.bind(s::Screen)         = Base.bind(s.canvas)
+Base.bind(s::Screen)    = Base.bind(s.canvas)
 nativewindow(s::Screen) = nativewindow(s.canvas)
 swapbuffers(s::Screen)  = swapbuffers(s.canvas)
 pollevents(s::Screen)   = pollevents(s.canvas)
 waitevents(s::Screen)   = waitevents(s.canvas)
 
-destroy!(s::Screen)     = destroy!(s.canvas)
+function free!(s::Screen)
+    s.canvas = destroy!(s.canvas)
+    return s
+end
 
-callback(s::Screen, cb::Symbol) = s.callbacks[cb][]
+callback(s::Screen, cb::Symbol) = callback(s.canvas, cb)
 
 function update!(s::Screen)
     s.area = resize!(s,callback(s,:window_size))
@@ -60,4 +63,13 @@ end
 
 function Base.resize!(s::Screen, w::Int, h::Int, resize_window=false)
     s.area = resize!(s.canvas, w, h, resize_window)
+end
+
+#todo standardcallbacks!
+function raise(s::Screen; canvas_kwargs...)
+    s.canvas = s.canvas == nothing ? Canvas(s.name, 1, s.area, s.background; canvas_kwargs...) : s.canvas
+    if !s.hidden
+        make_current(s.canvas)
+    end
+    return s
 end

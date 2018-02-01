@@ -1,3 +1,4 @@
+# __precompile__(true)
 module GLider
 
 using GLFW
@@ -7,8 +8,8 @@ using ColorTypes
 using FixedPointNumbers
 using ModernGL
 using Quaternions
-using GLAbstraction 
- 
+using GLAbstraction
+
 include("typedefs.jl")
 include("utils.jl")
 include("maths/matrices.jl")
@@ -37,7 +38,7 @@ export @comp_str, @frag_str, @vert_str, @geom_str
 export Screen, Scene, Renderable, Camera, Vista, Area
 export pixel, orthographic, perspective
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-       unbind, draw, current_context, renderloop, add!
+       unbind, draw, current_context, renderloop, add!, raise
 # package code goes here
 
 end # module

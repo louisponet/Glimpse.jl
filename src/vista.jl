@@ -1,18 +1,19 @@
 import GLAbstraction: Pipeline, RenderPass
-
+import GLAbstraction: free!
 const vista_loop = RefValue{Task}()
 #todo, make it so args and kwargs get all passed around to pipelines and screens etc
 mutable struct Vista
     name     ::Symbol
-    scene    ::Scene 
+    scene    ::Scene
     screen   ::Union{Screen, Void}
     pipeline ::Union{Pipeline, Void}
+    loop     ::Union{Task, Void}
     function Vista(name, scene, screen, pipeline; interactive=false)
         if interactive
             screen = screen == nothing ? Screen(name) : screen
             pipeline = pipeline == nothing ? Pipeline(name, [RenderPass(:default, default_shaders())], screen.canvas) : pipeline
-            vista = new(name, scene, screen, pipeline)
-            vista_loop[] = @async renderloop(vista)
+            looptask = @async renderloop(vista)
+            vista = new(name, scene, screen, pipeline, looptask)
         else
             vista = new(name, scene, screen, pipeline)
         end
@@ -27,6 +28,8 @@ Vista(name::Symbol, scene::Scene; kwargs...) = Vista(name, scene, nothing, nothi
 Vista(name::Symbol, scene::Scene, screen::Screen; kwargs...) = Vista(name, scene, screen, nothing; kwargs...)
 
 add!(vista::Vista, renderable::Renderable) = add!(vista.scene, renderable)
+
+
 set!(vista::Vista, camera::Camera) = set!(vista.scene, camera)
 
 function renderloop(vista, framerate = 1/60)
@@ -36,14 +39,22 @@ function renderloop(vista, framerate = 1/60)
     while isopen(screen)
         tm = time()
         pollevents(screen)
-        render(pipeline, scene) 
+        render(pipeline, scene)
         swapbuffers(screen)
         tm = time() - tm
         sleep_pessimistic(framerate - tm)
     end
-    destroy!(screen)
-    free!(pipeline)
-    free!(scene)
+    vista.screen   = free!(screen)
+    vista.pipeline = free!(pipeline)
+    vista.scene    = free!(scene)
+    vista.loop     = nothing
 end
 
-
+function raise(vista::Vista)
+    if vista.loop == nothing
+        vista.screen = vista.screen == nothing ? Screen(vista.name) : raise(vista.screen)
+        vista.pipeline = vista.pipeline == nothing ? Pipeline(vista.name, [RenderPass(:default, default_shaders())], vista.screen.canvas) : vista.pipeline
+        vista.loop = @async renderloop(vista)
+    end
+    return vista
+end

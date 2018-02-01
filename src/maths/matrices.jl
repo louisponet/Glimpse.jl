@@ -1,4 +1,4 @@
-Eye4f0() = Mat4f0(eye(Float32, 4)) 
+Eye4f0() = Mat4f0(eye(Float32, 4))
 #Came from GLAbstraction/GLMatrixmath.jl
 function scalematrix(s::Vec{3, T}) where T
     T0, T1 = zero(T), one(T)
@@ -80,7 +80,7 @@ end
 function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
     (right == left || bottom == top || znear == zfar) && return eye(Mat{4,4,T})
     T0, T1, T2 = zero(T), one(T), T(2)
-    return Mat{4, T}(
+    return Mat4{T}(
         T2 * znear / (right - left), T0, T0, T0,
         T0, T2 * znear / (top - bottom), T0, T0,
         (right + left) / (right - left), (top + bottom) / (top - bottom), -(zfar + znear) / (zfar - znear), -T1,

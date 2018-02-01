@@ -11,14 +11,16 @@ end
 standard_screen_resolution() = div.(GLFW.GetMonitorPhysicalSize(GLFW.GetPrimaryMonitor()),2)
 
 mutable struct Canvas <: AbstractContext
-    name::Symbol
-    id::Int
-    area::Area
-    native_window::GLFW.Window
-    background::Colorant
+    name          ::Symbol
+    id            ::Int
+    area          ::Area
+    native_window ::GLFW.Window
+    background    ::Colorant
+    callbacks     ::Dict{Symbol, Any}
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0), depth::Type{<:DepthFormat} = Depth{Float32};
+                callbacks = standard_callbacks(),
                 # fbo_color = background,
                 debugging = false,
                 major = 3,
@@ -52,9 +54,10 @@ function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), bac
     end
     glClear(GL_COLOR_BUFFER_BIT)
 
+    callback_dict = register_callbacks(nw, callbacks)
     # fbo = canvas_fbo(area, depth, fbo_color)
     # return Canvas(Symbol(name), id, area, nw, background, fbo)
-    return Canvas(name, id, area, nw, background)
+    return Canvas(name, id, area, nw, background, callback_dict)
 end
 
 function swapbuffers(c::Canvas)
@@ -71,7 +74,7 @@ function make_current(c::Canvas)
     set_context!(c)
 end
 
-function Base.isopen(canvas::Canvas) 
+function Base.isopen(canvas::Canvas)
     canvas.native_window.handle == C_NULL && return false
     !GLFW.WindowShouldClose(canvas.native_window)
 end
@@ -88,6 +91,9 @@ function destroy!(c::Canvas)
     GLFW.DestroyWindow(c.native_window)
     if is_current_context(c)
         clear_context!()
+        return
+    else
+        return c
     end
 end
 Base.bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
@@ -131,3 +137,5 @@ function corrected_coordinates(
     s = scaling_factor(window_size.value, framebuffer_width.value)
     Vec{2,Float64}(mouse_position[1], window_size.value[2] - mouse_position[2]) .* s
 end
+
+callback(c::Canvas, cb::Symbol) = c.callbacks[cb][]
