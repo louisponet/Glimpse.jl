@@ -1,5 +1,5 @@
 # __precompile__(true)
-module GLider
+module Glimpse
 
 using GLFW
 
@@ -24,7 +24,7 @@ include("program.jl")
 include("renderable.jl")
 include("camera.jl")
 include("scene.jl")
-include("vista.jl")
+include("diorama.jl")
 include("defaults/renderpass.jl")
 include("defaults/pipeline.jl")
 include("defaults/shader.jl")
@@ -34,13 +34,13 @@ import GLAbstraction: render, @comp_str, @frag_str, @vert_str, @geom_str,
                       free!
 
 export RenderPass, Pipeline
-export render, free!
+export render, free!, start
 export @comp_str, @frag_str, @vert_str, @geom_str
 
-export Screen, Scene, Renderable, Camera, Vista, Area
+export Screen, Scene, Renderable, Camera, Diorama, Area
 export pixel, orthographic, perspective
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-       unbind, draw, current_context, renderloop, add!, raise
+        draw, current_context, renderloop, add!, build
 # package code goes here
 
 end # module

@@ -1,7 +1,7 @@
 #!julia
-using GLider
+using Glimpse
 
-testvista = Vista(interactive=true)
+testdiorama = Diorama(interactive=true)
 using GeometryTypes
 using ColorTypes
 
@@ -16,5 +16,5 @@ cube2_verts = decompose(Point3f0, cube2)
 cube2_faces = decompose(Face{3,Int32}, cube2).-Int32(1)
 
 testcube2 = Renderable(1,:test, Dict(:vertices =>cube2_verts, :color => [rand(RGB) for i = 1:length(cube2_verts)],:faces=>cube2_faces))
-add!(testvista, testcube)
-add!(testvista, testcube2)
+add!(testdiorama, testcube)
+add!(testdiorama, testcube2)

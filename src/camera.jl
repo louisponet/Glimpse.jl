@@ -1,4 +1,5 @@
-import GLFW: GetMouseButton, SetCursorPosCallback, SetKeyCallback, SetWindowSizeCallback, SetFramebufferSizeCallback
+import GLFW: GetMouseButton, SetCursorPosCallback, SetKeyCallback, SetWindowSizeCallback, SetFramebufferSizeCallback,
+             SetScrollCallback
 import GLFW: MOUSE_BUTTON_1, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q
 import GeometryTypes: Vec, Mat
 
@@ -33,6 +34,7 @@ mutable struct Camera{Kind, Dim, T}
     mouse_pos         ::Vec{2, T}
 
     function (::Type{Camera{Kind}})(eyepos::Vec{Dim, T}, up, right, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed) where {Kind, Dim, T}
+
         new{Kind, Dim, T}(eyepos, up, right, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed, Vec2f0(0))
     end
 end
@@ -58,6 +60,13 @@ end
 (::Type{Camera{pixel}})() where pixel = Camera{pixel}(Vec2f0(0), Vec2f0(0,1), Vec2f0(1,0), area)
 
 Base.eltype(::Type{Camera{Kind, Dim, T}}) where {Kind, Dim, T} = (Kind, Dim, T)
+calcright(cam::Camera) = normalize(cross(calcforward(cam), cam.up))
+calcforward(cam::Camera) = normalize(cam.lookat-cam.eyepos)
+
+function update_viewmat(cam::Camera{perspective})
+    cam.view = lookatmat(cam.eyepos, cam.lookat, cam.up)
+    cam.projview = cam.proj * cam.view
+end
 
 function register_camera_callbacks(cam::Camera, context = current_context())
     SetCursorPosCallback(context.native_window, (window, x::Cdouble, y::Cdouble) -> begin
@@ -74,6 +83,10 @@ function register_camera_callbacks(cam::Camera, context = current_context())
         context.area = Area(orig.x, orig.y, w_, h_)
         glViewport(0, 0, w_, h_)
         resize_event(cam, context.area)
+    end)
+
+    SetScrollCallback(context.native_window, (window, dx::Cdouble, dy::Cdouble) -> begin
+        scroll_event(cam, dx, dy)
     end)
 end
 
@@ -112,12 +125,13 @@ function buttonpress_event(cam::Camera, button)
         cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 100f0)
     end
 end
+
 #maybe it would be better to make the eyepos up etc vectors already vec4 but ok
 function wasd_event(cam::Camera{perspective, Dim, T} where {perspective, Dim}, button) where T
     #ok this is a bit hacky but fine
     origlen = norm(cam.eyepos)
     if button == KEY_A
-        #we the world needs to move in the opposite direction
+        #the world needs to move in the opposite direction
         newpos = Vec3{T}((translmat(cam.translation_speed * cam.right) * Vec4{T}(cam.eyepos...,1.0))[1:3])
         newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
 
@@ -141,32 +155,8 @@ function resize_event(cam::Camera, area::Area)
     cam.proj = projmat(eltype(cam)[1], area, cam.near, cam.far, cam.fov)
 end
 
-calcright(cam::Camera) = normalize(cross(calcforward(cam), cam.up))
-calcforward(cam::Camera) = normalize(cam.lookat-cam.eyepos)
-
-function update_viewmat(cam::Camera{perspective})
-    cam.view = lookatmat(cam.eyepos, cam.lookat, cam.up)
-    cam.projview = cam.proj * cam.view
-end
-
-
-
-function rotate_cam(theta::Vec{3}, cam::Camera{perspective, Dim, T} where {perspective, Dim}) where T
-    cam_up = cam.up
-    cam_right = cam.right
-    cam_dir = cam.lookat
-    rotation = one(Q.Quaternion{T})
-    # first the rotation around up axis, since the other rotation should be relative to that rotation
-    if theta[1] != 0
-        rotation *= Q.qrotation(cam_up, T(theta[1]))
-    end
-    # then right rotation
-    if theta[2] != 0
-        rotation *= Q.qrotation(cam_right, T(theta[2]))
-    end
-    # last rotation around cam axis
-    if theta[3] != 0
-        rotation *= Q.qrotation(cam_dir, T(theta[3]))
-    end
-    rotation
+function scroll_event(cam::Camera, dx, dy)
+    translation = calcforward(cam) * dy * cam.translation_speed
+    cam.eyepos += translation
+    update_viewmat(cam)
 end

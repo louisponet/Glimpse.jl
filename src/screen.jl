@@ -29,7 +29,7 @@ mutable struct Screen
         return new(name, id, area, canvas,background, parent, children, hidden)
     end
 end
-function Screen(name = :GLider, area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0);
+function Screen(name = :Glimpse, area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0);
                 hidden    = false,
                 canvas_kwargs...)
     canvas = Canvas(name, 1, area, background; canvas_kwargs...)

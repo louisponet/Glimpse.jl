@@ -1,4 +1,4 @@
-The GLider.jl package is licensed under the MIT "Expat" License:
+The Glimpse.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2018: Louis Ponet.
 >
