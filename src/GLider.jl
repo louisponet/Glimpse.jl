@@ -26,6 +26,7 @@ include("camera.jl")
 include("scene.jl")
 include("vista.jl")
 include("defaults/renderpass.jl")
+include("defaults/pipeline.jl")
 include("defaults/shader.jl")
 #GLAbstraction exports
 import GLAbstraction: RenderPass, Pipeline

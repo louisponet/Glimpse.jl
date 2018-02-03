@@ -98,12 +98,9 @@ function rotate_world(cam::Camera, dx, dy)
     backward = norm(forward) * Vec3f0((rot2*rot1*Vec4(-forward..., 0.0f0))[1:3])
     trans2 = translmat(backward)
     mat_ = trans2 * rot2 * rot1 * trans1
-    new_eyepos = Vec3f0((mat_ * Vec4(cam.eyepos..., 1.0f0))[1:3])
-    new_up = normalize(Vec3f0((rot2*rot1*Vec4(cam.up..., 0.0f0))[1:3]))
-    new_right = calcright(cam)
-    cam.up = new_up
-    cam.right = new_right
-    cam.eyepos = new_eyepos
+    cam.eyepos = Vec3f0((mat_ * Vec4(cam.eyepos..., 1.0f0))[1:3])
+    cam.up = normalize(Vec3f0((rot2*rot1*Vec4(cam.up..., 0.0f0))[1:3]))
+    cam.right = calcright(cam)
     update_viewmat(cam)
 end
 

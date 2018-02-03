@@ -4,8 +4,7 @@ function (rp::RenderPass{:default})(scene::Scene)
     clear!(current_context())
     proj = projmat(scene)
     view = viewmat(scene)
-    glDisable(GL_CULL_FACE)
-    if haskey(rp.program.uniformloc, :proj)
+        if haskey(rp.program.uniformloc, :proj)
         gluniform(rp.program.uniformloc[:proj][1], proj)
     end
 

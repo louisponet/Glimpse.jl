@@ -12,7 +12,7 @@ mutable struct Vista
         if interactive
             screen = screen == nothing ? Screen(name) : screen
             register_camera_callbacks(scene.camera, screen.canvas)
-            pipeline = pipeline == nothing ? Pipeline(name, [RenderPass(:default, default_shaders())], screen.canvas) : pipeline
+            pipeline = pipeline == nothing ? Pipeline(:default, [RenderPass(:default, default_shaders())], screen.canvas) : pipeline
             looptask = @async renderloop(vista)
             vista = new(name, scene, screen, pipeline, looptask)
         else
