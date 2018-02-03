@@ -13,6 +13,7 @@ using GLAbstraction
 include("typedefs.jl")
 include("utils.jl")
 include("maths/matrices.jl")
+include("maths/vecmath.jl")
 include("color_utils.jl")
 include("canvas.jl")
 include("globals.jl")

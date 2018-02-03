@@ -97,7 +97,7 @@ element type `T` of the matrix.
 """
 function projmatpersp(fovy::T, aspect::T, znear::T, zfar::T) where T
     (znear == zfar) && error("znear ($znear) must be different from tfar ($zfar)")
-    h = T(tan(fovy / 360.0 * pi) * znear)
+    h = T(tan(fovy / 180.0 * pi) * znear)
     w = T(h * aspect)
     return frustum(-w, w, -h, h, znear, zfar)
 end

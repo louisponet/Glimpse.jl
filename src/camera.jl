@@ -1,5 +1,5 @@
 import GLFW: GetMouseButton, SetCursorPosCallback, SetKeyCallback
-import GLFW: MOUSE_BUTTON_1, KEY_W, KEY_A, KEY_S, KEY_D
+import GLFW: MOUSE_BUTTON_1, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q
 import GeometryTypes: Vec, Mat
 
 const WASD_KEYS = [KEY_W, KEY_A, KEY_S, KEY_D]
@@ -18,10 +18,10 @@ end
 
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
 mutable struct Camera{Kind, Dim, T}
-    eyepos ::Vec4{T}
-    up     ::Vec4{T}
-    right   ::Vec4{T}
-    lookat ::Vec4{T}
+    eyepos ::Vec{Dim, T}
+    up     ::Vec{Dim, T}
+    right  ::Vec{Dim, T}
+    lookat ::Vec{Dim, T}
     fov    ::T
     near   ::T
     far    ::T
@@ -31,23 +31,25 @@ mutable struct Camera{Kind, Dim, T}
     rotation_speed    ::T
     translation_speed ::T
     mouse_pos         ::Vec{2, T}
-    function (::Type{Camera{Kind, Dim}})(eyepos, up, right, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed) where {Kind, Dim, T}
+    function (::Type{Camera{Kind}})(eyepos::Vec{Dim, T}, up, right, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed) where {Kind, Dim, T}
         new{Kind, Dim, T}(eyepos, up, right, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed, Vec2f0(0))
     end
 end
 
 function (::Type{Camera{perspective}})(eyepos, lookat, up, right, area;
-                fov  = 6.0f0,
+                fov  = 90.0f0,
                 near = 0.1f0,
                 far  = 100.0f0,
-                rotation_speed    = 1.0f0,
-                translation_speed = 1.0f0)
+                rotation_speed    = 0.99f0,
+                translation_speed = 0.99f0)
+    up = normalizeperp(lookat - eyepos, up)
+    right = normalize(cross(lookat - eyepos, up))
     projm = projmat(perspective, area, near, far, fov)
-    viewm = lookatmat(eyepos, lookat, up)
+    viewm = lookatmat(-eyepos, lookat, up)
     return Camera{perspective}(eyepos, up, right, lookat, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed)
 end
 
-(::Type{Camera{perspective}})() = Camera{perspective}(Vec3(0f0, 0f0, 0f0), Vec3(0f0, 1f0, 0f0), Vec3(0f0, 0f0, 1f0), Vec3(1f0,0f0,0f0), Area(0,0,standard_screen_resolution()...))
+(::Type{Camera{perspective}})() = Camera{perspective}(Vec3(0f0, -1f0, 0f0), Vec3(0f0, 0f0, 0f0), Vec3(0f0, 0f0, 1f0), Vec3(1f0,0f0,0f0), Area(0,0,standard_screen_resolution()...))
 
 
 (::Type{Camera{pixel}})(center::Vec{2, Float32}, up, right, area) =
@@ -73,43 +75,50 @@ function mouse_move_event(camera::Camera{perspective, Dim, T} where {perspective
     end
     dx = x_ - camera.mouse_pos[1]
     dy = y_ - camera.mouse_pos[2]
-    println(dx, dy)
     camera.mouse_pos = Vec(x_, y_)
 end
 function buttonpress_event(camera::Camera, button)
     if button in WASD_KEYS
         wasd_event(camera, button)
+    elseif button == KEY_Q
+        camera.fov -= 1
+        camera.projection = projmatpersp( Area(0,0,standard_screen_resolution()...), camera.fov,0.1f0, 100f0)
     end
 end
 
 #maybe it would be better to make the eyepos up etc vectors already vec4 but ok
 function wasd_event(camera::Camera{perspective, Dim, T} where {perspective, Dim}, button) where T
+    #ok this is a bit hacky but fine
+    origlen = norm(camera.eyepos)
     if button == KEY_A
-        newpos = Vec3{T}((transmat(camera.translation_speed * -camera.right) * Vec4{T}(camera.eyepos...,1.0))[1:3])
-        camera.eyepos = newpos
+        #we the world needs to move in the opposite direction
+        newpos = Vec3{T}((transmat(camera.translation_speed * camera.right) * Vec4{T}(camera.eyepos...,1.0))[1:3])
+        newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
 
     elseif button == KEY_D
-        newpos = Vec3{T}((transmat(camera.translation_speed * camera.right) * Vec4{T}(camera.eyepos...,1.0))[1:3])
-        camera.eyepos = newpos
+        newpos = Vec3{T}((transmat(camera.translation_speed * -camera.right) * Vec4{T}(camera.eyepos...,1.0))[1:3])
+        newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
 
     elseif button == KEY_W
-        newpos = Vec3{T}((transmat(camera.translation_speed * camera.lookat) * Vec4{T}(camera.eyepos...,1.0))[1:3])
-        camera.eyepos = newpos
+        newpos = Vec3{T}((transmat(camera.translation_speed * calcforward(camera)) * Vec4{T}(camera.eyepos...,1.0))[1:3])
 
     elseif button == KEY_S
-        newpos = Vec3{T}((transmat(camera.translation_speed * -camera.lookat) * Vec4{T}(camera.eyepos...,1.0))[1:3])
-        camera.eyepos = newpos
-    end
+        newpos = Vec3{T}((transmat(camera.translation_speed * -calcforward(camera)) * Vec4{T}(camera.eyepos...,1.0))[1:3])
 
+    end
+    camera.eyepos = newpos
+    camera.right = calcright(camera)
     update_viewmat(camera)
 end
+calcright(camera::Camera) = normalize(cross(calcforward(camera), camera.up))
+calcforward(camera::Camera) = normalize(camera.lookat-camera.eyepos)
 
 function update_viewmat(cam::Camera{perspective})
     cam.view = lookatmat(cam.eyepos, cam.lookat, cam.up)
     cam.projectionview = cam.projection * cam.view
 end
 
-function rotate_cam(theta::Vec{3}, camera::Camera{perspective, Dim, T}) where T
+function rotate_cam(theta::Vec{3}, camera::Camera{perspective, Dim, T} where {perspective, Dim}) where T
     cam_up = camera.up
     cam_right = camera.right
     cam_dir = camera.lookat

@@ -17,6 +17,7 @@ function (rp::RenderPass{:default})(scene::Scene)
     for renderable in scene.renderables
         bind(renderable)
         draw(renderable)
+        unbind(renderable) #not sure why this is necessary
     end
     unbind(scene.renderables[1])
 end

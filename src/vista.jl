@@ -52,11 +52,11 @@ function renderloop(vista, framerate = 1/60)
 end
 
 function raise(vista::Vista)
-    if vista.loop == nothing
+    if !isdefined(vista, :loop) || vista.loop == nothing
         vista.screen = vista.screen == nothing ? Screen(vista.name) : raise(vista.screen)
         register_camera_callbacks(vista.scene.camera, vista.screen.canvas)
         vista.pipeline = vista.pipeline == nothing ? Pipeline(vista.name, [RenderPass(:default, default_shaders())], vista.screen.canvas) : vista.pipeline
-        vista.loop = @async renderloop(vista)
+        vista.loop = renderloop(vista)
     end
     return vista
 end

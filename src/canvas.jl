@@ -8,7 +8,7 @@ function canvas_fbo(area::Area, depthformat::Type{<:DepthFormat} = Depth{Float32
     return fbo
 end
 
-standard_screen_resolution() = div.(GLFW.GetMonitorPhysicalSize(GLFW.GetPrimaryMonitor()),2)
+standard_screen_resolution() = div.(GLFW.GetMonitorPhysicalSize(GLFW.GetPrimaryMonitor()),1)
 
 mutable struct Canvas <: AbstractContext
     name          ::Symbol
