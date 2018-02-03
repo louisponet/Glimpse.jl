@@ -41,6 +41,6 @@ function set!(sc::Scene, camera::Camera)
     sc.camera = camera
 end
 
-projmat(sc::Scene) = sc.camera.projection
+projmat(sc::Scene) = sc.camera.proj
 viewmat(sc::Scene) = sc.camera.view
-projviewmat(sc::Scene) = sc.camera.projectionview
+projviewmat(sc::Scene) = sc.camera.projview

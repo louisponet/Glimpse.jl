@@ -10,11 +10,11 @@ function scalematrix(s::Vec{3, T}) where T
     )
 end
 
-transmat_x(x::T) where {T} = transmat(Vec{3, T}(x, 0, 0))
-transmat_y(y::T) where {T} = transmat(Vec{3, T}(0, y, 0))
-transmat_z(z::T) where {T} = transmat(Vec{3, T}(0, 0, z))
+translmat_x(x::T) where {T} = translmat(Vec{3, T}(x, 0, 0))
+translmat_y(y::T) where {T} = translmat(Vec{3, T}(0, y, 0))
+translmat_z(z::T) where {T} = translmat(Vec{3, T}(0, 0, z))
 
-function transmat(t::Vec{3, T}) where T
+function translmat(t::Vec{3, T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         T1,  T0,  T0,  T0,
@@ -138,7 +138,7 @@ function lookatmat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         xaxis[2], yaxis[2], zaxis[2], T0,
         xaxis[3], yaxis[3], zaxis[3], T0,
         T0,       T0,       T0,       T1
-    ) * transmat(-eyePos)
+    ) * translmat(-eyePos)
 end
 function lookatmat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
     lookatmat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
@@ -233,10 +233,10 @@ function (::Type{M})(q::Quaternions.Quaternion) where M <: Mat3
     )
 end
 function transformationmatrix(p::Pivot)
-    transmat(p.origin) * #go to origin
+    translmat(p.origin) * #go to origin
     rotationmatrix4(p.rotation) * #apply rotation
-    transmat(-p.origin)* # go back to origin
-    transmat(p.translation) #apply translation
+    translmat(-p.origin)* # go back to origin
+    translmat(p.translation) #apply translation
 end
 
 function transformationmatrix(translation, scale)

@@ -56,7 +56,7 @@ function raise(vista::Vista)
         vista.screen = vista.screen == nothing ? Screen(vista.name) : raise(vista.screen)
         register_camera_callbacks(vista.scene.camera, vista.screen.canvas)
         vista.pipeline = vista.pipeline == nothing ? Pipeline(vista.name, [RenderPass(:default, default_shaders())], vista.screen.canvas) : vista.pipeline
-        vista.loop = renderloop(vista)
+        vista.loop = @async renderloop(vista)
     end
     return vista
 end

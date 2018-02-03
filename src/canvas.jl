@@ -53,7 +53,7 @@ function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), bac
         background = RGBA(background)
     end
     glClear(GL_COLOR_BUFFER_BIT)
-
+    println(standard_screen_resolution())
     callback_dict = register_callbacks(nw, callbacks)
     # fbo = canvas_fbo(area, depth, fbo_color)
     # return Canvas(Symbol(name), id, area, nw, background, fbo)
