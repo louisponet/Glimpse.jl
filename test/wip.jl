@@ -3,7 +3,7 @@ testvista = Vista(interactive=true)
 using GeometryTypes
 using ColorTypes
 
-cube = HyperRectangle(Vec3f0(-1.0f0,0.0f0,-1.0f0),Vec3f0(1.0f0,1.0f0,1f0))
+cube = HyperRectangle(Vec3f0(0.0f0,0.0f0,1.0f0),Vec3f0(10.0f0,10.0f0,10f0))
 cube_verts = decompose(Point3f0, cube)
 cube_faces = decompose(Face{3,Int32}, cube).-Int32(1)
 
@@ -25,3 +25,7 @@ add!(testvista,testrenderable)
 add!(testvista, testrenderable2)
 testvista.scene.renderables
 GLider.raise(testvista)
+testvista.scene.camera.projection = GLider.projmatpersp(45f0, 800f0/600f0, 0.1f0, 100f0)
+testvista.scene.camera.view = GLider.lookatmat(Vec3((-3f0, 0f0, -3f0)), Vec3((0f0, 0f0, 0f0)), Vec3((0f0, 0f0, 1f0)))
+
+testvista.scene.camera

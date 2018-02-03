@@ -5,7 +5,7 @@ mutable struct Scene
     renderables::Vector{<:Renderable}
     camera::Camera
 end
-Scene() = Scene(:GLider, Renderable[], Camera{pixel}())
+Scene() = Scene(:GLider, Renderable[], Camera{perspective}())
 function Scene(name::Symbol, renderables::Vector{<:Renderable})
     dim = 2
     for r in renderables
