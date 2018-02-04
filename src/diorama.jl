@@ -55,7 +55,7 @@ function build(diorama::Diorama)
     if !isdefined(diorama, :loop) || diorama.loop == nothing
         diorama.screen = diorama.screen == nothing ? Screen(diorama.name) : raise(diorama.screen)
         register_camera_callbacks(diorama.scene.camera, diorama.screen.canvas)
-        diorama.pipeline = diorama.pipeline == nothing ? Pipeline(diorama.name, [RenderPass(:default, default_shaders())], diorama.screen.canvas) : diorama.pipeline
+        diorama.pipeline = diorama.pipeline == nothing ? Pipeline(:default, [RenderPass(:default, default_shaders())], diorama.screen.canvas) : diorama.pipeline
         diorama.loop = @async renderloop(diorama)
     end
     return diorama

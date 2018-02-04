@@ -88,8 +88,8 @@ pollevents(c::Canvas) = GLFW.PollEvents()
 waitevents(c::Canvas) = GLFW.WaitEvents()
 
 function destroy!(c::Canvas)
-    GLFW.DestroyWindow(c.native_window)
     if is_current_context(c)
+        GLFW.DestroyWindow(c.native_window)
         clear_context!()
         return
     else

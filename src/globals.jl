@@ -17,4 +17,3 @@ end
 function clear_context!()
     global_context = Base.RefValue{Canvas}()
 end
-

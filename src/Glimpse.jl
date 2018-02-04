@@ -3,8 +3,9 @@ module Glimpse
 
 using GLFW
 
-using GeometryTypes
-using ColorTypes
+using Reexport
+@reexport using GeometryTypes
+@reexport using ColorTypes
 using FixedPointNumbers
 using ModernGL
 using Quaternions
