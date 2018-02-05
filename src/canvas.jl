@@ -1,6 +1,25 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
 import GLAbstraction: unbind, swapbuffers
+import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS
 #TODO Framebuffer context
+"""
+Standard window hints for creating a plain context without any multisampling
+or extra buffers beside the color buffer
+"""
+function standard_window_hints()
+	[
+		(SAMPLES,      0),
+		(DEPTH_BITS,   32),
+
+		(ALPHA_BITS,   8),
+		(RED_BITS,     8),
+		(GREEN_BITS,   8),
+		(BLUE_BITS,    8),
+
+		(STENCIL_BITS, 0),
+		(AUX_BUFFERS,  0)
+	]
+end
 
 function canvas_fbo(area::Area, depthformat::Type{<:DepthFormat} = Depth{Float32}, color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
     fbo = FrameBuffer((area.w, area.h), (RGBA{N0f8}, depthformat))
@@ -80,8 +99,7 @@ end
 function Base.clear!(c::Canvas)
     glClearColor(c.background.r, c.background.b, c.background.g, c.background.alpha)
     # glClearColor(1,1,1,1)
-    glClear(GL_COLOR_BUFFER_BIT)
-    glClear(GL_DEPTH_BUFFER_BIT)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 end
 
 pollevents(c::Canvas) = GLFW.PollEvents()

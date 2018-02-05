@@ -1,6 +1,6 @@
 Eye4f0() = Mat4f0(eye(Float32, 4))
 #Came from GLAbstraction/GLMatrixmath.jl
-function scalematrix(s::Vec{3, T}) where T
+function scalemat(s::Vec{3, T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         s[1],T0,  T0,  T0,
@@ -24,10 +24,10 @@ function translmat(t::Vec{3, T}) where T
     )
 end
 
-rotate(angle::T, axis::Vec{3, T}) where {T} = rotationmatrix4(Quaternions.qrotation(convert(Array, axis), angle))
+rotate(angle::T, axis::Vec{3, T}) where {T} = rotmat4(Quaternions.qrotation(convert(Array, axis), angle))
 rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
 
-function rotationmatrix_x(angle::T) where T
+function rotmat_x(angle::T) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         T1, T0, T0, T0,
@@ -36,7 +36,7 @@ function rotationmatrix_x(angle::T) where T
         T0, T0, T0, T1
     )
 end
-function rotationmatrix_y(angle::T) where T
+function rotmat_y(angle::T) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         cos(angle), T0, -sin(angle),  T0,
@@ -45,7 +45,7 @@ function rotationmatrix_y(angle::T) where T
         T0, T0, T0, T1
     )
 end
-function rotationmatrix_z(angle::T) where T
+function rotmat_z(angle::T) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
         cos(angle), sin(angle), T0, T0,
@@ -84,7 +84,7 @@ function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where 
         T2 * znear / (right - left), T0, T0, T0,
         T0, T2 * znear / (top - bottom), T0, T0,
         (right + left) / (right - left), (top + bottom) / (top - bottom), -(zfar + znear) / (zfar - znear), -T1,
-        T0, T0, (-T2 * znear * zfar) / (zfar - znear), T0
+        T0, T0, -(T2 * znear * zfar) / (zfar - znear), T0
     )
 end
 
@@ -204,7 +204,7 @@ end
 
 GeometryTypes.origin(p::Pivot) = p.origin
 
-rotationmatrix4(q::Quaternions.Quaternion{T}) where {T} = Mat4{T}(q)
+rotmat4(q::Quaternions.Quaternion{T}) where {T} = Mat4{T}(q)
 
 function (::Type{M})(q::Quaternions.Quaternion) where M <: Mat4
     T = eltype(M)
@@ -232,14 +232,14 @@ function (::Type{M})(q::Quaternions.Quaternion) where M <: Mat3
         xz+sy,      yz-sx,      T1-(xx+yy)
     )
 end
-function transformationmatrix(p::Pivot)
+function transfmat(p::Pivot)
     translmat(p.origin) * #go to origin
-    rotationmatrix4(p.rotation) * #apply rotation
+    rotmat4(p.rotation) * #apply rotation
     translmat(-p.origin)* # go back to origin
     translmat(p.translation) #apply translation
 end
 
-function transformationmatrix(translation, scale)
+function transfmat(translation, scale)
     T = eltype(translation)
     T0, T1 = zero(T), one(T)
     Mat{4}(
@@ -250,17 +250,17 @@ function transformationmatrix(translation, scale)
     )
 end
 
-function transformationmatrix(translation, scale, rotation::Quaternions.Quaternion)
+function transfmat(translation, scale, rotation::Quaternions.Quaternion)
     T = eltype(translation)
-    trans_scale = transformationmatrix(translation, scale)
+    trans_scale = transfmat(translation, scale)
     rotation = Mat4f0(rotation)
     trans_scale*rotation
 end
-function transformationmatrix(
+function transfmat(
         translation, scale, rotation::Vec{3,T}, up = Vec{3,T}(0,0,1)
     ) where T
     q = rotation(rotation, up)
-    transformationmatrix(translation, scale, q)
+    transfmat(translation, scale, q)
 end
 
 #Calculate rotation between two vectors

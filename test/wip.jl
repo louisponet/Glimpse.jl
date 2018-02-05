@@ -40,8 +40,12 @@ testcolors =[rand(RGB{Float32}) for i=1:length(testverts)]
 testrenderable = Renderable{3}(1,:test, Dict{Symbol, Any}(:vertices => testverts, :color => testcolors))
 add!(testdiorama, testrenderable)
 
+transmat = Glimpse.translmat_y(3.0f0) * Glimpse.scalemat(Vec3f0(1.0, 1.0, 6.0))
+testverts2 = [Vec3f0((transmat * Vec4f0(vec...,1.0))[1:3]) for vec in testverts]
+testcols2 = [rand(RGB{Float32}) for i=1:length(testverts)]
 
-
+testrenderable2 = Renderable{3}(1,:test, Dict{Symbol, Any}(:vertices => testverts2, :color => testcols2))
+add!(testdiorama, testrenderable2)
 
 cube = HyperRectangle(Vec3f0(0.0f0,.0f0,0.0f0),Vec3f0(1.0f0,1.0f0,50f0))
 cube_verts = decompose(Point3f0, cube)
