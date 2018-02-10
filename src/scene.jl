@@ -1,11 +1,13 @@
 import GLAbstraction: free!
 
+#TODO so what should ultimately happen is that we allow for multiple cameras,
+#     which would result in multiple canvasses inside one big screen.
 mutable struct Scene
     name::Symbol
     renderables::Vector{<:Renderable}
     camera::Camera
+    lights::Vector{<:Light}
 end
-Scene() = Scene(:Glimpse, Renderable[], Camera{perspective}())
 function Scene(name::Symbol, renderables::Vector{<:Renderable})
     dim = 2
     for r in renderables
@@ -17,8 +19,9 @@ function Scene(name::Symbol, renderables::Vector{<:Renderable})
     elseif dim == 3
         camera = Camera{perspective}()
     end
-    return Scene(name, renderables, camera)
+    return Scene(name, renderables, camera, Light[])
 end
+Scene() = Scene(:Glimpse, Renderable[], Camera{perspective}(), Light[])
 
 function free!(sc::Scene)
     for r in sc.renderables
@@ -29,12 +32,29 @@ end
 
 """
 Adds a renderable to the scene. If the copy flag is true the renderable will be deepcopied.
-The id of the renderable will be set to it's index inside the renderables list of the Scene.
+The index of the renderable will be set to it's index inside the renderables list of the Scene.
 """
 function add!(sc::Scene, renderable::Renderable, _copy=false)
     rend = _copy ? deepcopy(renderable) : renderable
-    rend.id = length(sc.renderables) + 1
+    rend.index = length(sc.renderables) + 1
     push!(sc.renderables, rend)
+end
+
+"""
+Adds a renderable to the scene. If the copy flag is true the renderable will be deepcopied.
+The index of the renderable will be set to it's index inside the renderables list of the Scene.
+"""
+add!(sc::Scene, light::Light) = push!(sc.lights, light)
+
+"""
+Clears all the renderables from a scene.
+"""
+function Base.empty!(sc::Scene)
+    for rb in sc.renderables
+        free!(rb)
+    end
+    empty!(sc.renderables)
+    return sc
 end
 
 function set!(sc::Scene, camera::Camera)

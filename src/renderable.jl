@@ -16,21 +16,29 @@ import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 # Vertex(position::SVector{D, V}, normal::SVector{D, V}, color::Colorant) where V = Vertex(position, normal, color, zero(Vec{2, V}))
 # Vertex(position::SVector{D, V}, normal::SVector{D, V}, color::Colorant, uv) where V = Vertex(position, normal, color, uv)
 
+#TODO: probably the index should be only set by the scene anyway, so always default to 0 maybe.
+#      Although I could foresee that you first define all the renderables then throw them into the
+#      scene in the correct order.
 mutable struct Renderable{D, FaceLength} #D for dimensions
-    id::Int
+    index::Int
     name::Symbol
     verts::AbstractMesh{<:StaticVector{D, GLfloat}}
     uniforms::Dict{Symbol, Any}
     vao::Union{VertexArray, Void}
 end
 
-#it's required to at least have key positions
-function Renderable(id, name, attributes::Dict{Symbol, Any}, uniforms=Dict{Symbol, Any}(); facelength=1) # not too happy about this facelength
-    mesh = homogenousmesh(attributes)
+function Renderable(index, name, attributes...; facelength=1, uniforms...) # not too happy about this facelength
+    mesh = homogenousmesh(SymAnyDict(attributes))
     if mesh.faces != Void[]
         facelength = length(eltype(mesh.faces))
     end
-    Renderable{length(eltype(mesh.vertices)), facelength}(id, name, mesh, uniforms, nothing)
+
+    unidict = SymAnyDict(uniforms)
+    if !haskey(unidict, :model_mat) unidict[:model_mat] = Eye4f0() end
+    if !haskey(unidict, :specpow)   unidict[:specpow]   = 0.9f0    end
+    if !haskey(unidict, :specint)   unidict[:specint]   = 0.6f0    end
+
+    Renderable{length(eltype(mesh.vertices)), facelength}(index, name, mesh, unidict, nothing)
 end
 
 Renderable{FaceLength}(args...) where FaceLength = Renderable(args...; facelength=FaceLength)
@@ -49,6 +57,7 @@ function VertexArray(mesh::AbstractMesh; kwargs...)
             push!(to_vao, field)
         end
     end
+
     if indices == nothing
         return VertexArray((to_vao...); kwargs...)
     else

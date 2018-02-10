@@ -8,5 +8,5 @@ function start(pipe::Pipeline{:default})
     glDepthFunc(GL_LEQUAL)
 
 
-    glEnable(GL_CULL_FACE)
+    glDisable(GL_CULL_FACE)
 end

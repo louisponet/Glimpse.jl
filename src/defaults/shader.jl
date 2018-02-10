@@ -1,4 +1,4 @@
 import GLAbstraction: Shader
 import FileIO: load
 
-default_shaders() = [load(joinpath(@__DIR__,"default.vert")),load(joinpath(@__DIR__,"default.frag"))]
+defaultshaders() = [load(joinpath(@__DIR__, "default.vert")), load(joinpath(@__DIR__, "default.frag"))]

@@ -153,6 +153,7 @@ end
 
 function resize_event(cam::Camera, area::Area)
     cam.proj = projmat(eltype(cam)[1], area, cam.near, cam.far, cam.fov)
+    cam.projview = cam.proj * cam.view
 end
 
 function scroll_event(cam::Camera, dx, dy)

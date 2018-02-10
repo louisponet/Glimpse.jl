@@ -12,13 +12,13 @@ mutable struct Diorama
         if interactive
             screen = screen == nothing ? Screen(name) : screen
             register_camera_callbacks(scene.camera, screen.canvas)
-            pipeline = pipeline == nothing ? Pipeline(:default, [RenderPass(:default, default_shaders())], screen.canvas) : pipeline
-            looptask = @async renderloop(diorama)
-            diorama = new(name, scene, screen, pipeline, looptask)
+            pipeline = pipeline == nothing ? Pipeline(:default, [RenderPass(:default, defaultshaders())], screen.canvas) : pipeline
+            looptask = @async renderloop(dio)
+            dio = new(name, scene, screen, pipeline, looptask)
         else
-            diorama = new(name, scene, screen, pipeline)
+            dio = new(name, scene, screen, pipeline)
         end
-        return diorama
+        return dio
     end
 end
 
@@ -28,15 +28,28 @@ Diorama(scene::Scene, screen::Screen; kwargs...) = Diorama(:Glimpse, scene, scre
 Diorama(name::Symbol, scene::Scene; kwargs...) = Diorama(name, scene, nothing, nothing; kwargs...)
 Diorama(name::Symbol, scene::Scene, screen::Screen; kwargs...) = Diorama(name, scene, screen, nothing; kwargs...)
 
-add!(diorama::Diorama, renderable::Renderable) = add!(diorama.scene, renderable)
+add!(dio::Diorama, renderable::Renderable) = add!(dio.scene, renderable)
+add!(dio::Diorama, light::Light) = add!(dio.scene, light)
+
+"""
+Empties the scene that is linked to the diorama, i.e. clearing all the renderables.
+"""
+Base.empty!(dio::Diorama) = empty!(dio.scene)
+
+set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
+
+function free!(dio::Diorama)
+    dio.screen   = free!(dio.screen)
+    dio.pipeline = free!(dio.pipeline)
+    dio.scene    = free!(dio.scene)
+    dio.loop     = nothing
+end
 
 
-set!(diorama::Diorama, camera::Camera) = set!(diorama.scene, camera)
-
-function renderloop(diorama, framerate = 1/60)
-    screen = diorama.screen
-    pipeline = diorama.pipeline
-    scene = diorama.scene
+function renderloop(dio, framerate = 1/60)
+    screen = dio.screen
+    pipeline = dio.pipeline
+    scene = dio.scene
     while isopen(screen)
         tm = time()
         pollevents(screen)
@@ -45,18 +58,18 @@ function renderloop(diorama, framerate = 1/60)
         tm = time() - tm
         sleep_pessimistic(framerate - tm)
     end
-    diorama.screen   = free!(screen)
-    diorama.pipeline = free!(pipeline)
-    diorama.scene    = free!(scene)
-    diorama.loop     = nothing
+    free!(dio)
 end
 
-function build(diorama::Diorama)
-    if !isdefined(diorama, :loop) || diorama.loop == nothing
-        diorama.screen = diorama.screen == nothing ? Screen(diorama.name) : raise(diorama.screen)
-        register_camera_callbacks(diorama.scene.camera, diorama.screen.canvas)
-        diorama.pipeline = diorama.pipeline == nothing ? Pipeline(:default, [RenderPass(:default, default_shaders())], diorama.screen.canvas) : diorama.pipeline
-        diorama.loop = @async renderloop(diorama)
+function build(dio::Diorama)
+    if !isdefined(dio, :loop) || dio.loop == nothing
+        dio.screen = dio.screen == nothing ? Screen(dio.name) : raise(dio.screen)
+        register_camera_callbacks(dio.scene.camera, dio.screen.canvas)
+        resize_event(dio.scene.camera, dio.screen.canvas.area)
+        dio.pipeline = dio.pipeline == nothing ? Pipeline(:default, [RenderPass(:default, defaultshaders())], dio.screen.canvas) : dio.pipeline
+        dio.loop = @async renderloop(dio)
     end
-    return diorama
+    return dio
 end
+
+isrendering(dio::Diorama) = dio.loop != nothing

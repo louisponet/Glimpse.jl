@@ -24,11 +24,13 @@ include("shader.jl")
 include("program.jl")
 include("renderable.jl")
 include("camera.jl")
+include("light.jl")
 include("scene.jl")
 include("diorama.jl")
 include("defaults/renderpass.jl")
 include("defaults/pipeline.jl")
 include("defaults/shader.jl")
+include("defaults/geometries.jl")
 #GLAbstraction exports
 import GLAbstraction: RenderPass, Pipeline
 import GLAbstraction: render, @comp_str, @frag_str, @vert_str, @geom_str,
@@ -38,10 +40,15 @@ export RenderPass, Pipeline
 export render, free!, start
 export @comp_str, @frag_str, @vert_str, @geom_str
 
+#package exports, types
 export Screen, Scene, Renderable, Camera, Diorama, Area
 export pixel, orthographic, perspective
+
+#package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
         draw, current_context, renderloop, add!, build
-# package code goes here
+
+#package exports, default geometries
+export sphere
 
 end # module
