@@ -1,9 +1,12 @@
 using Glimpse
 
 testdiorama = Diorama(interactive=true)
+testdiorama.scene.camera.lookat
 
-sphere(testdiorama, [0.0,0.0,0.0], 2; color = RGB{Float32}(1,0,0))
-sphere(testdiorama, [0.0,0.0,0.0], 2)
+sphere(testdiorama, [1.0,5.0,-1.0], 2; color = RGB{Float32}(1,0,0))
+sphere(testdiorama, [6.0,0.0,0.0], 2)
+cone(testdiorama, (0,0,0),(1,0,0), 2; color=RGB{Float32}(1,0,0))
+arrow(testdiorama, (-5,0,0),(0,0,0), 2, 4)
 add!(testdiorama, Glimpse.PointLight())
 testdiorama
 empty!(testdiorama)

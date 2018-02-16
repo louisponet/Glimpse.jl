@@ -27,19 +27,20 @@ mutable struct Renderable{D, FaceLength} #D for dimensions
     vao::Union{VertexArray, Void}
 end
 
-function Renderable(index, name, attributes...; facelength=1, uniforms...) # not too happy about this facelength
-    mesh = homogenousmesh(SymAnyDict(attributes))
-    if mesh.faces != Void[]
-        facelength = length(eltype(mesh.faces))
+function Renderable(index, name, mesh::H, attributes::Pair...; facelength=1, uniforms...) where H <: HMesh
+    newmesh = isempty(attributes) ? H(mesh) : H(mesh, SymAnyDict(attributes))
+    if newmesh.faces != Void[]
+        facelength = length(eltype(newmesh.faces))
     end
-
     unidict = SymAnyDict(uniforms)
     if !haskey(unidict, :model_mat) unidict[:model_mat] = Eye4f0() end
     if !haskey(unidict, :specpow)   unidict[:specpow]   = 0.9f0    end
     if !haskey(unidict, :specint)   unidict[:specint]   = 0.6f0    end
 
-    Renderable{length(eltype(mesh.vertices)), facelength}(index, name, mesh, unidict, nothing)
+    return Renderable{length(eltype(mesh.vertices)), facelength}(index, name, newmesh, unidict, nothing)
 end
+
+Renderable(index, name, attributes::Pair...; kwargs...) = Renderable(index, name, homogenousmesh(SymAnyDict(attributes)); kwargs...)
 
 Renderable{FaceLength}(args...) where FaceLength = Renderable(args...; facelength=FaceLength)
 
@@ -57,7 +58,6 @@ function VertexArray(mesh::AbstractMesh; kwargs...)
             push!(to_vao, field)
         end
     end
-
     if indices == nothing
         return VertexArray((to_vao...); kwargs...)
     else

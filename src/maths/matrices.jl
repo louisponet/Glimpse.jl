@@ -27,6 +27,17 @@ end
 rotate(angle::T, axis::Vec{3, T}) where {T} = rotmat4(Quaternions.qrotation(convert(Array, axis), angle))
 rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
 
+function rotate(v1::Vec3{T}, v2::Vec3{T}) where T
+	vr = v2 - v1
+	l = norm(vr)
+	angle = acos(vr[3] / l)
+    axis = normalize(cross( Vec3(0.0000000001f0, 0.0f0, 1.0f0), vr))
+	if length(axis) > 0.0001
+        return rotate(angle, axis)
+    end
+    return Mat4(eye(T, 4))
+end
+
 function rotmat_x(angle::T) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(

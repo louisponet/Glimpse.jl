@@ -49,6 +49,6 @@ export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
         draw, current_context, renderloop, add!, build
 
 #package exports, default geometries
-export sphere
+export sphere, cylinder, rectangle, cone, arrow
 
 end # module
