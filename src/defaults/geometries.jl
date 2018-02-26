@@ -155,7 +155,6 @@ function cone(dio::Diorama, startpos, endpos, radius, name=:cylinder, attributes
 end
 
 function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name=:arrow, headratio=1/4, attributes...;uniforms...)
-    println(attributes)
     startp = convert(Vec3f0, startpos)
     endp   = convert(Vec3f0, endpos)
 
