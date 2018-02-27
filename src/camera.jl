@@ -60,12 +60,20 @@ end
 (::Type{Camera{pixel}})() where pixel = Camera{pixel}(Vec2f0(0), Vec2f0(0,1), Vec2f0(1,0), area)
 
 Base.eltype(::Type{Camera{Kind, Dim, T}}) where {Kind, Dim, T} = (Kind, Dim, T)
-calcright(cam::Camera) = normalize(cross(calcforward(cam), cam.up))
 calcforward(cam::Camera) = normalize(cam.lookat-cam.eyepos)
+calcright(cam::Camera)   = normalize(cross(calcforward(cam), cam.up))
+calcup(cam::Camera)      = -normalize(cross(calcforward(cam), cam.right))
 
-function update_viewmat(cam::Camera{perspective})
+function update_viewmat!(cam::Camera)
     cam.view = lookatmat(cam.eyepos, cam.lookat, cam.up)
     cam.projview = cam.proj * cam.view
+end
+
+"Updates all the camera fields starting from eyepos and center, combined with the current ones"
+function update!(cam::Camera)
+    cam.right = calcright(cam)
+    cam.up    = calcup(cam)
+    update_viewmat!(cam)
 end
 
 function register_camera_callbacks(cam::Camera, context = current_context())
@@ -105,16 +113,18 @@ end
 
 function rotate_world(cam::Camera, dx, dy)
     forward = calcforward(cam)
-    trans1 = translmat(forward)
+    len = norm(cam.lookat - cam.eyepos)
+    println(len * forward)
+    trans1 = translmat(len * forward)
     rot1   = rotate(dy * cam.rotation_speed, -cam.right)
     rot2   = rotate(-dx * cam.rotation_speed, cam.up)
-    backward = norm(forward) * Vec3f0((rot2*rot1*Vec4(-forward..., 0.0f0))[1:3])
+    backward = - len * normalize(Vec3f0((rot2*rot1*Vec4(forward..., 0.0f0))[1:3]))
     trans2 = translmat(backward)
     mat_ = trans2 * rot2 * rot1 * trans1
     cam.eyepos = Vec3f0((mat_ * Vec4(cam.eyepos..., 1.0f0))[1:3])
-    cam.up = normalize(Vec3f0((rot2*rot1*Vec4(cam.up..., 0.0f0))[1:3]))
     cam.right = calcright(cam)
-    update_viewmat(cam)
+    cam.up = calcup(cam)
+    update_viewmat!(cam)
 end
 
 function buttonpress_event(cam::Camera, button)
@@ -148,7 +158,7 @@ function wasd_event(cam::Camera{perspective, Dim, T} where {perspective, Dim}, b
     end
     cam.eyepos = newpos
     cam.right = calcright(cam)
-    update_viewmat(cam)
+    update_viewmat!(cam)
 end
 
 function resize_event(cam::Camera, area::Area)
@@ -159,5 +169,5 @@ end
 function scroll_event(cam::Camera, dx, dy)
     translation = calcforward(cam) * dy * cam.translation_speed
     cam.eyepos += translation
-    update_viewmat(cam)
+    update_viewmat!(cam)
 end

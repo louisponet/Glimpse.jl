@@ -40,13 +40,13 @@ export RenderPass, Pipeline
 export render, free!, start
 export @comp_str, @frag_str, @vert_str, @geom_str
 
-#package exports, types
+#package exports, types & enums
 export Screen, Scene, Renderable, Camera, Diorama, Area
 export pixel, orthographic, perspective
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-        draw, current_context, renderloop, add!, build
+        draw, current_context, renderloop, add!, build, center!
 
 #package exports, default geometries
 export sphere, cylinder, rectangle, cone, arrow

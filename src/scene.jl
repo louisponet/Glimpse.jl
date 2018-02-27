@@ -61,6 +61,18 @@ function set!(sc::Scene, camera::Camera)
     sc.camera = camera
 end
 
+function center!(sc::Scene)
+    center = zero(Vec3f0)
+    for rb in sc.renderables
+        modelmat = get(rb.uniforms, :modelmat, Eye4f0())
+        center += Vec3f0((modelmat * Vec4f0(0,0,0,1))[1:3]...)
+    end
+    center /= length(sc.renderables)
+    sc.camera.lookat = center
+    # sc.camera.eyepos = Vec3f0((translmat(center) * Vec4f0(sc.camera.eyepos...,1))[1:3]...)
+    update!(sc.camera)
+end
+
 projmat(sc::Scene) = sc.camera.proj
 viewmat(sc::Scene) = sc.camera.view
 projviewmat(sc::Scene) = sc.camera.projview

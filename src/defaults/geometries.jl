@@ -1,4 +1,4 @@
-import GeometryTypes: Sphere, decompose, normals, sphere
+import GeometryTypes: Sphere, decompose, normals
 
 
 #-----------------------------Generated geometries------------------------#

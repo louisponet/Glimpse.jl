@@ -24,7 +24,15 @@ function translmat(t::Vec{3, T}) where T
     )
 end
 
-rotate(angle::T, axis::Vec{3, T}) where {T} = rotmat4(Quaternions.qrotation(convert(Array, axis), angle))
+function rotate(a::T, axis::Vec{3, T}) where T
+    axis = normalize(axis)
+    u, v, w = axis
+    return Mat4{T}( u^2 + (1 - u^2) * cos(a), u * v * (1 - cos(a)) + w * sin(a), u * w * (1 - cos(a)) - v * sin(a), 0.0,
+                    u * v * (1 - cos(a)) - w * sin(a), v^2 + (1 - v^2) * cos(a), v * w * (1 - cos(a)) + u * sin(a), 0.0,
+                    u * w * (1 - cos(a)) + v * sin(a), v * w * (1 - cos(a)) - u * sin(a), w^2 + (1 - w^2) * cos(a), 0.0,
+                    0.0, 0.0, 0.0, 1.0)
+end
+
 rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
 
 function rotate(v1::Vec3{T}, v2::Vec3{T}) where T
