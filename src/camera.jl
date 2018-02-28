@@ -112,14 +112,10 @@ function mouse_move_event(cam::Camera{perspective, Dim, T} where {perspective, D
 end
 
 function rotate_world(cam::Camera, dx, dy)
-    forward = calcforward(cam)
-    len = norm(cam.lookat - cam.eyepos)
-    println(len * forward)
-    trans1 = translmat(len * forward)
+    trans1 = translmat(-cam.lookat)
     rot1   = rotate(dy * cam.rotation_speed, -cam.right)
     rot2   = rotate(-dx * cam.rotation_speed, cam.up)
-    backward = - len * normalize(Vec3f0((rot2*rot1*Vec4(forward..., 0.0f0))[1:3]))
-    trans2 = translmat(backward)
+    trans2 = translmat(cam.lookat)
     mat_ = trans2 * rot2 * rot1 * trans1
     cam.eyepos = Vec3f0((mat_ * Vec4(cam.eyepos..., 1.0f0))[1:3])
     cam.right = calcright(cam)
