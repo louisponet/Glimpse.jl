@@ -1,16 +1,16 @@
 import GLAbstraction: Pipeline, RenderPass
 import GLAbstraction: free!
 
-#todo, make it so args and kwargs get all passed around to pipelines and screens etc
+#TODO, make it so args and kwargs get all passed around to pipelines and screens etc
 mutable struct Diorama
     name     ::Symbol
     scene    ::Scene
     screen   ::Union{Screen, Void}
     pipeline ::Union{Pipeline, Void}
     loop     ::Union{Task, Void}
-    function Diorama(name, scene, screen, pipeline; interactive=false)
+    function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
         if interactive
-            screen = screen == nothing ? Screen(name) : screen
+            screen = screen == nothing ? Screen(name; kwargs...) : screen
             register_camera_callbacks(scene.camera, screen.canvas)
             pipeline = pipeline == nothing ? Pipeline(:default, [RenderPass(:default, defaultshaders())], screen.canvas) : pipeline
             looptask = @async renderloop(dio)
@@ -18,6 +18,7 @@ mutable struct Diorama
         else
             dio = new(name, scene, screen, pipeline)
         end
+        makecurrentdio(dio)
         return dio
     end
 end
@@ -39,10 +40,10 @@ Base.empty!(dio::Diorama) = empty!(dio.scene)
 set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
 
 function free!(dio::Diorama)
+    dio.loop     = nothing
     dio.screen   = free!(dio.screen)
     dio.pipeline = free!(dio.pipeline)
     dio.scene    = free!(dio.scene)
-    dio.loop     = nothing
 end
 
 
@@ -61,7 +62,7 @@ function renderloop(dio, framerate = 1/60)
     free!(dio)
 end
 
-function build(dio::Diorama)
+function view(dio::Diorama)
     if !isdefined(dio, :loop) || dio.loop == nothing
         dio.screen = dio.screen == nothing ? Screen(dio.name) : raise(dio.screen)
         register_camera_callbacks(dio.scene.camera, dio.screen.canvas)
@@ -73,3 +74,11 @@ function build(dio::Diorama)
 end
 
 isrendering(dio::Diorama) = dio.loop != nothing
+
+const currentdio = RefValue{Diorama}()
+
+getcurrentdio() = currentdio[]
+iscurrentdio(x) = x == currentdio[]
+function makecurrentdio(x)
+    currentdio[] = x
+end

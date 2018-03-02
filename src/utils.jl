@@ -31,3 +31,13 @@ function glenum2julia(x::UInt32)
     x == GL_UNSIGNED_INT_VEC3   && return Vec3{u32}
     x == GL_UNSIGNED_INT_VEC4   && return Vec4{u32}
 end
+
+function mergepop!(d1, d2)
+    t = SymAnyDict()
+    d = Dict(d2)
+    for (key, val) in d1
+        t[key] = pop!(d, key, val)
+    end
+    d2 = [d...]
+    return t
+end

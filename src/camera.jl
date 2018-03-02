@@ -1,13 +1,13 @@
 import GLFW: GetMouseButton, SetCursorPosCallback, SetKeyCallback, SetWindowSizeCallback, SetFramebufferSizeCallback,
              SetScrollCallback
-import GLFW: MOUSE_BUTTON_1, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q
+import GLFW: MOUSE_BUTTON_1, MOUSE_BUTTON_2, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q
 import GeometryTypes: Vec, Mat
 
 const WASD_KEYS = [KEY_W, KEY_A, KEY_S, KEY_D]
 
 @enum CamKind pixel orthographic perspective
 
-function projmat(x::CamKind, area::Area, near::T, far::T, fov::T=zero(T)) where T
+function projmat(x::CamKind, area::Area, near::T, far::T, fov::T) where T
     if x == pixel
         return eye(T,4)
     elseif x == orthographic
@@ -20,9 +20,9 @@ end
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
 mutable struct Camera{Kind, Dim, T}
     eyepos ::Vec{Dim, T}
+    lookat ::Vec{Dim, T}
     up     ::Vec{Dim, T}
     right  ::Vec{Dim, T}
-    lookat ::Vec{Dim, T}
     fov    ::T
     near   ::T
     far    ::T
@@ -33,31 +33,34 @@ mutable struct Camera{Kind, Dim, T}
     translation_speed ::T
     mouse_pos         ::Vec{2, T}
 
-    function (::Type{Camera{Kind}})(eyepos::Vec{Dim, T}, up, right, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed) where {Kind, Dim, T}
+    function (::Type{Camera{Kind}})(eyepos::Vec{Dim, T}, lookat, up, right, area, fov, near, far, rotation_speed, translation_speed) where {Kind, Dim, T}
 
-        new{Kind, Dim, T}(eyepos, up, right, lookat, fov, near, far, viewm, projm, projview, rotation_speed, translation_speed, Vec2f0(0))
+
+        up    = normalizeperp(lookat - eyepos, up)
+        right = normalize(cross(lookat - eyepos, up))
+
+        viewm = lookatmat(eyepos, lookat, up)
+        projm = projmat(Kind, area, near, far, fov)
+
+        new{Kind, Dim, T}(eyepos, lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0))
     end
 end
 
-function (::Type{Camera{perspective}})(eyepos, lookat, up, right, area;
-                fov  = 42.0f0,
-                near = 0.1f0,
-                far  = 100.0f0,
-                rotation_speed    = 0.01f0,
-                translation_speed = 0.19f0)
-    up = normalizeperp(lookat - eyepos, up)
-    right = normalize(cross(lookat - eyepos, up))
-    projm = projmat(perspective, area, near, far, fov)
-    viewm = lookatmat(-eyepos, lookat, up)
-    return Camera{perspective}(eyepos, up, right, lookat, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed)
+function (::Type{Camera{Kind}})(eyepos::T, lookat::T, up::T, right::T; overrides...) where {Kind, T}
+
+    defaults = mergepop_defaults!(Kind; overrides...)
+    return Camera{Kind}(eyepos, lookat, up, right, defaults[:area], defaults[:fov], defaults[:near], defaults[:far], defaults[:rotation_speed], defaults[:translation_speed])
 end
 
-(::Type{Camera{perspective}})() = Camera{perspective}(Vec3(0f0, -1f0, 0f0), Vec3(0f0, 0f0, 0f0), Vec3(0f0, 0f0, 1f0), Vec3(1f0,0f0,0f0), Area(0,0,standard_screen_resolution()...))
+function (::Type{Camera{Kind}})(; overrides...) where Kind
+    defaults = mergepop_defaults!(Kind, overrides...)
 
+    Camera{Kind}(defaults[:eyepos], defaults[:lookat], defaults[:up], defaults[:right]; defaults...)
+end
 
-(::Type{Camera{pixel}})(center::Vec{2, Float32}, up, right, area) =
-    Camera{pixel}(center, up, right, center, 0f0, 0f0, 0f0, Eye4f0(), Eye4f0(), Eye4f0(), 0f0, 0f0)
-(::Type{Camera{pixel}})() where pixel = Camera{pixel}(Vec2f0(0), Vec2f0(0,1), Vec2f0(1,0), area)
+(::Type{Camera{pixel}})(eyepos::Vec{2, Float32}, up, right, area) =
+    Camera{pixel}(eyepos, up, right, center, 0f0, 0f0, 0f0, 0f0, 0f0)
+(::Type{Camera{pixel}})() = Camera{pixel}(Vec2f0(0), Vec2f0(0, 1), Vec2f0(1,0), area)
 
 Base.eltype(::Type{Camera{Kind, Dim, T}}) where {Kind, Dim, T} = (Kind, Dim, T)
 calcforward(cam::Camera) = normalize(cam.lookat-cam.eyepos)
@@ -101,14 +104,14 @@ end
 function mouse_move_event(cam::Camera{perspective, Dim, T} where {perspective, Dim}, x, y, window=current_context().native_window) where T
     x_ = T(x)
     y_ = T(y)
-    if !GetMouseButton(window, MOUSE_BUTTON_1)
-        cam.mouse_pos = Vec(x_, y_)
-        return
-    end
     dx = x_ - cam.mouse_pos[1]
     dy = y_ - cam.mouse_pos[2]
+    if GetMouseButton(window, MOUSE_BUTTON_1)
+        rotate_world(cam, dx, dy)
+    elseif GetMouseButton(window, MOUSE_BUTTON_2)
+        pan_world(cam, dx, dy)
+    end
     cam.mouse_pos = Vec(x_, y_)
-    rotate_world(cam, dx, dy)
 end
 
 function rotate_world(cam::Camera, dx, dy)
@@ -120,6 +123,14 @@ function rotate_world(cam::Camera, dx, dy)
     cam.eyepos = Vec3f0((mat_ * Vec4(cam.eyepos..., 1.0f0))[1:3])
     cam.right = calcright(cam)
     cam.up = calcup(cam)
+    update_viewmat!(cam)
+end
+
+function pan_world(cam::Camera, dx, dy)
+    rt = cam.right * dx * cam.translation_speed
+    ut = cam.up    * dy * cam.translation_speed
+    cam.lookat += rt + ut
+    cam.eyepos += rt + ut
     update_viewmat!(cam)
 end
 
@@ -167,3 +178,5 @@ function scroll_event(cam::Camera, dx, dy)
     cam.eyepos += translation
     update_viewmat!(cam)
 end
+
+include("defaults/camera.jl")

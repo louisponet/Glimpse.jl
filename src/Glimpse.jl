@@ -46,7 +46,7 @@ export pixel, orthographic, perspective
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-        draw, current_context, renderloop, add!, build, center!
+        draw, current_context, renderloop, add!, view, center!
 
 #package exports, default geometries
 export sphere, cylinder, rectangle, cone, arrow

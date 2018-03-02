@@ -51,10 +51,10 @@ function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), bac
                 visible = true,
                 focus = false,
                 fullscreen = false,
-                monitor = nothing)
+                monitor = nothing, kwargs...)
 
     nw = GLFW.Window(String(name),
-                     resolution = (area.w,area.h),
+                     resolution = (area.w, area.h),
                      debugging = debugging,
                      major = major,
                      minor = minor,

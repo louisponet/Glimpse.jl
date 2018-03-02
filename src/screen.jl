@@ -38,7 +38,7 @@ function Screen(name = :Glimpse, area=Area(0, 0, standard_screen_resolution()...
     end
     return Screen(name, area, canvas, background, nothing, Screen[], hidden)
 end
-Screen(name::Symbol, resolution::Tuple{Int, Int}, args...;kwargs...) = Screen(name, Area(0, 0, resolution...), args...; kwargs...)
+Screen(name::Symbol, resolution::Tuple{Int, Int}, args...; kwargs...) = Screen(name, Area(0, 0, resolution...), args...; kwargs...)
 
 Base.isopen(screen::Screen) = isopen(screen.canvas)
 clearcanvas!(s::Screen) = clear!(s.canvas)

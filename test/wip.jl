@@ -1,21 +1,9 @@
 using Glimpse
 
-testdiorama = Diorama(interactive=true)
-testdiorama.scene.camera.lookat
+testdiorama = Diorama(interactive=true, eyepos=Vec3f0(0,-10,0))
 
 sphere(testdiorama, [1.0,5.0,-1.0], 2; color = RGB{Float32}(1,0,0))
 sphere(testdiorama, [6.0,0.0,0.0], 2)
-cone(testdiorama, (0,0,0),(1,0,0), 2; color=RGB{Float32}(1,0,0))
-arrow(testdiorama, (-5,0,0),(0,0,0), 2, 4)
-add!(testdiorama, Glimpse.PointLight())
-testdiorama
-empty!(testdiorama)
-sizeof(Vec3f0)
-free!(testdiorama)
+println(testdiorama.scene.camera)
 
-build(testdiorama)
-
-test = GLAbstraction.attributes_info(testdiorama.pipeline.passes[1].program)[1]
-
-bind(testdiorama.scene.renderables[1])
-length(eltype(testdiorama.scene.renderables[1].vao)[1].parameters)
+c2 = 

@@ -21,7 +21,7 @@ function Scene(name::Symbol, renderables::Vector{<:Renderable})
     end
     return Scene(name, renderables, camera, Light[])
 end
-Scene() = Scene(:Glimpse, Renderable[], Camera{perspective}(), Light[])
+Scene(; kwargs...) = Scene(:Glimpse, Renderable[], Camera{perspective}(; kwargs...), Light[])
 
 function free!(sc::Scene)
     for r in sc.renderables
