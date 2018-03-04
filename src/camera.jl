@@ -54,7 +54,6 @@ end
 
 function (::Type{Camera{Kind}})(; overrides...) where Kind
     defaults = mergepop_defaults!(Kind, overrides...)
-
     Camera{Kind}(defaults[:eyepos], defaults[:lookat], defaults[:up], defaults[:right]; defaults...)
 end
 
@@ -128,7 +127,7 @@ end
 
 function pan_world(cam::Camera, dx, dy)
     rt = cam.right * dx * cam.translation_speed
-    ut = cam.up    * dy * cam.translation_speed
+    ut = -cam.up   * dy * cam.translation_speed
     cam.lookat += rt + ut
     cam.eyepos += rt + ut
     update_viewmat!(cam)
@@ -179,4 +178,38 @@ function scroll_event(cam::Camera, dx, dy)
     update_viewmat!(cam)
 end
 
-include("defaults/camera.jl")
+#----------------------------------DEFAULTS----------------------------#
+const perspective_defaults = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
+                                               :lookat => Vec3(0f0,  0f0, 0f0),
+                                               :up     => Vec3(0f0,  0f0, 1f0),
+                                               :right  => Vec3(1f0,  0f0, 0f0),
+                                               :area   => Area(0,0,standard_screen_resolution()...),
+                                               :fov    => 42f0,
+                                               :near   => 0.1f0,
+                                               :far    => 100f0,
+                                               :rotation_speed    => 0.01f0,
+                                               :translation_speed => 0.19f0)
+const orthographic_defaults = copy(perspective_defaults)
+const pixel_defaults        = copy(perspective_defaults)
+pixel_defaults[:fov] = 0f0
+pixel_defaults[:near] = 0f0
+pixel_defaults[:far]  = 0f0
+pixel_defaults[:rotation_speed]    = 0f0
+pixel_defaults[:translation_speed] = 0f0
+
+
+function merge_defaults(x::CamKind; overrides...)
+    if x == orthographic
+        merge(orthographic_defaults, overrides)
+    elseif x == perspective
+        merge(perspective_defaults, overrides)
+    end
+end
+
+function mergepop_defaults!(x::CamKind; overrides...)
+    if x == orthographic
+        mergepop!(orthographic_defaults, overrides)
+    elseif x == perspective
+        mergepop!(perspective_defaults, overrides)
+    end
+end

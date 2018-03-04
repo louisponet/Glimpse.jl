@@ -34,7 +34,8 @@ end
 
 function mergepop!(d1, d2)
     t = SymAnyDict()
-    d = Dict(d2)
+
+    d = isempty(d2) ? SymAnyDict() : Dict(d2)
     for (key, val) in d1
         t[key] = pop!(d, key, val)
     end

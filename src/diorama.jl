@@ -62,7 +62,7 @@ function renderloop(dio, framerate = 1/60)
     free!(dio)
 end
 
-function view(dio::Diorama)
+function expose(dio::Diorama)
     if !isdefined(dio, :loop) || dio.loop == nothing
         dio.screen = dio.screen == nothing ? Screen(dio.name) : raise(dio.screen)
         register_camera_callbacks(dio.scene.camera, dio.screen.canvas)

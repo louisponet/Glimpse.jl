@@ -29,10 +29,11 @@ mutable struct Screen
         return new(name, id, area, canvas,background, parent, children, hidden)
     end
 end
-function Screen(name = :Glimpse, area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0);
-                hidden    = false,
-                canvas_kwargs...)
-    canvas = Canvas(name, 1, area, background; canvas_kwargs...)
+function Screen(name = :Glimpse; area=Area(0, 0, standard_screen_resolution()...),
+                                 background=RGBA(1.0f0),
+                                 hidden    = false,
+                                 canvas_kwargs...)
+    canvas = Canvas(name, 1; area = area, hidden = hidden, background = background, canvas_kwargs...)
     if !hidden
         make_current(canvas)
     end

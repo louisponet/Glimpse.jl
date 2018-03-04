@@ -16,10 +16,10 @@ include("utils.jl")
 include("maths/matrices.jl")
 include("maths/vecmath.jl")
 include("color_utils.jl")
+include("callbacks.jl")
 include("canvas.jl")
 include("globals.jl")
 include("screen.jl")
-include("callbacks.jl")
 include("shader.jl")
 include("program.jl")
 include("renderable.jl")
@@ -46,7 +46,7 @@ export pixel, orthographic, perspective
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-        draw, current_context, renderloop, add!, view, center!
+        draw, current_context, renderloop, add!, expose, center!
 
 #package exports, default geometries
 export sphere, cylinder, rectangle, cone, arrow

@@ -38,33 +38,28 @@ mutable struct Canvas <: AbstractContext
     callbacks     ::Dict{Symbol, Any}
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
-function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), background=RGBA(1.0f0), depth::Type{<:DepthFormat} = Depth{Float32};
-                callbacks = standard_callbacks(),
-                # fbo_color = background,
-                debugging = false,
-                major = 3,
-                minor = 3,# this is what GLVisualize needs to offer all features
-                windowhints = GLFW.standard_window_hints(),
-                contexthints = GLFW.standard_context_hints(major, minor),
-                clear = true,
-                hidden = false,
-                visible = true,
-                focus = false,
-                fullscreen = false,
-                monitor = nothing, kwargs...)
+function Canvas(name, id; kwargs...)
 
+    defaults = mergepop!(canvas_defaults, kwargs)
+
+    window_hints = GLFW.standard_window_hints()
+    context_hints = GLFW.standard_context_hints(defaults[:major], defaults[:minor])
+
+    area = defaults[:area]
     nw = GLFW.Window(String(name),
                      resolution = (area.w, area.h),
-                     debugging = debugging,
-                     major = major,
-                     minor = minor,
-                     windowhints = windowhints,
-                     contexthints=contexthints,
-                     visible = visible,
-                     focus = focus,
-                     fullscreen = fullscreen,
-                     monitor = monitor)
+                     debugging = defaults[:debugging],
+                     major = defaults[:major],
+                     minor = defaults[:minor],
+                     windowhints = window_hints,
+                     contexthints=context_hints,
+                     visible = defaults[:visible],
+                     focus = defaults[:focus],
+                     fullscreen = defaults[:fullscreen],
+                     monitor = defaults[:monitor])
     GLFW.SwapInterval(0) # deactivating vsync seems to make everything quite a bit smoother
+
+    background = defaults[:background]
     if typeof(background) <: RGBA
         glClearColor(background.r, background.g, background.b, background.alpha)
     elseif typeof(background) <: RGB
@@ -72,6 +67,8 @@ function Canvas(name, id,  area=Area(0, 0, standard_screen_resolution()...), bac
         background = RGBA(background)
     end
     glClear(GL_COLOR_BUFFER_BIT)
+
+    callbacks = defaults[:callbacks]
     callback_dict = register_callbacks(nw, callbacks)
     # fbo = canvas_fbo(area, depth, fbo_color)
     # return Canvas(Symbol(name), id, area, nw, background, fbo)
@@ -157,3 +154,20 @@ function corrected_coordinates(
 end
 
 callback(c::Canvas, cb::Symbol) = c.callbacks[cb][]
+
+
+#---------------------DEFAULTS-------------------#
+
+const canvas_defaults = SymAnyDict(:area       => Area(0, 0, standard_screen_resolution()...),
+                                   :background => RGBA(1.0f0),
+                                   :depth      => Depth{Float32},
+                                   :callbacks  => standard_callbacks(),
+                                   :debugging  => false,
+                                   :major => 3,
+                                   :minor => 3,
+                                   :clear      => true,
+                                   :hidden     => false,
+                                   :visible    => true,
+                                   :focus      => false,
+                                   :fullscreen => false,
+                                   :monitor    => nothing)
