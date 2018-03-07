@@ -25,15 +25,18 @@ function (rp::RenderPass{:default})(scene::Scene)
     end
 
     #TODO speed: the typechecking etc here is pretty slow, maybe it would be a good idea to upon construction assign which renderable is rendered by which pipeline.
-    attribtyps = glenum2julia.(getindex.(attributes_info(rp.program), :type))
+    # attribtyps = glenum2julia.(getindex.(attributes_info(rp.program), :type))
 
     for renderable in scene.renderables
-        bind(renderable)
-        rtyps = (eltype(renderable.vao)[1].parameters...)
-        if !all( sizeof.(rtyps) .== sizeof.(attribtyps))
-            unbind(renderable)
+        if !in(:default, renderable.renderpasses)
             continue
         end
+        bind(renderable)
+        # rtyps = (eltype(renderable.vao)[1].parameters...)
+        # if !all( sizeof.(rtyps) .== sizeof.(attribtyps))
+        #     unbind(renderable)
+        #     continue
+        # end
         for (key, val) in renderable.uniforms
             if haskey(rp.program.uniformloc, key)
                 gluniform(rp.program.uniformloc[key][1], val)

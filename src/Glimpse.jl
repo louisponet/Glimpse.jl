@@ -41,7 +41,7 @@ export render, free!, start
 export @comp_str, @frag_str, @vert_str, @geom_str
 
 #package exports, types & enums
-export Screen, Scene, Renderable, Camera, Diorama, Area
+export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight
 export pixel, orthographic, perspective
 
 #package exports, functions

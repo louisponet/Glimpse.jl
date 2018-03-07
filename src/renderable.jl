@@ -25,9 +25,10 @@ mutable struct Renderable{D, FaceLength} #D for dimensions
     verts::AbstractMesh{<:StaticVector{D, GLfloat}}
     uniforms::Dict{Symbol, Any}
     vao::Union{VertexArray, Void}
+    renderpasses::Vector{Symbol}
 end
 
-function Renderable(index, name, mesh::H, attributes::Pair...; facelength=1, uniforms...) where H <: HMesh
+function Renderable(index, name, mesh::H, attributes::Pair...; facelength=1, renderpasses=[:default], uniforms...) where H <: HMesh
     newmesh = isempty(attributes) ? H(mesh) : H(mesh, SymAnyDict(attributes))
     if newmesh.faces != Void[]
         facelength = length(eltype(newmesh.faces))
@@ -37,12 +38,12 @@ function Renderable(index, name, mesh::H, attributes::Pair...; facelength=1, uni
     if !haskey(unidict, :specpow)   unidict[:specpow]   = 0.9f0    end
     if !haskey(unidict, :specint)   unidict[:specint]   = 0.6f0    end
 
-    return Renderable{length(eltype(mesh.vertices)), facelength}(index, name, newmesh, unidict, nothing)
+    return Renderable{length(eltype(mesh.vertices)), facelength}(index, name, newmesh, unidict, nothing, renderpasses)
 end
 
 Renderable(index, name, attributes::Pair...; kwargs...) = Renderable(index, name, homogenousmesh(SymAnyDict(attributes)); kwargs...)
 
-Renderable{FaceLength}(args...) where FaceLength = Renderable(args...; facelength=FaceLength)
+Renderable{FaceLength}(args...; kwargs...) where FaceLength = Renderable(args...; facelength=FaceLength, kwargs...)
 
 function VertexArray(mesh::AbstractMesh; kwargs...)
     to_vao = []

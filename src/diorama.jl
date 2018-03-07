@@ -64,7 +64,7 @@ end
 
 function expose(dio::Diorama)
     if !isdefined(dio, :loop) || dio.loop == nothing
-        dio.screen = dio.screen == nothing ? Screen(dio.name) : raise(dio.screen)
+        dio.screen = dio.screen == nothing ? Screen(dio.name; kwargs...) : raise(dio.screen)
         register_camera_callbacks(dio.scene.camera, dio.screen.canvas)
         resize_event(dio.scene.camera, dio.screen.canvas.area)
         dio.pipeline = dio.pipeline == nothing ? Pipeline(:default, [RenderPass(:default, defaultshaders())], dio.screen.canvas) : dio.pipeline

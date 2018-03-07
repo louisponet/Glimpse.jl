@@ -68,7 +68,7 @@ end
 
 #todo standardcallbacks!
 function raise(s::Screen; canvas_kwargs...)
-    s.canvas = s.canvas == nothing ? Canvas(s.name, 1, s.area, s.background; canvas_kwargs...) : s.canvas
+    s.canvas = s.canvas == nothing ? Canvas(s.name, 1; area = s.area, background = s.background, canvas_kwargs...) : s.canvas
     if !s.hidden
         make_current(s.canvas)
     end
