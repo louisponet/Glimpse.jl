@@ -42,3 +42,7 @@ function mergepop!(d1, d2)
     d2 = [d...]
     return t
 end
+
+function gluniform(loc::Integer, x::Mat4{Float32})
+    glUniformMatrix4fv(loc, 1, GL_FALSE, reinterpret(Float32,[x]))
+end

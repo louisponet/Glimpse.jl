@@ -24,6 +24,7 @@ function (rp::RenderPass{:default})(scene::Scene)
         gluniform(rp.program.uniformloc[:campos][1], scene.camera.eyepos)
     end
 
+    gluniform(rp.program.uniformloc[:modelmat][1], Eye4f0())
     #TODO speed: the typechecking etc here is pretty slow, maybe it would be a good idea to upon construction assign which renderable is rendered by which pipeline.
     # attribtyps = glenum2julia.(getindex.(attributes_info(rp.program), :type))
 

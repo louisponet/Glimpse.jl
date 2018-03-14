@@ -34,7 +34,7 @@ function Renderable(index, name, mesh::H, attributes::Pair...; facelength=1, ren
         facelength = length(eltype(newmesh.faces))
     end
     unidict = SymAnyDict(uniforms)
-    if !haskey(unidict, :model_mat) unidict[:model_mat] = Eye4f0() end
+    if !haskey(unidict, :modelmat) unidict[:modelmat] = Eye4f0() end
     if !haskey(unidict, :specpow)   unidict[:specpow]   = 0.9f0    end
     if !haskey(unidict, :specint)   unidict[:specint]   = 0.6f0    end
 
