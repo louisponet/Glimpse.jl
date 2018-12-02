@@ -24,13 +24,13 @@ mutable struct Renderable{D, FaceLength} #D for dimensions
     name::Symbol
     verts::AbstractMesh{<:StaticVector{D, GLfloat}}
     uniforms::Dict{Symbol, Any}
-    vao::Union{VertexArray, Void}
+    vao::Union{VertexArray, Nothing}
     renderpasses::Vector{Symbol}
 end
 
 function Renderable(index, name, mesh::H, attributes::Pair...; facelength=1, renderpasses=[:default], uniforms...) where H <: HMesh
     newmesh = isempty(attributes) ? H(mesh) : H(mesh, SymAnyDict(attributes))
-    if newmesh.faces != Void[]
+    if newmesh.faces != Nothing[]
         facelength = length(eltype(newmesh.faces))
     end
     unidict = SymAnyDict(uniforms)
@@ -45,12 +45,12 @@ Renderable(index, name, attributes::Pair...; kwargs...) = Renderable(index, name
 
 Renderable{FaceLength}(args...; kwargs...) where FaceLength = Renderable(args...; facelength=FaceLength, kwargs...)
 
-function VertexArray(mesh::AbstractMesh; kwargs...)
+function VertexArray(mesh::T; kwargs...) where {T <: AbstractMesh}
     to_vao = []
     indices = nothing
-    for name in fieldnames(mesh)
+    for name in fieldnames(T)
         field = getfield(mesh, name)
-        if field == nothing || field == Void[]
+        if field == nothing || field == Nothing[]
             continue
         end
         if name == :faces
@@ -70,11 +70,11 @@ function to_gpu(renderable::Renderable{D, FaceLength} where D) where FaceLength
     renderable.vao = VertexArray(renderable.verts, facelength=FaceLength)
 end
 
-function Base.bind(renderable::Renderable)
+function bind(renderable::Renderable)
     if renderable.vao == nothing
         to_gpu(renderable)
     end
-    Base.bind(renderable.vao)
+    GLAbstraction.bind(renderable.vao)
 end
 
 Base.eltype(::Type{Renderable{D, F}}) where {D, F} = (D, F)

@@ -1,8 +1,5 @@
 # __precompile__(true)
 module Glimpse
-
-using GLFW
-
 using Reexport
 @reexport using GeometryTypes
 @reexport using ColorTypes
@@ -10,7 +7,8 @@ using FixedPointNumbers
 using ModernGL
 using Quaternions
 using GLAbstraction
-
+using LinearAlgebra
+using GLFW
 include("typedefs.jl")
 include("utils.jl")
 include("maths/matrices.jl")

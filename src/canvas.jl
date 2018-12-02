@@ -6,7 +6,7 @@ import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, G
 Standard window hints for creating a plain context without any multisampling
 or extra buffers beside the color buffer
 """
-function standard_window_hints()
+function default_window_hints()
 	[
 		(SAMPLES,      0),
 		(DEPTH_BITS,   32),
@@ -27,7 +27,7 @@ function canvas_fbo(area::Area, depthformat::Type{<:DepthFormat} = Depth{Float32
     return fbo
 end
 
-standard_screen_resolution() = div.(GLFW.GetMonitorPhysicalSize(GLFW.GetPrimaryMonitor()),1)
+standard_screen_resolution() =  GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
 
 mutable struct Canvas <: AbstractContext
     name          ::Symbol
@@ -42,11 +42,11 @@ function Canvas(name, id; kwargs...)
 
     defaults = mergepop!(canvas_defaults, kwargs)
 
-    window_hints = GLFW.standard_window_hints()
+    window_hints = default_window_hints()
     context_hints = GLFW.standard_context_hints(defaults[:major], defaults[:minor])
 
     area = defaults[:area]
-    nw = GLFW.Window(String(name),
+    nw = GLFW.Window(name=string(name),
                      resolution = (area.w, area.h),
                      debugging = defaults[:debugging],
                      major = defaults[:major],
@@ -93,7 +93,7 @@ function Base.isopen(canvas::Canvas)
     canvas.native_window.handle == C_NULL && return false
     !GLFW.WindowShouldClose(canvas.native_window)
 end
-function Base.clear!(c::Canvas)
+function clear!(c::Canvas)
     glClearColor(c.background.r, c.background.b, c.background.g, c.background.alpha)
     # glClearColor(1,1,1,1)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -111,7 +111,7 @@ function destroy!(c::Canvas)
         return c
     end
 end
-Base.bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
 nativewindow(c::Canvas) = c.native_window
 
 function Base.resize!(c::Canvas, w::Int, h::Int, resize_window=false)

@@ -1,8 +1,7 @@
 import ColorTypes: Colorant
 import GLAbstraction: free!
 
-using Base.RefValue
-const screen_id_counter = RefValue(0)
+const screen_id_counter = Base.RefValue(0)
 # start from new and hope we don't display all displays at once.
 # TODO make it clearer if we reached max num, or if we just created
 # a lot of small screens and display them simultanously
@@ -12,16 +11,16 @@ mutable struct Screen
     name      ::Symbol
     id        ::Int
     area      ::Area
-    canvas    ::Union{Canvas, Void}
+    canvas    ::Union{Canvas, Nothing}
     background::Colorant
-    parent    ::Union{Screen, Void}
+    parent    ::Union{Screen, Nothing}
     children  ::Vector{Screen}
     hidden    ::Bool # if window is hidden. Will not render
     function Screen(name      ::Symbol,
                     area      ::Area,
                     canvas    ::Canvas,
                     background::Colorant,
-                    parent    ::Union{Screen, Void},
+                    parent    ::Union{Screen, Nothing},
                     children  ::Vector{Screen},
                     hidden    ::Bool)
         id = new_screen_id()
@@ -45,7 +44,7 @@ Base.isopen(screen::Screen) = isopen(screen.canvas)
 clearcanvas!(s::Screen) = clear!(s.canvas)
 
 focus(s::Screen)        = make_current(s.canvas)
-Base.bind(s::Screen)    = Base.bind(s.canvas)
+GLAbstraction.bind(s::Screen)    = GLAbstraction.bind(s.canvas)
 nativewindow(s::Screen) = nativewindow(s.canvas)
 swapbuffers(s::Screen)  = swapbuffers(s.canvas)
 pollevents(s::Screen)   = pollevents(s.canvas)

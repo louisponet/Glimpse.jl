@@ -36,7 +36,7 @@ This is why there is also framebuffer_size.
 returns `NTuple{2,Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaaca1c2715759d03da9834eac19323d4a)
 """
-function window_size(window::Window, s::Ref{NTuple{2, Int}}=Ref(Int.(GLFW.GetWindowSize(window))))
+function window_size(window::Window, s::Ref{NTuple{2, Int}}=Ref(Int.(values(GLFW.GetWindowSize(window)))))
     GLFW.SetWindowSizeCallback(window, (window, w::Cint, h::Cint,) -> begin
         s[] = (Int(w), Int(h))
     end)
@@ -47,7 +47,7 @@ Size of window in pixel.
 returns `NTuple{2,Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#ga311bb32e578aa240b6464af494debffc)
 """
-function framebuffer_size(window::Window, s::Ref{NTuple{2, Int}}=Ref(Int.(GLFW.GetFramebufferSize(window))))
+function framebuffer_size(window::Window, s::Ref{NTuple{2, Int}}=Ref(Int.(values(GLFW.GetFramebufferSize(window)))))
     GLFW.SetFramebufferSizeCallback(window, (window, w::Cint, h::Cint) -> begin
         s[] = (Int(w), Int(h))
     end)
@@ -83,7 +83,7 @@ containing the pressed button the action and modifiers.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
 function mouse_buttons(window::Window, s::Ref{NTuple{3, Int}}=Ref((0,0,0)))
-    GLFW.SetMouseButtonCallback(window, (window, button::Cint, action::GLFW.Action, mods::Cint) -> begin
+    GLFW.SetMouseButtonCallback(window, (window, button::GLFW.MouseButton, action::GLFW.Action, mods::Cint) -> begin
         s[] = (Int(button), Int(action), Int(mods))
     end)
     s
@@ -186,7 +186,7 @@ function currently_pressed_keys(v0::Set{Int}, button_action_mods)
         elseif action == GLFW.REPEAT
             # nothing needs to be done, besides returning the same set of keys
         else
-            error("Unrecognized enum value for GLFW button press action: $action")
+            @error "Unrecognized enum value for GLFW button press action: $action"
         end
     end
     return v0
@@ -220,4 +220,3 @@ isdown(button) = button[2] == GLFW.PRESS
 #         )
 #     )
 # end
-

@@ -5,9 +5,9 @@ import GLAbstraction: free!
 mutable struct Diorama
     name     ::Symbol
     scene    ::Scene
-    screen   ::Union{Screen, Void}
-    pipeline ::Union{Pipeline, Void}
-    loop     ::Union{Task, Void}
+    screen   ::Union{Screen, Nothing}
+    pipeline ::Union{Pipeline, Nothing}
+    loop     ::Union{Task, Nothing}
     function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
         if interactive
             screen = screen == nothing ? Screen(name; kwargs...) : screen
@@ -75,7 +75,7 @@ end
 
 isrendering(dio::Diorama) = dio.loop != nothing
 
-const currentdio = RefValue{Diorama}()
+const currentdio = Base.RefValue{Diorama}()
 
 getcurrentdio() = currentdio[]
 iscurrentdio(x) = x == currentdio[]

@@ -1,0 +1,17 @@
+name = "Glimpse"
+uuid = "f6e19d58-12a4-5927-8606-ac30a9ce9b69"
+authors = ["Louis Ponet <louisponet@gmail.com>"]
+repo = "https://github.com/louisponet/Glimpse.jl.git"
+version = "0.0.0"
+
+[deps]
+GLAbstraction = "ca6e7d0a-b0c9-59ca-8aba-aebf11497e1c"
+GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
+Quaternions   = "94ee1d12-ae83-5a48-8b1c-48b8ff168ae0"
+ColorTypes    = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+FixedPointNumbers = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
+ModernGL = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
+GLFW     = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+FileIO   = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"

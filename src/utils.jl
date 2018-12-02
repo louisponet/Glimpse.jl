@@ -46,3 +46,31 @@ end
 function GLAbstraction.gluniform(loc::Integer, x::Mat4{Float32})
     glUniformMatrix4fv(loc, 1, GL_FALSE, reinterpret(Float32,[x]))
 end
+
+function uniformfunc(typ::DataType, dims::Tuple{Int})
+    Symbol(string("glUniform", first(dims), GLAbstraction.opengl_postfix(typ)))
+end
+function uniformfunc(typ::DataType, dims::Tuple{Int, Int})
+    M, N = dims
+    Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)", opengl_postfix(typ)))
+end
+
+function GLAbstraction.gluniform(location::Integer, x::FSA) where FSA
+    GLAbstraction.glasserteltype(FSA)
+    xref = [x]
+    gluniform(location, xref)
+end
+
+@generated function GLAbstraction.gluniform(location::Integer, x::Vector{FSA}) where FSA
+    GLAbstraction.glasserteltype(eltype(FSA))
+    func = uniformfunc(eltype(FSA), size(FSA))
+    callexpr = if ndims(FSA) == 2
+        :($func(location, length(x), GL_FALSE, xref))
+    else
+        :($func(location, length(x), xref))
+    end
+    quote
+        xref = reinterpret(eltype(FSA), x)
+        $callexpr
+    end
+end
