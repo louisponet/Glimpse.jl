@@ -20,23 +20,18 @@ include("globals.jl")
 include("screen.jl")
 include("shader.jl")
 include("program.jl")
-include("renderable.jl")
 include("camera.jl")
 include("light.jl")
+include("renderpass.jl")
+include("renderable.jl")
 include("scene.jl")
+include("pipeline.jl")
 include("diorama.jl")
 include("defaults/renderpass.jl")
 include("defaults/pipeline.jl")
 include("defaults/shader.jl")
 include("defaults/geometries.jl")
 #GLAbstraction exports
-import GLAbstraction: RenderPass, Pipeline
-import GLAbstraction: render, @comp_str, @frag_str, @vert_str, @geom_str,
-                      free!
-
-export RenderPass, Pipeline
-export render, free!, start
-export @comp_str, @frag_str, @vert_str, @geom_str
 
 #package exports, types & enums
 export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight

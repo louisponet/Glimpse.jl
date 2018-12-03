@@ -1,4 +1,3 @@
-import GLAbstraction: Pipeline, RenderPass
 import GLAbstraction: free!
 
 #TODO, make it so args and kwargs get all passed around to pipelines and screens etc
@@ -51,6 +50,9 @@ function renderloop(dio, framerate = 1/60)
     screen = dio.screen
     pipeline = dio.pipeline
     scene = dio.scene
+    if isempty(scene.lights)
+        add!(scene, PointLight())
+    end
     while isopen(screen)
         tm = time()
         pollevents(screen)

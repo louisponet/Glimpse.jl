@@ -63,6 +63,9 @@ end
 
 @generated function GLAbstraction.gluniform(location::Integer, x::Vector{FSA}) where FSA
     GLAbstraction.glasserteltype(eltype(FSA))
+    if FSA <: Colorant
+        println(x)
+    end
     func = uniformfunc(eltype(FSA), size(FSA))
     callexpr = if ndims(FSA) == 2
         :($func(location, length(x), GL_FALSE, xref))

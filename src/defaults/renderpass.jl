@@ -1,5 +1,4 @@
-import GLAbstraction: RenderPass
-import GLAbstraction: gluniform, attributes_info
+import GLAbstraction: gluniform, attributes_info, bind
 
 #TODO only allows for one light at this point!
 function (rp::RenderPass{:default})(scene::Scene)

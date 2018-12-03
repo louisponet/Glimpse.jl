@@ -1,5 +1,3 @@
-import GLAbstraction: start, Pipeline
-
 function start(pipe::Pipeline{:default})
 
     clear!(current_context())

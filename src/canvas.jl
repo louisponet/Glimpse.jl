@@ -1,5 +1,5 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
-import GLAbstraction: unbind, swapbuffers
+import GLAbstraction: bind, swapbuffers
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS
 #TODO Framebuffer context
 """

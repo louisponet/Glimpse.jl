@@ -1,4 +1,5 @@
-import GLAbstraction: VertexArray, draw, unbind, free!
+import GLAbstraction: VertexArray, Buffer, Program
+import GLAbstraction: bind, draw, unbind, free!, get_attribute_location
 import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 
 # struct ColorVertex{Dim, T, ColorT} <: AbstractVertex
@@ -45,8 +46,10 @@ Renderable(index, name, attributes::Pair...; kwargs...) = Renderable(index, name
 
 Renderable{FaceLength}(args...; kwargs...) where FaceLength = Renderable(args...; facelength=FaceLength, kwargs...)
 
-function VertexArray(mesh::T; kwargs...) where {T <: AbstractMesh}
-    to_vao = []
+isuploaded(r::Renderable) = r.vao != nothing
+
+function VertexArray(mesh::T, program::Program; kwargs...) where {T <: AbstractMesh}
+    buffer_attribloc = Pair{Buffer, Int}[]
     indices = nothing
     for name in fieldnames(T)
         field = getfield(mesh, name)
@@ -56,26 +59,26 @@ function VertexArray(mesh::T; kwargs...) where {T <: AbstractMesh}
         if name == :faces
             indices = field
         else
-            push!(to_vao, field)
+            loc = get_attribute_location(program, name)
+            if loc != -1
+                push!(buffer_attribloc, Buffer(field) => loc)
+            end
         end
     end
     if indices == nothing
-        return VertexArray((to_vao...); kwargs...)
+        return VertexArray(buffer_attribloc; kwargs...)
     else
-        return VertexArray((to_vao...), indices; kwargs...)
+        return VertexArray(buffer_attribloc, indices; kwargs...)
     end
 end
 
-function to_gpu(renderable::Renderable{D, FaceLength} where D) where FaceLength
-    renderable.vao = VertexArray(renderable.verts, facelength=FaceLength)
+function setup!(rend::Renderable{D, F}, pass::RenderPass) where {D, F}
+    if !isuploaded(rend)
+        rend.vao = VertexArray(rend.verts, pass.program, facelength=F)
+    end
 end
 
-function bind(renderable::Renderable)
-    if renderable.vao == nothing
-        to_gpu(renderable)
-    end
-    GLAbstraction.bind(renderable.vao)
-end
+bind(renderable::Renderable) = GLAbstraction.bind(renderable.vao)
 
 Base.eltype(::Type{Renderable{D, F}}) where {D, F} = (D, F)
 
