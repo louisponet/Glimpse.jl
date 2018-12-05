@@ -1,5 +1,5 @@
 import GLAbstraction: VertexArray, Buffer, Program
-import GLAbstraction: bind, draw, unbind, free!, get_attribute_location
+import GLAbstraction: bind, draw, unbind, free!, attribute_location
 import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 
 # struct ColorVertex{Dim, T, ColorT} <: AbstractVertex
@@ -21,11 +21,11 @@ import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 #      Although I could foresee that you first define all the renderables then throw them into the
 #      scene in the correct order.
 mutable struct Renderable{D, FaceLength} #D for dimensions
-    index::Int
-    name::Symbol
-    verts::AbstractMesh{<:StaticVector{D, GLfloat}}
-    uniforms::Dict{Symbol, Any}
-    vao::Union{VertexArray, Nothing}
+    index       ::Int
+    name        ::String
+    verts       ::AbstractMesh{<:StaticVector{D, GLfloat}}
+    uniforms    ::Dict{Symbol, Any}
+    vao         ::Union{VertexArray, Nothing}
     renderpasses::Vector{Symbol}
 end
 
@@ -59,14 +59,15 @@ function VertexArray(mesh::T, program::Program; kwargs...) where {T <: AbstractM
         if name == :faces
             indices = field
         else
-            loc = get_attribute_location(program, name)
-            if loc != -1
-                push!(buffer_attribloc, Buffer(field) => loc)
+            location = attribute_location(program, name)
+            if location != -1
+                push!(buffer_attribloc, Buffer(field) => location)
+            else
             end
         end
     end
     if indices == nothing
-        return VertexArray(buffer_attribloc; kwargs...)
+        return VertexArray(buffer_attribloc, nothing; kwargs...)
     else
         return VertexArray(buffer_attribloc, indices; kwargs...)
     end
@@ -88,5 +89,11 @@ unbind(renderable::Renderable) = unbind(renderable.vao)
 function free!(r::Renderable)
     if r.vao != nothing
         r.vao = free!(r.vao)
+    end
+end
+
+function set_uniforms!(renderable, uniforms::Pair{Symbol, <:Any}...)
+    for (u, v) in uniforms
+        renderable.uniforms[u] = v
     end
 end

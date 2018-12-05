@@ -46,7 +46,7 @@ function subdivide(vertices, faces, level)
     return vertices, faces
 end
 
-function sphere(dio::Diorama, pos, radius, complexity=2, name=:sphere, attributes...; uniforms...)
+function sphere(dio::Diorama, pos, radius, complexity=2, name="sphere", attributes...; uniforms...)
     sphpos = convert(Vec3f0, pos)
     sphrad = convert(f32, radius)
     modelmat = translmat(sphpos) * scalemat(Vec3f0(sphrad,sphrad,sphrad))
@@ -78,7 +78,7 @@ end
 
 loadobj(filename::String) = load(joinpath(@__DIR__, "../../assets/obj", filename))
 
-function cylinder(dio::Diorama, startpos, endpos, radius, name=:cylinder, attributes...; uniforms...)
+function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attributes...; uniforms...)
     startp = convert(Vec3f0, startpos)
     endp   = convert(Vec3f0, endpos)
     cylrad = convert(f32, radius)
@@ -104,7 +104,7 @@ function cylinder(dio::Diorama, startpos, endpos, radius, name=:cylinder, attrib
     return cylrend
 end
 
-function rectangle(dio::Diorama, startpos, endpos, widths, name=:rectangle, attributes...; uniforms...)
+function rectangle(dio::Diorama, startpos, endpos, widths, name="rectangle", attributes...; uniforms...)
     startp = convert(Vec3f0, startpos)
     endp   = convert(Vec3f0, endpos)
     rotmat = rotate(startp, endp)
@@ -128,7 +128,7 @@ function rectangle(dio::Diorama, startpos, endpos, widths, name=:rectangle, attr
     return cubrend
 end
 
-function cone(dio::Diorama, startpos, endpos, radius, name=:cylinder, attributes...; uniforms...)
+function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...; uniforms...)
     startp = convert(Vec3f0, startpos)
     endp   = convert(Vec3f0, endpos)
     cylrad = convert(f32, radius)
@@ -154,7 +154,7 @@ function cone(dio::Diorama, startpos, endpos, radius, name=:cylinder, attributes
     return cylrend
 end
 
-function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name=:arrow, headratio=1/4, attributes...;uniforms...)
+function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name="arrow", headratio=1/4, attributes...;uniforms...)
     startp = convert(Vec3f0, startpos)
     endp   = convert(Vec3f0, endpos)
 

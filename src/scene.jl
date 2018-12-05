@@ -77,3 +77,11 @@ end
 projmat(sc::Scene) = sc.camera.proj
 viewmat(sc::Scene) = sc.camera.view
 projviewmat(sc::Scene) = sc.camera.projview
+
+renderable(sc::Scene, name::String; fuzzy=true) =
+    fuzzy ? getfirst(x -> occursin(name, x.name), sc.renderables) : getfirst(x -> x.name == name, sc.renderables)
+renderables(sc::Scene, name::String; fuzzy=true) =
+    fuzzy ? filter(x -> occursin(name, x.name), sc.renderables) : filter(x -> x.name == name, sc.renderables)
+
+set_uniforms!(sc::Scene, name::String, uniforms::Pair{Symbol, Any}...; fuzzy=true) =
+    set_uniforms!.(renderables(sc, name; fuzzy=fuzzy), uniforms...)

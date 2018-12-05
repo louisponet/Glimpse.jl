@@ -1,3 +1,4 @@
+import GLAbstraction: getfirst
 @inline function sleep_pessimistic(sleep_time)
     st = convert(Float64, sleep_time) - 0.002
     start_time = time()
@@ -43,8 +44,8 @@ function mergepop!(d1, d2)
     return t
 end
 
-function GLAbstraction.gluniform(loc::Integer, x::Mat4{Float32})
-    glUniformMatrix4fv(loc, 1, GL_FALSE, reinterpret(Float32,[x]))
+function GLAbstraction.gluniform(location::Integer, x::Mat4{Float32})
+    glUniformMatrix4fv(location, 1, GL_FALSE, reinterpret(Float32,[x]))
 end
 
 function uniformfunc(typ::DataType, dims::Tuple{Int})
