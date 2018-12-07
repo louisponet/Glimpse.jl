@@ -5,19 +5,12 @@ mutable struct Diorama
     name     ::Symbol
     scene    ::Scene
     screen   ::Union{Screen, Nothing}
-    pipeline ::Union{Pipeline, Nothing}
+    pipeline ::Union{PipeLine, Nothing}
     loop     ::Union{Task, Nothing}
     function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
-        if interactive
-            screen = screen == nothing ? Screen(name; kwargs...) : screen
-            register_camera_callbacks(scene.camera, screen.canvas)
-            pipeline = pipeline == nothing ? Pipeline(:default, [RenderPass(:default, defaultshaders())], screen.canvas) : pipeline
-            looptask = @async renderloop(dio)
-            dio = new(name, scene, screen, pipeline, looptask)
-        else
-            dio = new(name, scene, screen, pipeline)
-        end
+        dio = new(name, scene, screen, pipeline, nothing)
         makecurrentdio(dio)
+        expose(dio; kwargs...)
         return dio
     end
 end
@@ -40,24 +33,23 @@ set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
 
 function free!(dio::Diorama)
     dio.loop     = nothing
-    dio.screen   = free!(dio.screen)
-    dio.pipeline = free!(dio.pipeline)
-    dio.scene    = free!(dio.scene)
+    free!(dio.screen)
+    free!(dio.pipeline)
+    free!(dio.scene)
 end
 
-
 function renderloop(dio, framerate = 1/60)
-    screen = dio.screen
+    screen   = dio.screen
     pipeline = dio.pipeline
-    scene = dio.scene
-    if isempty(scene.lights)
-        add!(scene, PointLight())
-    end
-    while isopen(screen)
+    scene    = dio.scene
+    while isopen(dio.screen)
+        # clear!(screen.canvas)
         tm = time()
-        pollevents(screen)
-        render(pipeline, scene)
-        swapbuffers(screen)
+        pollevents(dio.screen)
+        if dio.pipeline != nothing
+            render(dio.pipeline, dio.scene)
+        end
+        swapbuffers(dio.screen)
         tm = time() - tm
         sleep_pessimistic(framerate - tm)
     end
@@ -65,11 +57,10 @@ function renderloop(dio, framerate = 1/60)
 end
 
 function expose(dio::Diorama; kwargs...)
-    if !isdefined(dio, :loop) || dio.loop == nothing
+    if dio.loop == nothing
         dio.screen = dio.screen == nothing ? Screen(dio.name; kwargs...) : raise(dio.screen)
         register_camera_callbacks(dio.scene.camera, dio.screen.canvas)
         resize_event(dio.scene.camera, dio.screen.canvas.area)
-        dio.pipeline = dio.pipeline == nothing ? Pipeline(:default, [RenderPass(:default, defaultshaders())], dio.screen.canvas) : dio.pipeline
         dio.loop = @async renderloop(dio)
     end
     return dio
@@ -84,3 +75,6 @@ iscurrentdio(x) = x == currentdio[]
 function makecurrentdio(x)
     currentdio[] = x
 end
+
+
+darken!(dio::Diorama, percentage) = darken!(dio.scene, percentage)

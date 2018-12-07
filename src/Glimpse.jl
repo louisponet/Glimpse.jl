@@ -27,25 +27,21 @@ include("renderable.jl")
 include("scene.jl")
 include("pipeline.jl")
 include("diorama.jl")
-include("defaults/renderpass.jl")
-include("defaults/pipeline.jl")
-include("defaults/shader.jl")
-include("defaults/geometries.jl")
+include("defaults/defaults.jl")
 #GLAbstraction exports
 
 #package exports, types & enums
-export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight
+export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight, RenderPass, PipeLine
 export pixel, orthographic, perspective
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-        draw, current_context, renderloop, add!, expose, center!
+        draw, current_context, renderloop, add!, expose, center!, darken!
 
 export set_uniforms!
 
 
 
 #package exports, default geometries
-export sphere, cylinder, rectangle, cone, arrow
 
 end # module

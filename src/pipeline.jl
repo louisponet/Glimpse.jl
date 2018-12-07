@@ -1,14 +1,14 @@
 import GLAbstraction: is_current_context
 #the idea of a pipeline together with renderpasses is that one can jus throw in a scene
 #and the render functions take care of what renderables get drawn by what passes
-struct Pipeline{Name}
+struct PipeLine{Name}
     name::Symbol
     passes::Vector{RenderPass}
     context::AbstractContext
 end
-Pipeline(name::Symbol, rps::Vector{<:RenderPass}, context=current_context()) = Pipeline{name}(name, rps, context)
+PipeLine(name::Symbol, rps::Vector{<:RenderPass}, context=current_context()) = PipeLine{name}(name, rps, context)
 
-function render(pipe::Pipeline, sc::Scene, args...)
+function render(pipe::PipeLine, sc::Scene, args...)
     start(pipe)
     for pass in pipe.passes
         start(pass)
@@ -18,7 +18,7 @@ function render(pipe::Pipeline, sc::Scene, args...)
     stop(pipe.passes[end])
 end
 
-function free!(pipe::Pipeline)
+function free!(pipe::PipeLine)
     if !is_current_context(pipe.context)
         return pipe
     end
@@ -28,4 +28,4 @@ function free!(pipe::Pipeline)
     return
 end
 #overload!
-start(pipe::Pipeline) = return
+start(pipe::PipeLine) = return

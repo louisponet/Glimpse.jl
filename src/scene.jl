@@ -41,10 +41,7 @@ function add!(sc::Scene, renderable::Renderable, _copy=false)
     push!(sc.renderables, rend)
 end
 
-"""
-Adds a renderable to the scene. If the copy flag is true the renderable will be deepcopied.
-The index of the renderable will be set to it's index inside the renderables list of the Scene.
-"""
+"Adds a light to the scene. "
 add!(sc::Scene, light::Light) = push!(sc.lights, light)
 
 """
@@ -85,3 +82,6 @@ renderables(sc::Scene, name::String; fuzzy=true) =
 
 set_uniforms!(sc::Scene, name::String, uniforms::Pair{Symbol, Any}...; fuzzy=true) =
     set_uniforms!.(renderables(sc, name; fuzzy=fuzzy), uniforms...)
+
+"Darken all the lights in the scene by a certain amount"
+darken!(scene::Scene, percentage) = darken!.(scene.lights, percentage)
