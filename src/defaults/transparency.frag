@@ -7,6 +7,7 @@ out vec4 out_color;
 struct point_light {
     vec3 position;
     float amb_intensity;
+    float specular_intensity;
     float diff_intensity;
     vec3 color;
 };
@@ -36,7 +37,7 @@ void main () {
         float specular_factor = dot(vertex_to_eye, light_reflect);
         if(specular_factor > 0) {
             specular_factor = pow(specular_factor, specpow);
-            specular_color = vec4(plight.color * specint * specular_factor,1.0f);
+            specular_color = vec4(plight.color * specint * plight.specular_intensity*specular_factor,1.0f);
         }
     }
 

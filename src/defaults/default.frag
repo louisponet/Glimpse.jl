@@ -36,7 +36,7 @@ void main () {
         float specular_factor = dot(vertex_to_eye, light_reflect);
         if(specular_factor > 0) {
             specular_factor = pow(specular_factor, specpow);
-            specular_color = vec4(plight.color  * specint * specular_factor,1.0f);
+            specular_color = vec4(plight.color  * specint * plight.specular_intensity* specular_factor,1.0f);
         }
     }
 

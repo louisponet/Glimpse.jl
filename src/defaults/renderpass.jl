@@ -49,7 +49,7 @@ function (rp::RenderPass{:transparency})(scene::Scene)
         l = scene.lights[1]
         set_uniform(program, Symbol("plight.color"), l.color)
         set_uniform(program, Symbol("plight.position"), l.position)
-        # set_uniform(program, Symbol("plight.specular_intensity"), l.specular)
+        set_uniform(program, Symbol("plight.specular_intensity"), l.specular)
         set_uniform(program, Symbol("plight.amb_intensity"), l.ambient)
         set_uniform(program, Symbol("plight.diff_intensity"), l.diffuse)
     end
