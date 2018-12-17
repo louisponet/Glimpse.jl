@@ -37,7 +37,7 @@ function (rp::RenderPass{:default})(scene::Scene)
     render.((rp,), scene.renderables)
 end
 
-function (rp::RenderPass{:transparency})(scene::Scene)
+function (rp::RenderPass{:cheap_transparency})(scene::Scene)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     rp_renderables = filter(x -> in(:transparency, x.renderpasses), scene.renderables)
@@ -85,4 +85,24 @@ function (rp::RenderPass{:transparency})(scene::Scene)
     glDepthFunc(GL_LEQUAL)
     render_with_alpha(x -> (x-f*x)/(1.0-f*x))
     glDisable(GL_BLEND)
+end
+function (rp::RenderPass{:simple_transparency})(scene::Scene)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    program = rp.program
+    set_uniform(program, :projview, projviewmat(scene))
+    set_uniform(program, :campos, scene.camera.eyepos)
+    if !isempty(scene.lights)
+        l = scene.lights[1]
+        set_uniform(program, Symbol("plight.color"), l.color)
+        set_uniform(program, Symbol("plight.position"), l.position)
+        set_uniform(program, Symbol("plight.specular_intensity"), l.specular)
+        set_uniform(program, Symbol("plight.amb_intensity"), l.ambient)
+        set_uniform(program, Symbol("plight.diff_intensity"), l.diffuse)
+    end
+    render.((rp,), scene.renderables)
+end
+
+function(rp::RenderPass{:depth_peeling_transparancy})(scene::Scene)
+
 end

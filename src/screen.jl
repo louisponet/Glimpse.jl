@@ -73,3 +73,5 @@ function raise(s::Screen; canvas_kwargs...)
     end
     return s
 end
+
+windowsize(screen::Screen) = windowsize(screen.canvas)

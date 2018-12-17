@@ -78,3 +78,4 @@ end
 
 
 darken!(dio::Diorama, percentage) = darken!(dio.scene, percentage)
+windowsize(dio::Diorama) = windowsize(dio.screen)

@@ -1,6 +1,6 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
 import GLAbstraction: bind, swapbuffers
-import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS
+import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
 #TODO Framebuffer context
 """
 Standard window hints for creating a plain context without any multisampling
@@ -171,3 +171,7 @@ const canvas_defaults = SymAnyDict(:area       => Area(0, 0, standard_screen_res
                                    :focus      => false,
                                    :fullscreen => false,
                                    :monitor    => nothing)
+
+
+
+windowsize(canvas::Canvas) = GetWindowSize(nativewindow(canvas))

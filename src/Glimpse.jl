@@ -28,11 +28,13 @@ include("scene.jl")
 include("pipeline.jl")
 include("diorama.jl")
 include("defaults/defaults.jl")
+include("glabstraction_extensions.jl")
 #GLAbstraction exports
 
 #package exports, types & enums
 export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight, RenderPass, PipeLine
 export pixel, orthographic, perspective
+export context_renderpass, windowsize
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
