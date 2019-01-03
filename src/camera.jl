@@ -1,21 +1,23 @@
 import GLFW: GetMouseButton, SetCursorPosCallback, SetKeyCallback, SetWindowSizeCallback, SetFramebufferSizeCallback,
              SetScrollCallback
-import GLFW: MOUSE_BUTTON_1, MOUSE_BUTTON_2, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q
+import GLFW: MOUSE_BUTTON_1, MOUSE_BUTTON_2, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, PRESS
 import GeometryTypes: Vec, Mat
 
-const WASD_KEYS = [KEY_W, KEY_A, KEY_S, KEY_D]
+const WASD_KEYS = Int.([KEY_W, KEY_A, KEY_S, KEY_D])
 
 @enum CamKind pixel orthographic perspective
 
-function projmat(x::CamKind, area::Area, near::T, far::T, fov::T) where T
+function projmat(x::CamKind, w::Int, h::Int, near::T, far::T, fov::T) where T
     if x == pixel
         return eye(T,4)
     elseif x == orthographic
-        return projmatortho(area, near, far)
+        return projmatortho(w, h, near, far)
     else
-        return projmatpersp(area, fov, near, far)
+        return projmatpersp(w, h, fov, near, far)
     end
 end
+projmat(x::CamKind, wh::SimpleRectangle, args...) =
+    projmat(x, wh.w, wh.h, args...)
 
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
 mutable struct Camera{Kind, Dim, T}
@@ -78,37 +80,30 @@ function update!(cam::Camera)
     update_viewmat!(cam)
 end
 
-function register_camera_callbacks(cam::Camera, context = current_context())
-    SetCursorPosCallback(context.native_window, (window, x::Cdouble, y::Cdouble) -> begin
-        mouse_move_event(cam, x, y, window)
-    end)
-
-    SetKeyCallback(context.native_window, (_1, button, _2, _3, _4) -> begin
-        buttonpress_event(cam, button)
-		end)
-
-    SetFramebufferSizeCallback(context.native_window, (window, w::Cint, h::Cint,) -> begin
-        orig        = context.area
-        w_, h_      = Int(w), Int(h)
-        context.area = Area(orig.x, orig.y, w_, h_)
-        glViewport(0, 0, w_, h_)
-        resize_event(cam, context.area)
-    end)
-
-    SetScrollCallback(context.native_window, (window, dx::Cdouble, dy::Cdouble) -> begin
-        scroll_event(cam, dx, dy)
-    end)
+function register_callbacks(cam::Camera, context = current_context())
+    onany((pos, button) -> mouse_move_event(cam, pos, button),
+          callback(context, :cursor_position),
+          callback(context, :mouse_buttons))
+    on(button -> buttonpress_event(cam, button),
+        callback(context, :keyboard_buttons))
+    on(wh -> resize_event(cam, wh...),
+        callback(context, :framebuffer_size))
+    on(dxdy -> scroll_event(cam, dxdy...),
+        callback(context, :scroll))
 end
 
-function mouse_move_event(cam::Camera{perspective, Dim, T} where {perspective, Dim}, x, y, window=current_context().native_window) where T
+function mouse_move_event(cam::Camera{perspective, Dim, T} where {perspective, Dim}, xy, button) where T
+    x, y = xy
     x_ = T(x)
     y_ = T(y)
     dx = x_ - cam.mouse_pos[1]
     dy = y_ - cam.mouse_pos[2]
-    if GetMouseButton(window, MOUSE_BUTTON_1)
-        rotate_world(cam, dx, dy)
-    elseif GetMouseButton(window, MOUSE_BUTTON_2)
-        pan_world(cam, dx, dy)
+    if button[2] == Int(PRESS)
+        if button[1] == Int(MOUSE_BUTTON_1)
+            rotate_world(cam, dx, dy)
+        elseif button[1] == Int(MOUSE_BUTTON_2)
+            pan_world(cam, dx, dy)
+        end
     end
     cam.mouse_pos = Vec(x_, y_)
 end
@@ -134,11 +129,13 @@ function pan_world(cam::Camera, dx, dy)
 end
 
 function buttonpress_event(cam::Camera, button)
-    if button in WASD_KEYS
-        wasd_event(cam, button)
-    elseif button == KEY_Q
-        cam.fov -= 1
-        cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 100f0)
+    if button[3] == Int(PRESS)
+        if button[1] in WASD_KEYS
+            wasd_event(cam, button)
+        elseif button[1] == Int(KEY_Q)
+            cam.fov -= 1
+            cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 100f0)
+        end
     end
 end
 
@@ -146,19 +143,19 @@ end
 function wasd_event(cam::Camera{perspective, Dim, T} where {perspective, Dim}, button) where T
     #ok this is a bit hacky but fine
     origlen = norm(cam.eyepos)
-    if button == KEY_A
+    if button[1] == Int(KEY_A)
         #the world needs to move in the opposite direction
         newpos = Vec3{T}((translmat(cam.translation_speed * cam.right) * Vec4{T}(cam.eyepos...,1.0))[1:3])
         newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
 
-    elseif button == KEY_D
+    elseif button[1] == Int(KEY_D)
         newpos = Vec3{T}((translmat(cam.translation_speed * -cam.right) * Vec4{T}(cam.eyepos...,1.0))[1:3])
         newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
 
-    elseif button == KEY_W
+    elseif button[1] == Int(KEY_W)
         newpos = Vec3{T}((translmat(cam.translation_speed * calcforward(cam)) * Vec4{T}(cam.eyepos...,1.0))[1:3])
 
-    elseif button == KEY_S
+    elseif button[1] == Int(KEY_S)
         newpos = Vec3{T}((translmat(cam.translation_speed * -calcforward(cam)) * Vec4{T}(cam.eyepos...,1.0))[1:3])
 
     end
@@ -167,8 +164,8 @@ function wasd_event(cam::Camera{perspective, Dim, T} where {perspective, Dim}, b
     update_viewmat!(cam)
 end
 
-function resize_event(cam::Camera, area::Area)
-    cam.proj = projmat(eltype(cam)[1], area, cam.near, cam.far, cam.fov)
+function resize_event(cam::Camera, w, h)
+    cam.proj = projmat(eltype(cam)[1], w, h, cam.near, cam.far, cam.fov)
     cam.projview = cam.proj * cam.view
 end
 

@@ -114,6 +114,8 @@ end
 bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
 nativewindow(c::Canvas) = c.native_window
 
+Base.size(area::Area) = (area.w, area.h)
+Base.size(canvas::Canvas) = size(canvas.area)
 function Base.resize!(c::Canvas, w::Int, h::Int, resize_window=false)
     nw = c.native_window
     area = c.area
@@ -153,8 +155,8 @@ function corrected_coordinates(
     Vec{2,Float64}(mouse_position[1], window_size.value[2] - mouse_position[2]) .* s
 end
 
-callback(c::Canvas, cb::Symbol) = c.callbacks[cb][]
-
+callback_value(c::Canvas, cb::Symbol) = c.callbacks[cb][]
+callback(c::Canvas, cb::Symbol)       = c.callbacks[cb]
 
 #---------------------DEFAULTS-------------------#
 

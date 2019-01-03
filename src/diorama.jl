@@ -5,7 +5,7 @@ mutable struct Diorama
     name     ::Symbol
     scene    ::Scene
     screen   ::Union{Screen, Nothing}
-    pipeline ::Union{PipeLine, Nothing}
+    pipeline ::Union{Pipeline, Nothing}
     loop     ::Union{Task, Nothing}
     function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
         dio = new(name, scene, screen, pipeline, nothing)
@@ -23,6 +23,11 @@ Diorama(name::Symbol, scene::Scene, screen::Screen; kwargs...) = Diorama(name, s
 
 add!(dio::Diorama, renderable::Renderable) = add!(dio.scene, renderable)
 add!(dio::Diorama, light::Light) = add!(dio.scene, light)
+
+function set!(dio::Diorama, pipeline::Pipeline)
+    dio.pipeline = pipeline
+    register_callbacks(pipeline, dio.screen.canvas)
+end
 
 """
 Empties the scene that is linked to the diorama, i.e. clearing all the renderables.
@@ -59,11 +64,16 @@ end
 function expose(dio::Diorama; kwargs...)
     if dio.loop == nothing
         dio.screen = dio.screen == nothing ? Screen(dio.name; kwargs...) : raise(dio.screen)
-        register_camera_callbacks(dio.scene.camera, dio.screen.canvas)
-        resize_event(dio.scene.camera, dio.screen.canvas.area)
+        register_callbacks(dio)
+        resize_event(dio.scene.camera, size(dio.screen.canvas)...)
         dio.loop = @async renderloop(dio)
     end
     return dio
+end
+
+function register_callbacks(dio::Diorama)
+    register_callbacks(dio.scene.camera, dio.screen.canvas)
+    dio.pipeline != nothing && register_callbacks(dio.pipeline, dio.screen.canvas)
 end
 
 isrendering(dio::Diorama) = dio.loop != nothing
@@ -78,4 +88,6 @@ end
 
 
 darken!(dio::Diorama, percentage) = darken!(dio.scene, percentage)
+
 windowsize(dio::Diorama) = windowsize(dio.screen)
+pixelsize(dio::Diorama)  = (windowsize(dio)...,)

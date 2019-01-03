@@ -9,6 +9,7 @@ using Quaternions
 using GLAbstraction
 using LinearAlgebra
 using GLFW
+using Observables
 include("typedefs.jl")
 include("utils.jl")
 include("maths/matrices.jl")
@@ -27,12 +28,13 @@ include("renderable.jl")
 include("scene.jl")
 include("pipeline.jl")
 include("diorama.jl")
+export windowsize, pixelsize
 include("defaults/defaults.jl")
 include("glabstraction_extensions.jl")
 #GLAbstraction exports
 
 #package exports, types & enums
-export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight, RenderPass, PipeLine
+export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight, Renderpass, Pipeline
 export pixel, orthographic, perspective
 export context_renderpass, windowsize
 

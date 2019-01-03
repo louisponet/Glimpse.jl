@@ -6,7 +6,7 @@ function set_uniforms(program::Program, renderable::Renderable)
     end
 end
 
-function render(rp::RenderPass{T}, renderable::Renderable) where T
+function render(rp::Renderpass{T}, renderable::Renderable) where T
     if !in(T, renderable.renderpasses)
         return
     end
@@ -17,7 +17,7 @@ function render(rp::RenderPass{T}, renderable::Renderable) where T
 end
 
 #TODO only allows for one light at this point!
-function (rp::RenderPass{:default})(scene::Scene)
+function (rp::Renderpass{:default})(scene::Scene)
     program = rp.program
     if isempty(scene.renderables)
         return
@@ -37,7 +37,7 @@ function (rp::RenderPass{:default})(scene::Scene)
     render.((rp,), scene.renderables)
 end
 
-function (rp::RenderPass{:cheap_transparency})(scene::Scene)
+function (rp::Renderpass{:cheap_transparency})(scene::Scene)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     rp_renderables = filter(x -> in(:transparency, x.renderpasses), scene.renderables)
@@ -86,7 +86,7 @@ function (rp::RenderPass{:cheap_transparency})(scene::Scene)
     render_with_alpha(x -> (x-f*x)/(1.0-f*x))
     glDisable(GL_BLEND)
 end
-function (rp::RenderPass{:simple_transparency})(scene::Scene)
+function (rp::Renderpass{:simple_transparency})(scene::Scene)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     program = rp.program
@@ -103,6 +103,6 @@ function (rp::RenderPass{:simple_transparency})(scene::Scene)
     render.((rp,), scene.renderables)
 end
 
-function(rp::RenderPass{:depth_peeling_transparancy})(scene::Scene)
+function(rp::Renderpass{:depth_peeling_transparancy})(scene::Scene)
 
 end

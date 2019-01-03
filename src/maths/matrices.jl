@@ -120,6 +120,8 @@ function projmatpersp(fovy::T, aspect::T, znear::T, zfar::T) where T
     w = T(h * aspect)
     return frustum(-w, w, -h, h, znear, zfar)
 end
+projmatpersp(w::Int, h::Int, fovy::T, znear::T, zfar::T) where T =
+    projmatpersp(fovy, T(w/h), znear, zfar)
 function projmatpersp(
         ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
     ) where T
@@ -172,6 +174,8 @@ function projmatortho(
     ) where T
     projmatortho(wh, T(near), T(far))
 end
+projmatortho(w::Int, h::Int, near::T, far::T) where T =
+    projmatortho(zero(T), T(w), zero(T), T(h), near, far)
 
 function projmatortho(
         left  ::T, right::T,

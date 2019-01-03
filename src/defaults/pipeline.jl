@@ -1,4 +1,4 @@
-function start(pipe::PipeLine{:default})
+function start(pipe::Pipeline{:default})
 
     clear!(current_context())
     glEnable(GL_DEPTH_TEST)

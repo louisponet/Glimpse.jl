@@ -1,8 +1,8 @@
-import GLAbstraction: Program, Shader, FrameBuffer
-import GLAbstraction: contextfbo, start, free!, bind, shadertype
+import GLAbstraction: Program, Shader, FrameBuffer, Float24
+import GLAbstraction: context_framebuffer, start, free!, bind, shadertype
 #Do we really need the context if it is already in frambuffer and program?
 #TODO: finalizer free!
-struct RenderPass{Name}
+struct Renderpass{Name}
     # id::Int
     name::Symbol
     program::Program
@@ -10,40 +10,42 @@ struct RenderPass{Name}
     # render::Function
 end
 "RednerPass that renders directly to the current context."
-function RenderPass(name::Symbol, shaders::Vector{Shader}, target::FrameBuffer)
+function Renderpass(name::Symbol, shaders::Vector{Shader}, target::FrameBuffer)
     prog   = Program(shaders, Tuple{Int, String}[])
-    return RenderPass{name}(name, prog, target)
+    return Renderpass{name}(name, prog, target)
 end
 
-function RenderPass(name::Symbol, shaders::Vector{Tuple{String, UInt32}}, target::FrameBuffer)
+function Renderpass(name::Symbol, shaders::Vector{Tuple{String, UInt32}}, target::FrameBuffer)
     pass_shaders = Shader[]
     for (source, typ) in shaders
         push!(pass_shaders, Shader(gensym(), typ, Vector{UInt8}(source)))
     end
     prog   = Program(pass_shaders, Tuple{Int, String}[])
-    return RenderPass(name, prog, target)
+    return Renderpass(name, prog, target)
 end
 
-RenderPass(name::Symbol, shaders::Vector{Tuple{Symbol, AbstractString}}, target::FrameBuffer) =
-    RenderPass(name, [(Vector{UInt8}(source), shadertype(shname)) for (shname, source) in shaders], target)
+Renderpass(name::Symbol, shaders::Vector{Tuple{Symbol, AbstractString}}, target::FrameBuffer) =
+    Renderpass(name, [(Vector{UInt8}(source), shadertype(shname)) for (shname, source) in shaders], target)
 
-context_renderpass(name::Symbol, shaders, size) = RenderPass(name, shaders, defaultframebuffer(size))
+context_renderpass(name::Symbol, shaders) = Renderpass(name, shaders, context_framebuffer())
 
-function start(rp::RenderPass)
+function start(rp::Renderpass)
     bind(rp.target)
     # clear!(rp.target)
     bind(rp.program)
 end
 
-function stop(rp::RenderPass)
+function stop(rp::Renderpass)
     unbind(rp.target)
     unbind(rp.program)
 end
-# render(rp::RenderPass, args...) = rp.render(args...)
+# render(rp::Renderpass, args...) = rp.render(args...)
 
-
-function free!(rp::RenderPass)
+function free!(rp::Renderpass)
     free!(rp.program)
     free!(rp.target)
     return
 end
+
+resize_framebuffer(rp::Renderpass, w, h) =
+    resize!(rp.target, (w, h))

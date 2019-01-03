@@ -69,11 +69,6 @@ function sphere(dio::Diorama, pos, radius, complexity=2, name="sphere", attribut
     return sphrend
 end
 
-
-
-
-
-
 #-----------------------------OBJ based geometries------------------------#
 
 loadobj(filename::String) = load(joinpath(@__DIR__, "../../assets/obj", filename))

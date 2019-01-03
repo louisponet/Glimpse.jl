@@ -73,7 +73,7 @@ function VertexArray(mesh::T, program::Program; kwargs...) where {T <: AbstractM
     end
 end
 
-function setup!(rend::Renderable{D, F}, pass::RenderPass) where {D, F}
+function setup!(rend::Renderable{D, F}, pass::Renderpass) where {D, F}
     if !isuploaded(rend)
         rend.vao = VertexArray(rend.verts, pass.program, facelength=F)
     end
