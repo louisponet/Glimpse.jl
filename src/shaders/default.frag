@@ -1,5 +1,5 @@
 #version 410
-in vec3 fragcolor;
+in vec4 fragcolor;
 in vec3 fragnormal;
 in vec3 world_pos;
 out vec4 out_color;
@@ -41,5 +41,5 @@ void main () {
     }
 
     // out_color = vec4(plight.color, 1.0f);
-    out_color = vec4(fragcolor, 1.0f) * ( ambient_color+ diffuse_color + specular_color);
+    out_color = fragcolor * ( ambient_color+ diffuse_color + specular_color);
 }

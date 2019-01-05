@@ -30,8 +30,7 @@ name(::Renderpass{n}) where n = n
 
 function free!(rp::Renderpass)
     free!(rp.program)
-    free!.(rp.targets)
-    return
+    free!.(filter(t-> t!= current_context(), rp.targets))
 end
 
 function register_callbacks(rp::Renderpass, context=current_context())
@@ -44,10 +43,10 @@ resize_targets(rp::Renderpass, wh) =
 function create_peeling_passes(wh, npasses)
     peel_prog    = Program(peeling_shaders())
     comp_prog    = Program(compositing_shaders())
-    framebuffers = [FrameBuffer(wh, (RGBA{N0f8}, Depth{Float32}), true) for i=1:npasses]
+    framebuffers = [FrameBuffer(wh, (RGBA{Float32}, Depth{Float32}), true) for i=1:npasses]
     context_fbo  = current_context()
-    passes       = [Renderpass{:peel}(peel_prog, framebuffers),
-                    Renderpass{:composite}(comp_prog, [context_fbo])]
+    passes       = Renderpass[Renderpass{:peel}(peel_prog, framebuffers),
+                    Renderpass{:composite}(comp_prog, RenderTarget[framebuffers; context_fbo])]
     return passes
 end
 
@@ -66,13 +65,6 @@ function setup!(rend::Renderable{D, F}, pass::Renderpass) where {D, F}
     if !isuploaded(rend)
         rend.vao = VertexArray(rend.verts, pass.program, facelength=F)
     end
-end
-
-function render_composite(program)
-    fullscreenvao = compositing_vertexarray(program)
-    bind(fullscreenvao)
-    draw(fullscreenvao)
-    unbind(fullscreenvao)
 end
 
 function set_uniforms(program::Program, renderable::Renderable)
@@ -171,24 +163,45 @@ function (rp::Renderpass{:simple_transparency})(scene::Scene)
 end
 
 function (rp::Renderpass{:peel})(scene::Scene)
+    program=rp.program
+    set_scene_uniforms(program, scene)
+    set_uniform(program, :canvas_width, size(rp.targets[1])[1])
+    set_uniform(program, :canvas_height, size(rp.targets[1])[2])
+
     glEnable(GL_DEPTH_TEST)
     glDisable(GL_BLEND)
-    bind(rp.target)
-    draw(rp.target)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    program = rp.program
-    #default uniforms
-    set_scene_uniforms(program, scene)
-    #peeling uniforms
-    set_uniform(program, :canvas_width, size(rp.target)[1])
-    set_uniform(program, :canvas_height, size(rp.target)[2])
-    render.((rp,), scene.renderables)
+    # glDisable(GL_CULL_FACE)
+
+    for i=1:length(rp.targets)
+        target = rp.targets[i]
+        first_pass = i == 1
+        set_uniform(program, :first_pass, first_pass)
+        if !first_pass
+            set_uniform(program, :depth_texture, (0, depth_attachment(rp.targets[i-1])))
+        end
+        bind(target)
+        clear!(target)
+        render.((rp,), scene.renderables)
+    end
 end
 
 function (rp::Renderpass{:composite})(scene::Scene)
-    clear!(current_context())
+    target  = rp.targets[end]
+    program = rp.program
+    bind(target)
+    clear!(target)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glDepthFunc(GL_ALWAYS) #TODO: This can probably go
-    render_composite(rp.program)
+
+
+    fullscreenvao = compositing_vertexarray(program)
+    bind(fullscreenvao)
+    for i=length(rp.targets)-1:-1:1
+        tex_target = rp.targets[i]
+        set_uniform(program, :color_texture, (0, color_attachment(tex_target, 1)))
+        set_uniform(program, :depth_texture, (1, depth_attachment(tex_target)))
+        draw(fullscreenvao)
+    end
+    unbind(fullscreenvao)
 end

@@ -40,7 +40,7 @@ set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
 function free!(dio::Diorama)
     dio.loop     = nothing
     free!(dio.screen)
-    free!(dio.pipeline)
+    free!.(dio.pipeline)
     free!(dio.scene)
 end
 
@@ -68,6 +68,7 @@ function expose(dio::Diorama;  kwargs...)
         register_callbacks(dio)
         resize_event(dio.scene.camera, size(dio.screen.canvas)...)
         dio.loop = @async renderloop(dio)
+        # dio.loop = renderloop(dio)
     end
     return dio
 end

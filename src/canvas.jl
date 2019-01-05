@@ -109,6 +109,7 @@ end
 pollevents(c::Canvas) = GLFW.PollEvents()
 waitevents(c::Canvas) = GLFW.WaitEvents()
 
+
 function free!(c::Canvas)
 	if is_current_context(c)
 		GLFW.DestroyWindow(c.native_window)
@@ -120,6 +121,7 @@ nativewindow(c::Canvas) = c.native_window
 
 Base.size(canvas::Canvas) = size(canvas.area)
 function Base.resize!(c::Canvas, wh::NTuple{2, Int}, resize_window=false)
+	resize!(context_framebuffer(), wh)
     nw = c.native_window
     area = c.area
 	w, h = wh
