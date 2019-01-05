@@ -9,3 +9,12 @@ function start(pipe::Pipeline{:default})
     glEnable(GL_CULL_FACE)
     glCullFace(GL_BACK)
 end
+
+function start(pipe::Pipeline{:depth_peeling})
+    clear!(current_context())
+    glDisable(GL_BLEND)
+    glEnable(GL_DEPTH_TEST)
+    #
+    # glEnable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+end

@@ -10,6 +10,7 @@ using GLAbstraction
 using LinearAlgebra
 using GLFW
 using Observables
+include("extensions.jl")
 include("typedefs.jl")
 include("utils.jl")
 include("maths/matrices.jl")
@@ -30,7 +31,6 @@ include("pipeline.jl")
 include("diorama.jl")
 export windowsize, pixelsize
 include("defaults/defaults.jl")
-include("glabstraction_extensions.jl")
 #GLAbstraction exports
 
 #package exports, types & enums

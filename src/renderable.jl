@@ -49,7 +49,7 @@ Renderable{FaceLength}(args...; kwargs...) where FaceLength = Renderable(args...
 isuploaded(r::Renderable) = r.vao != nothing
 
 function VertexArray(mesh::T, program::Program; kwargs...) where {T <: AbstractMesh}
-    buffer_attribloc = Pair{Buffer, Int}[]
+    buffer_attribloc = Pair{Buffer, GLint}[]
     indices = nothing
     for name in fieldnames(T)
         field = getfield(mesh, name)

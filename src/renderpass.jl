@@ -1,38 +1,47 @@
 import GLAbstraction: Program, Shader, FrameBuffer, Float24
-import GLAbstraction: context_framebuffer, start, free!, bind, shadertype
+import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!
 #Do we really need the context if it is already in frambuffer and program?
 #TODO: finalizer free!
-struct Renderpass{Name}
+mutable struct Renderpass{Name, UNT <: NamedTuple}
     # id::Int
-    name::Symbol
-    program::Program
-    target::FrameBuffer
+    program  ::Program
+    target   ::FrameBuffer
+    uniforms ::UNT #Any uniforms that depend on the pass, not on the renderable
     # render::Function
-end
-"RednerPass that renders directly to the current context."
-function Renderpass(name::Symbol, shaders::Vector{Shader}, target::FrameBuffer)
-    prog   = Program(shaders, Tuple{Int, String}[])
-    return Renderpass{name}(name, prog, target)
-end
-
-function Renderpass(name::Symbol, shaders::Vector{Tuple{String, UInt32}}, target::FrameBuffer)
-    pass_shaders = Shader[]
-    for (source, typ) in shaders
-        push!(pass_shaders, Shader(gensym(), typ, Vector{UInt8}(source)))
+    function Renderpass{name}(program::Program, fb::FrameBuffer, uniforms::UNT) where {name, UNT <: NamedTuple}
+        obj = new{name, UNT}(program, fb, uniforms)
+        valid_names, invalid_names = separate(x -> x ∈ uniform_names(program), keys(uniforms))
+        if !isempty(invalid_names)
+            @warn "Following names were not inside the program:
+                   $(join(invalid_names, "\n"))"
+        end
+        finalizer(free!, obj)
+        return obj
     end
-    prog   = Program(pass_shaders, Tuple{Int, String}[])
-    return Renderpass(name, prog, target)
 end
 
-Renderpass(name::Symbol, shaders::Vector{Tuple{Symbol, AbstractString}}, target::FrameBuffer) =
-    Renderpass(name, [(Vector{UInt8}(source), shadertype(shname)) for (shname, source) in shaders], target)
+Renderpass{name}(shaders::Vector{Shader}, target::FrameBuffer, uniforms::NamedTuple) where name =
+    Renderpass{name}(Program(shaders), target, uniforms)
 
-context_renderpass(name::Symbol, shaders) = Renderpass(name, shaders, context_framebuffer())
+Renderpass{name}(shaders::Vector{Shader}, target::FrameBuffer) where name =
+    Renderpass{name}(shaders, target, NamedTuple())
+
+Renderpass(name::Symbol, args...) =
+    Renderpass{name}(args...)
+
+context_renderpass(name::Symbol, shaders::Vector{Shader}) =
+    Renderpass(name, shaders, context_framebuffer())
+
+name(::Renderpass{n}) where n = n
 
 function start(rp::Renderpass)
     bind(rp.target)
-    # clear!(rp.target)
+    clear!(rp.target)
     bind(rp.program)
+    program = rp.program
+    for (k, v) in pairs(rp.uniforms)
+        set_uniform(program, k, v)
+    end
 end
 
 function stop(rp::Renderpass)
@@ -47,5 +56,5 @@ function free!(rp::Renderpass)
     return
 end
 
-resize_framebuffer(rp::Renderpass, w, h) =
+resize_target(rp::Renderpass, w, h) =
     resize!(rp.target, (w, h))

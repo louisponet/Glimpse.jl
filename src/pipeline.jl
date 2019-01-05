@@ -31,9 +31,9 @@ end
 start(pipe::Pipeline) = return
 
 function register_callbacks(pipeline::Pipeline, context=current_context())
-    on(wh -> resize_framebuffers(pipeline, wh...),
+    on(wh -> resize_targets(pipeline, wh...),
         callback(context, :framebuffer_size))
 end
 
-resize_framebuffers(pipeline::Pipeline, w::Int, h::Int) =
-    resize_framebuffer.(pipeline.passes, w, h)
+resize_targets(pipeline::Pipeline, w::Int, h::Int) =
+    resize_target.(pipeline.passes, w, h)

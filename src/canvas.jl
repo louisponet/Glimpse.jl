@@ -1,5 +1,5 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
-import GLAbstraction: bind, swapbuffers
+import GLAbstraction: bind, swapbuffers, clear!
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
 #TODO Framebuffer context
 """
@@ -29,6 +29,7 @@ end
 
 standard_screen_resolution() =  GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
 
+#TODO canvas should be able to be a drawing target too
 mutable struct Canvas <: AbstractContext
     name          ::Symbol
     id            ::Int
@@ -114,7 +115,6 @@ end
 bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
 nativewindow(c::Canvas) = c.native_window
 
-Base.size(area::Area) = (area.w, area.h)
 Base.size(canvas::Canvas) = size(canvas.area)
 function Base.resize!(c::Canvas, w::Int, h::Int, resize_window=false)
     nw = c.native_window
@@ -158,6 +158,8 @@ end
 callback_value(c::Canvas, cb::Symbol) = c.callbacks[cb][]
 callback(c::Canvas, cb::Symbol)       = c.callbacks[cb]
 
+windowsize(canvas::Canvas) = GetWindowSize(nativewindow(canvas))
+
 #---------------------DEFAULTS-------------------#
 
 const canvas_defaults = SymAnyDict(:area       => Area(0, 0, standard_screen_resolution()...),
@@ -173,7 +175,3 @@ const canvas_defaults = SymAnyDict(:area       => Area(0, 0, standard_screen_res
                                    :focus      => false,
                                    :fullscreen => false,
                                    :monitor    => nothing)
-
-
-
-windowsize(canvas::Canvas) = GetWindowSize(nativewindow(canvas))
