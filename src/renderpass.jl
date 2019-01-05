@@ -1,21 +1,73 @@
-import GLAbstraction: gluniform, bind, set_uniform, depth_attachment, color_attachment, id
+import GLAbstraction: Program, Shader, FrameBuffer, Float24
+import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id
+#Do we really need the context if it is already in frambuffer and program?
+const RenderTarget = Union{FrameBuffer, Canvas}
+#TODO: finalizer free!
+mutable struct Renderpass{Name}
+    # id::Int
+    program  ::Program
+    targets  ::Vector{RenderTarget}
+    # render::Function
+    function Renderpass{name}(program::Program, fbs::Vector{<:RenderTarget}) where name
+        obj = new{name}(program, fbs)
+        finalizer(free!, obj)
+        return obj
+    end
+end
 
-# Pre rendering
+Renderpass{name}(shaders::Vector{Shader}, targets::Vector{<:RenderTarget}) where name =
+    Renderpass{name}(Program(shaders), targets)
+
+Renderpass(name::Symbol, args...) =
+    Renderpass{name}(args...)
+
+context_renderpass(name::Symbol, shaders::Vector{Shader}) =
+    Renderpass(name, shaders, [context_framebuffer()])
+
+name(::Renderpass{n}) where n = n
+
+# render(rp::Renderpass, args...) = rp.render(args...)
+
+function free!(rp::Renderpass)
+    free!(rp.program)
+    free!.(rp.targets)
+    return
+end
+
+function register_callbacks(rp::Renderpass, context=current_context())
+    on(wh -> resize_targets(rp, Tuple(wh)),
+        callback(context, :framebuffer_size))
+end
+resize_targets(rp::Renderpass, wh) =
+    resize!.(rp.targets, (wh,))
+
 function create_peeling_passes(wh, npasses)
     peel_prog    = Program(peeling_shaders())
     comp_prog    = Program(compositing_shaders())
     framebuffers = [FrameBuffer(wh, (RGBA{N0f8}, Depth{Float32}), true) for i=1:npasses]
-    context_fbo  = context_framebuffer()
-    depth_ids    = depth_attachment.(framebuffers)
-    color_ids    = color_attachment.(framebuffers, 1)
-    peel_uniforms= vcat([(first_pass=true, depth_texture = (0, depth_ids[1]))], [(first_pass=false, depth_texture = (0, depth_ids[i-1])) for i=2:npasses])
-    comp_uniforms= [(color_texture=(0, color_ids[i]), depth_texture = (1, depth_ids[i])) for i=1:npasses]
-    passes       = Renderpass[Renderpass{:peel}(peel_prog, framebuffers[i], peel_uniforms[i]) for i=1:npasses]
-    append!(passes, [Renderpass{:composite}(comp_prog, context_fbo, comp_uniforms[i]) for i=npasses:-1:1])
+    context_fbo  = current_context()
+    passes       = [Renderpass{:peel}(peel_prog, framebuffers),
+                    Renderpass{:composite}(comp_prog, [context_fbo])]
     return passes
 end
 
+#-------------------- Rendering Functions ------------------------#
 # during rendering
+function render(pipe::Vector{Renderpass}, sc::Scene, args...)
+    for pass in pipe
+        bind(pass.program)
+        setup!.(sc.renderables, (pass,))
+        pass(sc, args...)
+    end
+    unbind(pipe[end].program)
+end
+
+function setup!(rend::Renderable{D, F}, pass::Renderpass) where {D, F}
+    if !isuploaded(rend)
+        rend.vao = VertexArray(rend.verts, pass.program, facelength=F)
+    end
+end
+
 function render_composite(program)
     fullscreenvao = compositing_vertexarray(program)
     bind(fullscreenvao)
@@ -52,8 +104,16 @@ function set_scene_uniforms(program, scene)
     end
 end
 
+#------------------ DIFFERENT KINDS OF RENDERPASSES ------------------#
 #TODO only allows for one light at this point!
 function (rp::Renderpass{:default})(scene::Scene)
+    clear!(rp.targets[1])
+    glEnable(GL_DEPTH_TEST)
+    glDepthFunc(GL_LEQUAL)
+
+
+    glEnable(GL_CULL_FACE)
+    glCullFace(GL_BACK)
     program = rp.program
     if isempty(scene.renderables)
         return
@@ -111,6 +171,8 @@ function (rp::Renderpass{:simple_transparency})(scene::Scene)
 end
 
 function (rp::Renderpass{:peel})(scene::Scene)
+    glEnable(GL_DEPTH_TEST)
+    glDisable(GL_BLEND)
     bind(rp.target)
     draw(rp.target)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -124,6 +186,7 @@ function (rp::Renderpass{:peel})(scene::Scene)
 end
 
 function (rp::Renderpass{:composite})(scene::Scene)
+    clear!(current_context())
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glDepthFunc(GL_ALWAYS) #TODO: This can probably go
