@@ -7,6 +7,9 @@ mutable struct PointLight{T <: AbstractFloat} <: Light{T}
     ambient ::T
     color   ::RGB{T}
 end
+
+PointLight() = PointLight{f32}(Vec3f0(0,0,20), 0.8f0, 1.0f0, 0.2f0, RGB{f32}(1,1,1))
+
 #Direction always has to be normalized!
 mutable struct DirectionLight{T <: AbstractFloat} <: Light{T}
     direction::Vec3{T}

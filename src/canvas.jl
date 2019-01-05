@@ -1,6 +1,7 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
-import GLAbstraction: bind, swapbuffers, clear!
+import GLAbstraction: bind, swapbuffers, clear!, free!
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
+
 #TODO Framebuffer context
 """
 Standard window hints for creating a plain context without any multisampling
@@ -37,6 +38,11 @@ mutable struct Canvas <: AbstractContext
     native_window ::GLFW.Window
     background    ::Colorant
     callbacks     ::Dict{Symbol, Any}
+	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
+		obj = new(name, id, area, nw, background, callback_dict)
+		finalizer(free!, obj)
+		return obj
+	end
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 function Canvas(name, id; kwargs...)
@@ -103,22 +109,20 @@ end
 pollevents(c::Canvas) = GLFW.PollEvents()
 waitevents(c::Canvas) = GLFW.WaitEvents()
 
-function destroy!(c::Canvas)
-    if is_current_context(c)
-        GLFW.DestroyWindow(c.native_window)
+function free!(c::Canvas)
+	if is_current_context(c)
+		GLFW.DestroyWindow(c.native_window)
         clear_context!()
-        return
-    else
-        return c
     end
 end
 bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
 nativewindow(c::Canvas) = c.native_window
 
 Base.size(canvas::Canvas) = size(canvas.area)
-function Base.resize!(c::Canvas, w::Int, h::Int, resize_window=false)
+function Base.resize!(c::Canvas, wh::NTuple{2, Int}, resize_window=false)
     nw = c.native_window
     area = c.area
+	w, h = wh
     f = scaling_factor(c)
     # There was some performance issue with round.(Int, SVector) - not sure if resolved.
     wf, hf = Int.(round.(f .* Vec(w, h)))
@@ -140,7 +144,7 @@ function scaling_factor(window::Vec{2, Int}, fb::Vec{2, Int})
 end
 function scaling_factor(c::Canvas)
     w, fb = GLFW.GetWindowSize(c.native_window), GLFW.GetFramebufferSize(c.native_window)
-    scaling_factor(Vec{2, Int}(w), Vec{2, Int}(fb))
+    scaling_factor(Vec{2, Int}(w...), Vec{2, Int}(fb...))
 end
 
 """

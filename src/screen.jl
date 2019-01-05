@@ -25,7 +25,9 @@ mutable struct Screen
                     hidden    ::Bool)
         id = new_screen_id()
         canvas.id = id
-        return new(name, id, area, canvas,background, parent, children, hidden)
+        obj = new(name, id, area, canvas,background, parent, children, hidden)
+        finalizer(free!, obj)
+        return obj
     end
 end
 function Screen(name = :Glimpse; area=Area(0, 0, standard_screen_resolution()...),
@@ -51,8 +53,7 @@ pollevents(s::Screen)   = pollevents(s.canvas)
 waitevents(s::Screen)   = waitevents(s.canvas)
 
 function free!(s::Screen)
-    s.canvas = destroy!(s.canvas)
-    return s
+    free!(s.canvas)
 end
 
 callback(s::Screen, cb::Symbol) = callback(s.canvas, cb)

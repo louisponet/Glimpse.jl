@@ -5,12 +5,13 @@ mutable struct Diorama
     name     ::Symbol
     scene    ::Scene
     screen   ::Union{Screen, Nothing}
-    pipeline ::Union{Pipeline, Nothing}
+    pipeline ::Union{Vector{Renderpass}, Nothing}
     loop     ::Union{Task, Nothing}
     function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
         dio = new(name, scene, screen, pipeline, nothing)
         makecurrentdio(dio)
         expose(dio; kwargs...)
+        finalizer(free!, dio)
         return dio
     end
 end
@@ -24,7 +25,7 @@ Diorama(name::Symbol, scene::Scene, screen::Screen; kwargs...) = Diorama(name, s
 add!(dio::Diorama, renderable::Renderable) = add!(dio.scene, renderable)
 add!(dio::Diorama, light::Light) = add!(dio.scene, light)
 
-function set!(dio::Diorama, pipeline::Pipeline)
+function set!(dio::Diorama, pipeline::Vector{Renderpass})
     dio.pipeline = pipeline
     register_callbacks(pipeline, dio.screen.canvas)
 end
@@ -61,7 +62,7 @@ function renderloop(dio, framerate = 1/60)
     free!(dio)
 end
 
-function expose(dio::Diorama; kwargs...)
+function expose(dio::Diorama;  kwargs...)
     if dio.loop == nothing
         dio.screen = dio.screen == nothing ? Screen(dio.name; kwargs...) : raise(dio.screen)
         register_callbacks(dio)
@@ -73,7 +74,7 @@ end
 
 function register_callbacks(dio::Diorama)
     register_callbacks(dio.scene.camera, dio.screen.canvas)
-    dio.pipeline != nothing && register_callbacks(dio.pipeline, dio.screen.canvas)
+    dio.pipeline != nothing && register_callbacks.(dio.pipeline, (dio.screen.canvas, ))
 end
 
 isrendering(dio::Diorama) = dio.loop != nothing

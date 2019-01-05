@@ -21,16 +21,17 @@ include("canvas.jl")
 include("globals.jl")
 include("screen.jl")
 include("shader.jl")
+export default_shaders, transparency_shaders, peeling_shaders, compositing_shaders
 include("program.jl")
 include("camera.jl")
 include("light.jl")
-include("renderpass.jl")
 include("renderable.jl")
 include("scene.jl")
-include("pipeline.jl")
+include("renderpass.jl")
 include("diorama.jl")
 export windowsize, pixelsize
-include("defaults/defaults.jl")
+include("geometries.jl")
+export sphere, cylinder, rectangle, cone, arrow
 #GLAbstraction exports
 
 #package exports, types & enums
@@ -40,7 +41,8 @@ export context_renderpass, windowsize
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-        draw, current_context, renderloop, add!, expose, center!, darken!
+        draw, current_context, renderloop, add!, expose, center!, darken!,
+        destroy_current_context
 
 export set_uniforms!
 

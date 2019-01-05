@@ -104,8 +104,53 @@ end
 gluniform(location::Integer, x::Int) = gluniform(location, GLint(x))
 gluniform(location::Integer, x::UInt) = gluniform(location, GLuint(x))
 gluniform(location::Integer, x::AbstractFloat) = gluniform(location, GLfloat(x))
+
+#----------------- Composite OpenGL Calls -------------#
+const none = !any
+
+function glEnableDepth(f::Function)
+    glEnable(GL_DEPTH_TEST)
+    if f == all
+        glDepthFunc(GL_ALWAYS)
+    elseif f == none
+        glDepthFunc(GL_NEVER)
+    elseif f == <
+        glDepthFunc(GL_LESS)
+    elseif f == <=
+        glDepthFunc(GL_LEQUAL)
+    elseif f == >
+        glDepthFunc(GL_GREATER)
+    elseif f == >=
+        glDepthFunc(GL_GEQUAL)
+    elseif f == ==
+        glDepthFunc(GL_EQUAL)
+    elseif f == !=
+        glDepthFunc(GL_NOTEQUAL)
+    else
+        @error "Function $f has no OpenGL DepthFunc equivalent."
+    end
+end
+
+glDisableDepth() = glDisable(GL_DEPTH_TEST)
+
+function glEnableCullFace(s::Symbol)
+    glEnable(GL_CULL_FACE)
+    if s == :front
+        glCullFace(GL_FRONT)
+    elseif s == :back
+        glCullFace(GL_BACK)
+    elseif s == :front_back
+        glCullFace(GL_FRONT_AND_BACK)
+    else
+        @error "Symbol $s has no OpenGL CullFace equivalent."
+    end
+end
+
+glDisableCullFace() = glDisable(GL_CULL_FACE)
+
 #----------------GeometryTypes-------------------------#
 const Area = SimpleRectangle
 Base.size(area::Area) = (area.w, area.h)
 
 #----------------------GLFW----------------------------#
+destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
