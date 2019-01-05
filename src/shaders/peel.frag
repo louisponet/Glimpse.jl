@@ -48,6 +48,7 @@ void main () {
 
     // out_color = vec4(0.1, 0.0, 0.0, 0.8);
     out_color = fragcolor;
+    // out_color.r = gl_FragCoord.z;
     if(!first_pass){
         vec2 tex_coord = vec2(float(gl_FragCoord.x) / canvas_width, float(gl_FragCoord.y) / canvas_height);
         float max_depth = texture(depth_texture, tex_coord).r;

@@ -43,7 +43,6 @@ mutable struct Camera{Kind, Dim, T}
 
         viewm = lookatmat(eyepos, lookat, up)
         projm = projmat(Kind, area, near, far, fov)
-
         new{Kind, Dim, T}(eyepos, lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0))
     end
 end
@@ -183,7 +182,7 @@ const perspective_defaults = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
                                                :area   => Area(0,0,standard_screen_resolution()...),
                                                :fov    => 42f0,
                                                :near   => 0.1f0,
-                                               :far    => 100f0,
+                                               :far    => 300f0,
                                                :rotation_speed    => 0.01f0,
                                                :translation_speed => 0.19f0)
 const orthographic_defaults = copy(perspective_defaults)

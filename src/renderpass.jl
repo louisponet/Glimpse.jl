@@ -169,8 +169,8 @@ function (rp::Renderpass{:peel})(scene::Scene)
     set_uniform(program, :canvas_height, size(rp.targets[1])[2])
 
     glEnable(GL_DEPTH_TEST)
+    glEnable(GL_LEQUAL)
     glDisable(GL_BLEND)
-    # glDisable(GL_CULL_FACE)
 
     for i=1:length(rp.targets)
         target = rp.targets[i]
@@ -180,7 +180,8 @@ function (rp::Renderpass{:peel})(scene::Scene)
             set_uniform(program, :depth_texture, (0, depth_attachment(rp.targets[i-1])))
         end
         bind(target)
-        clear!(target)
+        # clear!(target)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         render.((rp,), scene.renderables)
     end
 end
@@ -189,19 +190,28 @@ function (rp::Renderpass{:composite})(scene::Scene)
     target  = rp.targets[end]
     program = rp.program
     bind(target)
+    glBindVertexArray(0);
     clear!(target)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glDepthFunc(GL_ALWAYS) #TODO: This can probably go
 
-
+    # glEnable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
     fullscreenvao = compositing_vertexarray(program)
     bind(fullscreenvao)
     for i=length(rp.targets)-1:-1:1
         tex_target = rp.targets[i]
+        println(color_attachment(tex_target, 1))
         set_uniform(program, :color_texture, (0, color_attachment(tex_target, 1)))
         set_uniform(program, :depth_texture, (1, depth_attachment(tex_target)))
         draw(fullscreenvao)
     end
+    # for i=1
+    #     tex_target = rp.targets[i]
+    #     set_uniform(program, :color_texture, (0, color_attachment(tex_target, 1)))
+    #     set_uniform(program, :depth_texture, (1, depth_attachment(tex_target)))
+    #     draw(fullscreenvao)
+    # end
     unbind(fullscreenvao)
 end
