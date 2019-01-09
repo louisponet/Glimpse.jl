@@ -133,7 +133,7 @@ function buttonpress_event(cam::Camera, button)
             wasd_event(cam, button)
         elseif button[1] == Int(KEY_Q)
             cam.fov -= 1
-            cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 100f0)
+            cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 300f0)
         end
     end
 end

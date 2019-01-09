@@ -67,7 +67,6 @@ function center!(sc::Scene)
     end
     center /= length(sc.renderables)
     sc.camera.lookat = center
-    # sc.camera.eyepos = Vec3f0((translmat(center) * Vec4f0(sc.camera.eyepos...,1))[1:3]...)
     update!(sc.camera)
 end
 

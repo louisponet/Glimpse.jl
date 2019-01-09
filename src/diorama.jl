@@ -88,8 +88,12 @@ function makecurrentdio(x)
     currentdio[] = x
 end
 
+renderables(dio::Diorama) = isempty(dio.scene.renderables) ? Renderable[] : renderables(dio.scene)
 
 darken!(dio::Diorama, percentage) = darken!(dio.scene, percentage)
 
 windowsize(dio::Diorama) = windowsize(dio.screen)
+
 pixelsize(dio::Diorama)  = (windowsize(dio)...,)
+
+center!(dio::Diorama)    = dio.scene!=nothing && center!(dio.scene)

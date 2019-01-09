@@ -87,8 +87,15 @@ function free!(r::Renderable)
     end
 end
 
-function set_uniforms!(renderable, uniforms::Pair{Symbol, <:Any}...)
+function set_uniforms!(renderable::Renderable, uniforms::Pair{Symbol, <:Any}...)
     for (u, v) in uniforms
         renderable.uniforms[u] = v
     end
+end
+
+function render(renderable::Renderable, program::Program)
+    bind(renderable)
+    set_uniforms(program, renderable)
+    draw(renderable)
+    unbind(renderable)
 end

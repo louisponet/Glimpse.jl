@@ -8,3 +8,5 @@ function separate!(f, A::AbstractVector{T}) where T
     trues = f.(A)
     return A[trues], deleteat!(A, trues)
 end
+
+fillmutable(mutable, size::Int) = size==1 ? [mutable] : [mutable ; [deepcopy(mutable) for i=2:size]]

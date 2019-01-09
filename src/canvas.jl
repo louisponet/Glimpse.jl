@@ -1,5 +1,5 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
-import GLAbstraction: bind, swapbuffers, clear!, free!
+import GLAbstraction: bind, swapbuffers, clear!, free!, draw
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
 
 #TODO Framebuffer context
@@ -117,6 +117,7 @@ function free!(c::Canvas)
     end
 end
 bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+draw(c::Canvas)       = nothing
 nativewindow(c::Canvas) = c.native_window
 
 Base.size(canvas::Canvas) = size(canvas.area)
