@@ -149,8 +149,47 @@ end
 glDisableCullFace() = glDisable(GL_CULL_FACE)
 
 #----------------GeometryTypes-------------------------#
+import GeometryTypes: vertices, normals, faces, decompose, normals
+
 const Area = SimpleRectangle
 Base.size(area::Area) = (area.w, area.h)
+
+abstract type AbstractGlimpseMesh end
+
+struct BasicMesh{D, T, FD, FT} <: AbstractGlimpseMesh
+    vertices ::Vector{Vec{D, T}}
+    faces    ::Vector{Face{FD, FT}}
+    normals  ::Vector{Vec{D, T}}
+end
+BasicMesh(verts::Vector{Point{D, T}}, faces, normals::Vector{Point{D, T}}) where {D, T} =
+    BasicMesh(Vec{D, T}.(verts), faces, Vec{D, T}.(normals))
+function BasicMesh(geometry::AbstractGeometry{D, T}, ft=Face{3, Int}) where {D, T}
+    vertices = decompose(Point{D, T}, geometry)
+    faces    = decompose(ft, geometry)
+    norms    = normals(vertices, faces)
+    return BasicMesh(vertices, faces, norms)
+end
+
+function BasicMesh(geometry::HyperSphere{D, T}, nfacets=24, ft=Face{3, Int}) where {D, T}
+    vertices = decompose(Point{D, T}, geometry, nfacets)
+    faces    = decompose(ft, geometry, nfacets)
+    norms    = normals(vertices, faces)
+    return BasicMesh(vertices, faces, norms)
+end
+
+basicmesh(mesh::BasicMesh)   = mesh
+vertices(mesh::AbstractGlimpseMesh) = basicmesh(mesh).vertices
+normals(mesh::AbstractGlimpseMesh)  = basicmesh(mesh).normals
+faces(mesh::AbstractGlimpseMesh)    = basicmesh(mesh).faces
+
+struct AttributeMesh{D, T, FD, FT, AT <: NamedTuple} <: AbstractGlimpseMesh
+    basic      ::BasicMesh{D, T, FD, FT}
+    attributes ::AT
+end
+
+AttributeMesh(args...; attributes...) =
+    AttributeMesh(BasicMesh(args...), NamedTuple{keys(attributes)}(values(attributes)))
+basicmesh(mesh::AttributeMesh) = mesh.basic
 
 #----------------------GLFW----------------------------#
 destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())

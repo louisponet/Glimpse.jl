@@ -235,7 +235,7 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
     peeling_targets     = [rp.targets[:peel1], rp.targets[:peel2]]
     context_target      = rp.targets[:context]
     compositing_program = rp.extra_programs[:composite]
-    fullscreenvao       = compositing_vertexarray(compositing_program)
+    fullscreenvao       = context_target.fullscreenvao
     bind(colorblender)
     draw(colorblender)
     clear!(colorblender, context_target.background)
@@ -252,7 +252,7 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
 
     set_uniform(peeling_program, :first_pass, false)
 
-    num_passes = 5
+    num_passes = 3
     for layer=1:num_passes
         currid = rem1(layer, 2)
         currfbo = peeling_targets[currid]
@@ -264,10 +264,6 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
         # clear!(currfbo)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         bind(peeling_program)
-        set_uniform(peeling_program, :first_pass, false)
-        set_scene_uniforms(peeling_program, scene)
-        set_uniform(peeling_program, :canvas_width, canvas_width)
-        set_uniform(peeling_program, :canvas_height, canvas_height)
         glDisable(GL_BLEND)
         glEnable(GL_DEPTH_TEST)
         set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
@@ -278,7 +274,6 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
         draw(colorblender)
 
         glDisable(GL_DEPTH_TEST)
-        # glDepthFunc(GL_ALWAYS)
         glEnable(GL_BLEND)
         glBlendEquation(GL_FUNC_ADD)
         glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA)
@@ -301,5 +296,6 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
     # set_uniform(compositing_program, :color_texture, (0, color_attachment(peeling_targets[1], 1)))
     bind(fullscreenvao)
     draw(fullscreenvao)
+    glFlush()
 
 end

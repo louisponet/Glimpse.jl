@@ -99,3 +99,14 @@ function render(renderable::Renderable, program::Program)
     draw(renderable)
     unbind(renderable)
 end
+#---------------------- New renderables ---------------- #
+mutable struct MeshRenderable{T, MT<:AbstractGlimpseMesh} #D for dimensions
+    renderee    ::T #the original type
+    mesh        ::MT
+    renderpasses::Vector{Symbol}
+end
+
+MeshRenderable(renderee, renderpasses::Symbol...) =
+    MeshRenderable(renderee, BasicMesh(renderee), [renderpasses...])
+MeshRenderable(renderee, renderpasses::Symbol...; attributes...) =
+    MeshRenderable(renderee, AttributeMesh(renderee; attributes...))

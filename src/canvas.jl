@@ -38,6 +38,7 @@ mutable struct Canvas <: AbstractContext
     native_window ::GLFW.Window
     background    ::Colorant
     callbacks     ::Dict{Symbol, Any}
+	fullscreenvao ::VertexArray
 	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
 		obj = new(name, id, area, nw, background, callback_dict)
 		finalizer(free!, obj)
@@ -94,6 +95,7 @@ end
 function make_current(c::Canvas)
     GLFW.MakeContextCurrent(c.native_window)
     set_context!(c)
+	c.fullscreenvao=fullscreen_vertexarray()
 end
 
 function Base.isopen(canvas::Canvas)
@@ -113,6 +115,7 @@ waitevents(c::Canvas) = GLFW.WaitEvents()
 function free!(c::Canvas)
 	if is_current_context(c)
 		GLFW.DestroyWindow(c.native_window)
+		free!(c.fullscreenvao)
         clear_context!()
     end
 end
