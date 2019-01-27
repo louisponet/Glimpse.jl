@@ -5,14 +5,14 @@ import GLAbstraction: free!
 #TODO: finalizer free!
 mutable struct Scene
     name::Symbol
-    renderables::Vector{<:Renderable}
+    renderables::Vector{<:MeshRenderable}
     camera::Camera
     lights::Vector{<:Light}
 end
-function Scene(name::Symbol, renderables::Vector{<:Renderable})
+function Scene(name::Symbol, renderables::MeshRenderable...)
     dim = 2
     for r in renderables
-        dim = eltype(r)[1] > dim ? eltype(r)[1] : dim
+        dim = eltypes(meshtype(r))[2] > dim ? eltypes(meshtype(r))[2] : dim
     end
     area = Area(0, 0, standard_screen_resolution()...)
     if dim == 2
@@ -20,10 +20,10 @@ function Scene(name::Symbol, renderables::Vector{<:Renderable})
     elseif dim == 3
         camera = Camera{perspective}()
     end
-    return Scene(name, renderables, camera, Light[])
+    return Scene(name, [renderables...], camera, Light[])
 end
-Scene(; kwargs...) = Scene(:Glimpse, Renderable[], Camera{perspective}(; kwargs...), Light[])
-
+Scene(; kwargs...) = Scene(:Glimpse, MeshRenderable[], Camera{perspective}(; kwargs...), Light[])
+renderables(scene::Scene) = scene.renderables
 function free!(sc::Scene)
     for r in sc.renderables
         free!(r)
@@ -35,9 +35,8 @@ end
 Adds a renderable to the scene. If the copy flag is true the renderable will be deepcopied.
 The index of the renderable will be set to it's index inside the renderables list of the Scene.
 """
-function add!(sc::Scene, renderable::Renderable, _copy=false)
+function add!(sc::Scene, renderable::MeshRenderable, _copy=false)
     rend = _copy ? deepcopy(renderable) : renderable
-    rend.index = length(sc.renderables) + 1
     push!(sc.renderables, rend)
 end
 

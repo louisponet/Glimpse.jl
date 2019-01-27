@@ -25,17 +25,18 @@ export default_shaders, transparency_shaders, peeling_shaders, compositing_shade
 include("program.jl")
 include("camera.jl")
 include("light.jl")
+include("meshes.jl")
 include("renderable.jl")
 include("scene.jl")
 include("renderpass.jl")
 include("diorama.jl")
-export windowsize, pixelsize
+export windowsize, pixelsize, present
 include("geometries.jl")
 export sphere, cylinder, rectangle, cone, arrow
 #GLAbstraction exports
 
 #package exports, types & enums
-export Screen, Scene, Renderable, Camera, Diorama, Area, PointLight, Renderpass, Pipeline
+export Screen, Scene, MeshRenderable, Camera, Diorama, Area, PointLight, Renderpass, Pipeline
 export pixel, orthographic, perspective
 export context_renderpass, windowsize
 

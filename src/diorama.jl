@@ -7,8 +7,9 @@ mutable struct Diorama
     screen   ::Union{Screen, Nothing}
     pipeline ::Union{Vector{Renderpass}, Nothing}
     loop     ::Union{Task, Nothing}
+    reupload ::Bool
     function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
-        dio = new(name, scene, screen, pipeline, nothing)
+        dio = new(name, scene, screen, pipeline, nothing, true)
         makecurrentdio(dio)
         expose(dio; kwargs...)
         finalizer(free!, dio)
@@ -21,21 +22,6 @@ Diorama(scene::Scene; kwargs...) = Diorama(:Glimpse, scene, nothing, nothing; kw
 Diorama(scene::Scene, screen::Screen; kwargs...) = Diorama(:Glimpse, scene, screen, nothing; kwargs...)
 Diorama(name::Symbol, scene::Scene; kwargs...) = Diorama(name, scene, nothing, nothing; kwargs...)
 Diorama(name::Symbol, scene::Scene, screen::Screen; kwargs...) = Diorama(name, scene, screen, nothing; kwargs...)
-
-add!(dio::Diorama, renderable::Renderable) = add!(dio.scene, renderable)
-add!(dio::Diorama, light::Light) = add!(dio.scene, light)
-
-function set!(dio::Diorama, pipeline::Vector{Renderpass})
-    dio.pipeline = pipeline
-    register_callbacks(pipeline, dio.screen.canvas)
-end
-
-"""
-Empties the scene that is linked to the diorama, i.e. clearing all the renderables.
-"""
-Base.empty!(dio::Diorama) = empty!(dio.scene)
-
-set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
 
 function free!(dio::Diorama)
     dio.loop     = nothing
@@ -50,6 +36,10 @@ function renderloop(dio, framerate = 1/60)
     scene    = dio.scene
     while isopen(dio.screen)
         # clear!(screen.canvas)
+        if dio.reupload
+            upload(dio)
+            dio.reupload = false
+        end
         tm = time()
         pollevents(dio.screen)
         if dio.pipeline != nothing
@@ -88,7 +78,7 @@ function makecurrentdio(x)
     currentdio[] = x
 end
 
-renderables(dio::Diorama) = isempty(dio.scene.renderables) ? Renderable[] : renderables(dio.scene)
+renderables(dio::Diorama) = isempty(dio.scene.renderables) ? MeshRenderable[] : renderables(dio.scene)
 
 darken!(dio::Diorama, percentage) = darken!(dio.scene, percentage)
 
@@ -97,3 +87,38 @@ windowsize(dio::Diorama) = windowsize(dio.screen)
 pixelsize(dio::Diorama)  = (windowsize(dio)...,)
 
 center!(dio::Diorama)    = dio.scene!=nothing && center!(dio.scene)
+
+function upload(dio::Diorama)
+    for rp in dio.pipeline
+        for renderable in renderables(dio.scene)
+            if !isuploaded(renderable, rp)
+                upload(renderable, rp)
+            end
+        end
+    end
+end
+
+present(dio::Diorama, object, args...; kwargs...) = add!(dio, MeshRenderable(object, args...; kwargs...))
+
+add!(dio::Diorama, renderable::MeshRenderable; reupload=true) =
+    (add!(dio.scene, renderable); dio.reupload = reupload)
+
+add!(dio::Diorama, light::Light) = add!(dio.scene, light)
+
+function set!(dio::Diorama, pipeline::Vector{Renderpass}, reupload=true)
+    dio.pipeline = pipeline
+    register_callbacks(pipeline, dio.screen.canvas)
+    dio.reupload = true
+end
+
+"""
+Empties the scene that is linked to the diorama, i.e. clearing all the renderables.
+"""
+function clear_renderables!(dio::Diorama)
+    clear_renderables!(dio.scene)
+    for rp in dio.pipeline
+        empty!(rp.renderables)
+    end
+end
+
+set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)

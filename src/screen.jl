@@ -1,5 +1,5 @@
 import ColorTypes: Colorant
-import GLAbstraction: free!, bind
+import GLAbstraction: free!, bind, clear!
 
 const screen_id_counter = Base.RefValue(0)
 # start from new and hope we don't display all displays at once.
