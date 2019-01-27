@@ -15,6 +15,5 @@ void main () {
     fragcolor = color;
     fragnormal = normalize((modelmat * vec4(normals, 0.0f)).xyz);
     world_pos  = (modelmat * vec4(vertices, 1.0f)).xyz;
-    // gl_Position = projview  * vec4(position,1.0f);
     gl_Position = projview * modelmat * vec4(vertices, 1.0f);
 }

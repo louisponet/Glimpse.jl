@@ -5,7 +5,7 @@ import GeometryTypes: Sphere, decompose, normals
 function Sphere(complexity=2)
 	X = .525731112f0
     Z = .850650808f0
-	vertices = Vec3f0[(-X,0,Z), (X,0,Z), (-X,0,-Z), (X,0,-Z),
+	vertices = Point3f0[(-X,0,Z), (X,0,Z), (-X,0,-Z), (X,0,-Z),
 		(0,Z,X), (0,Z,-X), (0,-Z,X), (0,-Z,-X),
 		(Z,X,0), (-Z,X,0), (Z,-X,0), (-Z,-X,0)]
 
@@ -20,10 +20,10 @@ function Sphere(complexity=2)
 end
 
 function subdivide(vertices, faces, level)
-    outvertices = Vec3f0[]
+    outvertices = Point3f0[]
     outfaces    = Face{3, Int32}[]
     newfaces = Face{3, Int32}[]
-    newvertices = Vec3f0[]
+    newvertices = Point3f0[]
     if level > 0
     	for face in faces
     		v1 = vertices[face[1] + 1]
@@ -46,13 +46,13 @@ function subdivide(vertices, faces, level)
     return vertices, faces
 end
 
-function sphere(dio::Diorama, pos, radius, complexity=2, name="sphere", attributes...; uniforms...)
-    sphpos = convert(Vec3f0, pos)
+function sphere(dio::Diorama, pos, radius, complexity=2, attributes_...; uniforms...)
+    sphpos = convert(Point3f0, pos)
     sphrad = convert(f32, radius)
-    modelmat = translmat(sphpos) * scalemat(Vec3f0(sphrad,sphrad,sphrad))
+    modelmat = translmat(sphpos) * scalemat(Point3f0(sphrad,sphrad,sphrad))
 
     verts, norms, faces = Sphere(complexity)
-    atdict = SymAnyDict(attributes)
+    atdict = SymAnyDict(attributes_)
     unidict = SymAnyDict(uniforms)
     if haskey(unidict, :color)
         colors = fill(pop!(unidict, :color), length(verts))
@@ -64,7 +64,8 @@ function sphere(dio::Diorama, pos, radius, complexity=2, name="sphere", attribut
         colors = fill(RGB{f32}(0,0,0), length(verts))
     end
     unidict[:modelmat] = modelmat
-    sphrend = Renderable(0, name, :vertices => verts, :faces=> faces, :normals => norms, :color => colors, atdict...; unidict...)
+    mesh = AttributeMesh((color = colors,), BasicMesh(verts, faces, norms))
+    sphrend = MeshRenderable(:sphere, mesh, unidict, Dict(:default=>false))
     add!(dio, sphrend)
     return sphrend
 end
@@ -74,11 +75,11 @@ end
 loadobj(filename::String) = load(joinpath(@__DIR__, "../../assets/obj", filename))
 
 function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attributes...; uniforms...)
-    startp = convert(Vec3f0, startpos)
-    endp   = convert(Vec3f0, endpos)
+    startp = convert(Point3f0, startpos)
+    endp   = convert(Point3f0, endpos)
     cylrad = convert(f32, radius)
     rotmat = rotate(startp, endp)
-    scalm  = scalemat(Vec3f0(cylrad, cylrad, norm(endp-startp)))
+    scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp-startp)))
     tmat   = translmat(startp)
 
     modelmat =  tmat * rotmat * scalm
@@ -94,16 +95,16 @@ function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attri
     end
     unidict[:modelmat] = modelmat
 
-    cylrend = Renderable(0, name, cylmesh, atdict...; unidict...)
+    cylrend = MeshRenderable(0, name, cylmesh, atdict...; unidict...)
     add!(dio, cylrend)
     return cylrend
 end
 
 function rectangle(dio::Diorama, startpos, endpos, widths, name="rectangle", attributes...; uniforms...)
-    startp = convert(Vec3f0, startpos)
-    endp   = convert(Vec3f0, endpos)
+    startp = convert(Point3f0, startpos)
+    endp   = convert(Point3f0, endpos)
     rotmat = rotate(startp, endp)
-    scalm  = scalemat(Vec3f0(widths[1], widths[2], norm(endp-startp)))
+    scalm  = scalemat(Point3f0(widths[1], widths[2], norm(endp-startp)))
     tmat   = translmat(startp)
 
     modelmat = tmat * rotmat * scalm
@@ -118,17 +119,17 @@ function rectangle(dio::Diorama, startpos, endpos, widths, name="rectangle", att
         atdict[:color] = fill(RGB{f32}(0,0,0), length(cubmesh.vertices))
     end
     unidict[:modelmat] = modelmat
-    cubrend = Renderable(0, name, cubmesh, atdict...; unidict...)
+    cubrend = MeshRenderable(0, name, cubmesh, atdict...; unidict...)
     add!(dio, cubrend)
     return cubrend
 end
 
 function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...; uniforms...)
-    startp = convert(Vec3f0, startpos)
-    endp   = convert(Vec3f0, endpos)
+    startp = convert(Point3f0, startpos)
+    endp   = convert(Point3f0, endpos)
     cylrad = convert(f32, radius)
     rotmat = rotate(startp, endp)
-    scalm  = scalemat(Vec3f0(cylrad, cylrad, norm(endp-startp)))
+    scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp-startp)))
     tmat   = translmat(startp)
 
     modelmat = tmat * rotmat * scalm
@@ -144,17 +145,17 @@ function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...
     end
     unidict[:modelmat] = modelmat
 
-    cylrend = Renderable(0, name, cylmesh, atdict...; unidict...)
+    cylrend = MeshRenderable(0, name, cylmesh, atdict...; unidict...)
     add!(dio, cylrend)
     return cylrend
 end
 
 function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name="arrow", headratio=1/4, attributes...;uniforms...)
-    startp = convert(Vec3f0, startpos)
-    endp   = convert(Vec3f0, endpos)
+    startp = convert(Point3f0, startpos)
+    endp   = convert(Point3f0, endpos)
 
     rotmat = rotate(startp, endp)
-    scalm  = scalemat(Vec3f0(rad1, rad1, norm(endp-startp)))
+    scalm  = scalemat(Point3f0(rad1, rad1, norm(endp-startp)))
     tmat   = translmat(startp)
     modelmat = tmat * rotmat * scalm
     conemesh = loadobj("cone.obj")
@@ -163,12 +164,12 @@ function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name="arrow", headrat
     cyllen = norm(endp - startp) * (1-headratio)
     conelen = norm(endp - startp) * headratio
 
-    conetrans = translmat(Vec3f0(0, 0, cyllen))
-    conescale = scalemat(Vec3f0(rad2/rad1, rad2/rad1, conelen))
+    conetrans = translmat(Point3f0(0, 0, cyllen))
+    conescale = scalemat(Point3f0(rad2/rad1, rad2/rad1, conelen))
     conemat = conetrans * conescale
-    coneverts = [Vec3f0((conemat * Vec4f0(v[1],v[2],v[3],1.0f0))[1:3]...) for v in conemesh.vertices]
+    coneverts = [Point3f0((conemat * Vec4f0(v[1],v[2],v[3],1.0f0))[1:3]...) for v in conemesh.vertices]
     conefaces = [v .+ Int32(length(cylmesh.vertices)+1) for v in conemesh.faces]
-    allverts = Vec3f0.([cylmesh.vertices;coneverts])
+    allverts = Point3f0.([cylmesh.vertices;coneverts])
     allnorms = [cylmesh.normals;conemesh.normals]
     allfaces = Face{3, Int32}.([cylmesh.faces;conefaces])
 
@@ -185,7 +186,7 @@ function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name="arrow", headrat
     atdict[:normals] = allnorms
     atdict[:faces] = allfaces
     mesh = homogenousmesh(atdict)
-    arrowrend = Renderable(0, name, mesh; unidict...)
+    arrowrend = MeshRenderable(0, name, mesh; unidict...)
     add!(dio, arrowrend)
     return arrowrend
 end

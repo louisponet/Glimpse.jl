@@ -2,6 +2,9 @@ import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractCon
 import GLAbstraction: bind, swapbuffers, clear!, free!, draw
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
 
+const Area = SimpleRectangle
+Base.size(area::Area) = (area.w, area.h)
+
 #TODO Framebuffer context
 """
 Standard window hints for creating a plain context without any multisampling

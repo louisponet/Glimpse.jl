@@ -10,6 +10,8 @@ function scalemat(s::Vec{3, T}) where T
     )
 end
 
+scalemat(s::Point{3, T}) where T = scalemat(convert(Vec{3, T}, s))
+
 translmat_x(x::T) where {T} = translmat(Vec{3, T}(x, 0, 0))
 translmat_y(y::T) where {T} = translmat(Vec{3, T}(0, y, 0))
 translmat_z(z::T) where {T} = translmat(Vec{3, T}(0, 0, z))
@@ -23,6 +25,7 @@ function translmat(t::Vec{3, T}) where T
         t[1],t[2],t[3],T1,
     )
 end
+translmat(t::Point{3, T}) where T = translmat(convert(Vec{3, T}, t))
 
 function rotate(a::T, axis::Vec{3, T}) where T
     axis = normalize(axis)
