@@ -86,10 +86,6 @@ function Canvas(name, id; kwargs...)
     return Canvas(name, id, area, nw, background, callback_dict)
 end
 
-function clear_context!()
-    GLOBAL_CONTEXT = Base.RefValue{Canvas}()
-end
-
 function swapbuffers(c::Canvas)
     if c.native_window.handle == C_NULL
         warn("Native Window handle of canvas $(c.name) == C_NULL!")
@@ -121,8 +117,8 @@ waitevents(c::Canvas) = GLFW.WaitEvents()
 
 function free!(c::Canvas)
 	if is_current_context(c)
-		GLFW.DestroyWindow(c.native_window)
 		free!(c.fullscreenvao)
+		GLFW.DestroyWindow(c.native_window)
         clear_context!()
     end
 end

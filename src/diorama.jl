@@ -27,7 +27,6 @@ function free!(dio::Diorama)
     dio.loop     = nothing
     free!(dio.screen)
     free!.(dio.pipeline)
-    free!(dio.scene)
 end
 
 function renderloop(dio, framerate = 1/60)

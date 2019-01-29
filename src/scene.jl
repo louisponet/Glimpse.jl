@@ -24,12 +24,6 @@ function Scene(name::Symbol, renderables::MeshRenderable...)
 end
 Scene(; kwargs...) = Scene(:Glimpse, MeshRenderable[], Camera{perspective}(; kwargs...), Light[])
 renderables(scene::Scene) = scene.renderables
-function free!(sc::Scene)
-    for r in sc.renderables
-        free!(r)
-    end
-    return sc
-end
 
 """
 Adds a renderable to the scene. If the copy flag is true the renderable will be deepcopied.
