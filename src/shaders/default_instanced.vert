@@ -2,9 +2,9 @@
 layout(location = 0) in vec3 vertices;
 layout(location = 1) in vec3 normals;
 layout(location = 2) in vec4 color;
-layout(location = 3) in mat4 modelmat;
-layout(location = 4) in float  specpow;
-layout(location = 5) in float  specint;
+layout(location = 3) in float specpow;
+layout(location = 4) in float specint;
+layout(location = 5) in mat4 modelmat;
 
 uniform mat4 projview;
 out vec3 fragnormal;
@@ -19,4 +19,5 @@ void main () {
     fragnormal = normalize((modelmat * vec4(normals, 0.0f)).xyz);
     world_pos  = (modelmat * vec4(vertices, 1.0f)).xyz;
     gl_Position = projview * modelmat * vec4(vertices, 1.0f);
+    // gl_Position = projview * vec4(vertices, 1.0f)* modelmat;
 }

@@ -22,11 +22,9 @@ function BasicMesh(geometry::AbstractGeometry{D, T}, ft=Face{3, GLint}) where {D
     return BasicMesh(vertices, faces, norms)
 end
 
-function BasicMesh(geometry::HyperSphere{D, T}, nfacets=24, ft=Face{3, GLint}) where {D, T}
-    vertices = decompose(Point{D, T}, geometry, nfacets)
-    faces    = decompose(ft, geometry, nfacets)
-    norms    = normals(vertices, faces)
-    return BasicMesh(vertices, faces, norms)
+function BasicMesh(geometry::HyperSphere, complexity=2)
+    vertices, normals, faces = generate_sphere(complexity)
+    return BasicMesh(vertices, faces, normals)
 end
 Base.eltype(::Type{BasicMesh{D, T, FD, FT}}) where {D, T, FD, FT} = (D, T, FD, FT)
 Base.eltype(mesh::BM) where {BM <: BasicMesh} = eltype(BM)
@@ -86,4 +84,4 @@ function generate_buffers(mesh::AttributeMesh{AT}, program::Program) where AT
 end
 
 VertexArray(mesh::AbstractGlimpseMesh, program::Program) =
-    VertexArray(generate_buffers(mesh, program), faces(mesh))
+    VertexArray(generate_buffers(mesh, program), faces(mesh) .- GLint(1))

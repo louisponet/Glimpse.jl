@@ -30,6 +30,14 @@ MeshRenderable(renderee, renderpasses::Vector{Symbol}, args...; uniforms...) =
 MeshRenderable(renderee, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...) =
     MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), UniformDict(uniforms), RenderpassDict(renderpasses) , false)
 
+function MeshRenderable(renderee::HyperSphere, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...)
+    unis = UniformDict(uniforms)
+    if !haskey(unis, :modelmat)
+        unis[:modelmat] = translmat(renderee.center) * scalemat(Point3f0(renderee.r))
+    end
+    MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), unis, RenderpassDict(renderpasses) , false)
+end
+
 function InstancedMeshRenderable(renderee::T, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...) where T
     if haskey(INSTANCED_MESHES, T)
         mesh = INSTANCED_MESHES[T]
@@ -40,7 +48,11 @@ function InstancedMeshRenderable(renderee::T, renderpasses::Vector{Symbol}, attr
             mesh = INSTANCED_MESHES[T] = AttributeMesh(attributes, BasicMesh(renderee, args...))
         end
     end
-    return MeshRenderable(renderee, mesh, UniformDict(uniforms), RenderpassDict(renderpasses), true)
+    unis = UniformDict(uniforms)
+    if !haskey(unis, :modelmat) && T <: HyperSphere
+        unis[:modelmat] = translmat(renderee.center) * scalemat(Point3f0(renderee.r))
+    end
+    return MeshRenderable(renderee, mesh, unis, RenderpassDict(renderpasses), true)
 end
 
 RenderpassDict(renderpasses::Vector{Symbol}) = Dict([r => false for r in renderpasses])
@@ -86,10 +98,9 @@ function InstancedGLRenderable(renderables::Vector{<:MeshRenderable}, pass)
             push!(unis[k], v)
         end
     end
-
     buffers = [generate_buffers(mesh(renderables[1]), main_program(pass));
                generate_buffers(unis, main_program(pass))]
-    indices = faces(mesh(renderables[1]))
+    indices = faces(mesh(renderables[1])) .- GLint(1)
 
 # hmm using the first renderable as the source feels not quite right but fine whatever for now.
     return GLRenderable(renderables[1], VertexArray(buffers, indices, length(renderables)), NamedTuple())

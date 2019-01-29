@@ -1,5 +1,5 @@
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
-import GLAbstraction: bind, swapbuffers, clear!, free!, draw
+import GLAbstraction: bind, swapbuffers, clear!, free!, draw, exists_context, clear_context!, set_context!, GLOBAL_CONTEXT
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
 
 const Area = SimpleRectangle
@@ -84,6 +84,10 @@ function Canvas(name, id; kwargs...)
     # fbo = canvas_fbo(area, depth, fbo_color)
     # return Canvas(Symbol(name), id, area, nw, background, fbo)
     return Canvas(name, id, area, nw, background, callback_dict)
+end
+
+function clear_context!()
+    GLOBAL_CONTEXT = Base.RefValue{Canvas}()
 end
 
 function swapbuffers(c::Canvas)

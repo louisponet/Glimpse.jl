@@ -2,7 +2,7 @@ import GeometryTypes: Sphere, decompose, normals
 
 
 #-----------------------------Generated geometries------------------------#
-function Sphere(complexity=2)
+function generate_sphere(complexity=2)
 	X = .525731112f0
     Z = .850650808f0
 	vertices = Point3f0[(-X,0,Z), (X,0,Z), (-X,0,-Z), (X,0,-Z),
@@ -12,7 +12,7 @@ function Sphere(complexity=2)
 	faces = Face{3, Int32}[(1,4,0), (4,9,0), (4,5,9), (8,5,4), (1,8,4),
 	      (1,10,8), (10,3,8), (8,3,5), (3,2,5), (3,7,2),
 		(3,10,7), (10,6,7), (6,11,7), (6,0,11), (6,1,0),
-		(10,1,6), (11,0,9), (2,11,9), (5,2,9), (11,2,7)]
+		(10,1,6), (11,0,9), (2,11,9), (5,2,9), (11,2,7)] .+ 1
 
     outverts, outfaces = subdivide(vertices, faces, complexity)
 	normals = copy(outverts)
@@ -26,19 +26,19 @@ function subdivide(vertices, faces, level)
     newvertices = Point3f0[]
     if level > 0
     	for face in faces
-    		v1 = vertices[face[1] + 1]
-    		v2 = vertices[face[2] + 1]
-    		v3 = vertices[face[3] + 1]
+    		v1 = vertices[face[1]]
+    		v2 = vertices[face[2]]
+    		v3 = vertices[face[3]]
 
 			v4 = normalize((v1 + v2) / 2.0)
 			v5 = normalize((v2 + v3) / 2.0)
 			v6 = normalize((v1 + v3) / 2.0)
 
             vertlen = length(newvertices)
-            push!(newfaces, Face{3, Int32}(vertlen, vertlen + 3, vertlen + 5))
-            push!(newfaces, Face{3, Int32}(vertlen + 3, vertlen + 1, vertlen + 4))
+            push!(newfaces, Face{3, Int32}(vertlen + 1, vertlen + 4, vertlen + 6))
             push!(newfaces, Face{3, Int32}(vertlen + 4, vertlen + 2, vertlen + 5))
-            push!(newfaces, Face{3, Int32}(vertlen + 3, vertlen + 4, vertlen + 5))
+            push!(newfaces, Face{3, Int32}(vertlen + 5, vertlen + 3, vertlen + 6))
+            push!(newfaces, Face{3, Int32}(vertlen + 4, vertlen + 5, vertlen + 6))
             push!(newvertices, v1, v2, v3, v4, v5, v6)
         end
 		vertices, faces = subdivide(newvertices, newfaces, level - 1)
@@ -65,7 +65,7 @@ function sphere(dio::Diorama, pos, radius, complexity=2, attributes_...; uniform
     end
     unidict[:modelmat] = modelmat
     mesh = AttributeMesh((color = colors,), BasicMesh(verts, faces, norms))
-    sphrend = MeshRenderable(:sphere, mesh, unidict, Dict(:default=>false), false)
+    sphrend = InstancedMeshRenderable(:sphere, mesh, unidict, Dict(:default=>false), false)
     add!(dio, sphrend)
     return sphrend
 end
