@@ -169,7 +169,7 @@ function resize_event(cam::Camera, w, h)
 end
 
 function scroll_event(cam::Camera, dx, dy)
-    translation = calcforward(cam) * dy * cam.translation_speed
+    translation = calcforward(cam) * dy * cam.translation_speed * norm(cam.eyepos - cam.lookat)
     cam.eyepos += translation
     update_viewmat!(cam)
 end
