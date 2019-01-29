@@ -117,3 +117,5 @@ function clear_renderables!(dio::Diorama)
 end
 
 set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
+
+set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.scene.campera.rotation_speed = Float32(rotation_speed)

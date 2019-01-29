@@ -98,8 +98,8 @@ function InstancedGLRenderable(renderables::Vector{<:MeshRenderable}, pass)
             push!(unis[k], v)
         end
     end
-    buffers = [generate_buffers(mesh(renderables[1]), main_program(pass));
-               generate_buffers(unis, main_program(pass))]
+    buffers = [generate_buffers(mesh(renderables[1]), main_instanced_program(pass));
+               generate_buffers(unis, main_instanced_program(pass))]
     indices = faces(mesh(renderables[1])) .- GLint(1)
 
 # hmm using the first renderable as the source feels not quite right but fine whatever for now.
@@ -127,15 +127,6 @@ bind(renderable::GLRenderable)   = GLAbstraction.bind(renderable.vertexarray)
 draw(renderable::GLRenderable)   = draw(renderable.vertexarray)
 unbind(renderable::GLRenderable) = unbind(renderable.vertexarray)
 
-
-function render(renderables::Vector{GLRenderable}, program::Program)
-    for rend in renderables
-        bind(rend)
-        set_uniforms(program, rend)
-        draw(rend)
-    end
-    unbind(renderables[end])
-end
 
 function free!(r::GLRenderable)
     free!(r.vertexarray)

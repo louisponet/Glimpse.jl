@@ -21,7 +21,8 @@ include("canvas.jl")
 include("globals.jl")
 include("screen.jl")
 include("shader.jl")
-export default_shaders, default_instanced_shaders, transparency_shaders, peeling_shaders, compositing_shaders
+export default_shaders, default_instanced_shaders, transparency_shaders, peeling_shaders, compositing_shaders,
+       peeling_instanced_shaders
 include("program.jl")
 include("camera.jl")
 include("light.jl")
@@ -36,9 +37,9 @@ export sphere, cylinder, rectangle, cone, arrow
 #GLAbstraction exports
 
 #package exports, types & enums
-export Screen, Scene, MeshRenderable, Camera, Diorama, Area, PointLight, Renderpass, Pipeline
+export Screen, Scene, MeshRenderable, InstancedMeshRenderable, Camera, Diorama, Area, PointLight, Renderpass, Pipeline
 export pixel, orthographic, perspective
-export context_renderpass, windowsize
+export context_renderpass, default_renderpass, windowsize
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
@@ -46,6 +47,7 @@ export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
         destroy_current_context
 
 export set_uniforms!
+export set_rotation_speed!
 
 
 

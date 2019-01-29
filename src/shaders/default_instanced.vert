@@ -16,6 +16,8 @@ out float specPow;
 void main () {
 
     fragcolor = color;
+    specInt = specint;
+    specPow = specpow;
     fragnormal = normalize((modelmat * vec4(normals, 0.0f)).xyz);
     world_pos  = (modelmat * vec4(vertices, 1.0f)).xyz;
     gl_Position = projview * modelmat * vec4(vertices, 1.0f);

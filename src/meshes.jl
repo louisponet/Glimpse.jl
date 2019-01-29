@@ -48,7 +48,7 @@ end
 AttributeMesh(attributes, args...) =
     AttributeMesh(attributes, BasicMesh(args...))
 AttributeMesh(args...; attributes...) =
-    AttributeMesh(NamedTuple{keys(attributes)}(values(attributes)), BasicMesh(args...))
+    AttributeMesh(attributes.data, BasicMesh(args...))
 
 Base.eltype(::Type{AttributeMesh{AT, BM}}) where {AT, BM} = (AT, eltype(BM)...)
 Base.eltype(mesh::AM) where {AM <: AttributeMesh} = eltype(AM)

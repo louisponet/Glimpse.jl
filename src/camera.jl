@@ -183,8 +183,8 @@ const perspective_defaults = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
                                                :fov    => 42f0,
                                                :near   => 0.1f0,
                                                :far    => 300f0,
-                                               :rotation_speed    => 0.01f0,
-                                               :translation_speed => 0.19f0)
+                                               :rotation_speed    => 0.001f0,
+                                               :translation_speed => 0.01f0)
 const orthographic_defaults = copy(perspective_defaults)
 const pixel_defaults        = copy(perspective_defaults)
 pixel_defaults[:fov] = 0f0
