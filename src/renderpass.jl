@@ -32,7 +32,7 @@ Renderpass{name}(shaderdict::Dict{Symbol, Vector{Shader}}, targets::RenderTarget
 Renderpass(name::Symbol, args...) =
     Renderpass{name}(args...)
 
-context_renderpass(name::Symbol, shaders::Vector{Shader}) =
+context_renderpass(name::Symbol, shaderdict::Dict{Symbol, Vector{Shader}}) =
     Renderpass(name, shaders, Dict(:context=>context_framebuffer()))
 
 name(::Renderpass{n}) where n = n
@@ -40,14 +40,24 @@ main_program(rp::Renderpass) = rp.programs[:main]
 valid_uniforms(rp::Renderpass) = [uniform_names(p) for p in values(rp.programs)]
 
 # render(rp::Renderpass, args...) = rp.render(args...)
+function upload(renderables::Vector{<:MeshRenderable}, pass::Renderpass{name}) where name
+    #I'm not clear when this would ever happen but fine
+    instanced_renderables, normal_renderables = separate(isinstanced, filter(x -> !isuploaded(x, name), filter(x -> haspass(x, name), renderables)))
+    if !isempty(instanced_renderables)
+        push!(pass.renderables, InstancedGLRenderable(instanced_renderables, pass))
+    end
+    for r in instanced_renderables
+        r.renderpasses[name] = true
+    end
+    upload.(normal_renderables, (pass,))
+end
 
 function upload(rend::MeshRenderable, pass::Renderpass{name}) where name
     push!(pass.renderables, GLRenderable(rend, pass))
     rend.renderpasses[name] = true
 end
 
-isuploaded(rend::MeshRenderable, pass::Renderpass{name}) where name =
-    haskey(rend.renderpasses, name) && rend.renderpasses[name]
+isuploaded(rend::MeshRenderable, pass::Renderpass{name}) where name = isuploaded(rend, name)
 
 
 function free!(rp::Renderpass)

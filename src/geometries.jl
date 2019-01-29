@@ -65,7 +65,7 @@ function sphere(dio::Diorama, pos, radius, complexity=2, attributes_...; uniform
     end
     unidict[:modelmat] = modelmat
     mesh = AttributeMesh((color = colors,), BasicMesh(verts, faces, norms))
-    sphrend = MeshRenderable(:sphere, mesh, unidict, Dict(:default=>false))
+    sphrend = MeshRenderable(:sphere, mesh, unidict, Dict(:default=>false), false)
     add!(dio, sphrend)
     return sphrend
 end

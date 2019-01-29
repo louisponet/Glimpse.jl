@@ -21,7 +21,7 @@ include("canvas.jl")
 include("globals.jl")
 include("screen.jl")
 include("shader.jl")
-export default_shaders, transparency_shaders, peeling_shaders, compositing_shaders
+export default_shaders, default_instanced_shaders, transparency_shaders, peeling_shaders, compositing_shaders
 include("program.jl")
 include("camera.jl")
 include("light.jl")

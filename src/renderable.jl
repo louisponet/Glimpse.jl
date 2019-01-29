@@ -1,5 +1,5 @@
-import GLAbstraction: VertexArray, Buffer, Program
-import GLAbstraction: bind, draw, unbind, free!, attribute_location
+import GLAbstraction: VertexArray, Buffer, Program, BufferAttachmentInfo
+import GLAbstraction: bind, draw, unbind, free!, attribute_location, INVALID_ATTRIBUTE
 import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 
 # function MeshRenderable(index, name, mesh::H, attributes::Pair...; facelength=1, renderpasses=[:default], uniforms...) where H <: HMesh
@@ -22,17 +22,42 @@ mutable struct MeshRenderable{T, MT<:AbstractGlimpseMesh}
     mesh         ::MT
     uniforms     ::UniformDict
     renderpasses ::Dict{Symbol, Bool}
+    instanced    ::Bool
 end
 
 MeshRenderable(renderee, renderpasses::Vector{Symbol}, args...; uniforms...) =
-    MeshRenderable(renderee, BasicMesh(renderee, args...), UniformDict(uniforms), ([r => false for r in renderpasses]))
+    MeshRenderable(renderee, BasicMesh(renderee, args...), UniformDict(uniforms), RenderpassDict(renderpasses), false)
 MeshRenderable(renderee, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...) =
-    MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), UniformDict(uniforms), Dict([r => false for r in renderpasses]))
+    MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), UniformDict(uniforms), RenderpassDict(renderpasses) , false)
+
+function InstancedMeshRenderable(renderee::T, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...) where T
+    if haskey(INSTANCED_MESHES, T)
+        mesh = INSTANCED_MESHES[T]
+    else
+        if isempty(attributes)
+            mesh = INSTANCED_MESHES[T] = BasicMesh(renderee, args...)
+        else
+            mesh = INSTANCED_MESHES[T] = AttributeMesh(attributes, BasicMesh(renderee, args...))
+        end
+    end
+    return MeshRenderable(renderee, mesh, UniformDict(uniforms), RenderpassDict(renderpasses), true)
+end
+
+RenderpassDict(renderpasses::Vector{Symbol}) = Dict([r => false for r in renderpasses])
 
 uniforms(renderable::MeshRenderable) = renderable.uniforms
 Base.eltype(::Type{MeshRenderable{T, MT}}) where {T, MT} = (T, MT)
 Base.eltype(renderable::MR) where {MR <: MeshRenderable} = eltype(MR)
 meshtype(renderable::MR) where {MR <: MeshRenderable} = eltype(MR)[2]
+
+mesh(renderable::MeshRenderable) = renderable.mesh
+basicmesh(renderable::MeshRenderable) = basicmesh(mesh(renderable))
+
+isinstanced(rend::MeshRenderable) = rend.instanced
+
+haspass(rend::MeshRenderable, pass_name::Symbol) = haskey(rend.renderpasses, pass_name)
+
+isuploaded(rend::MeshRenderable, pass_name::Symbol) = rend.renderpasses[pass_name]
 
 struct GLRenderable{MR <: MeshRenderable, VT <: VertexArray, NT <: NamedTuple}
     source         ::MR
@@ -46,6 +71,39 @@ function GLRenderable(renderable::MeshRenderable, renderpass)
     unis = NamedTuple{(unisyms...,)}([uniforms(renderable)[k] for k in unisyms])
 
     return GLRenderable(renderable, vao, unis)
+end
+
+# For instanced renderables, all renderable uniforms must be in buffers to the vao
+function InstancedGLRenderable(renderables::Vector{<:MeshRenderable}, pass)
+    @assert all(mesh.(renderables) .== (mesh(renderables[1]),)) "Some renderables to be instanced do not have the same mesh."
+    if !all(keys.(uniforms.(renderables)) .== (keys(uniforms(renderables[1])),))
+        @warn "Some renderables to be instanced have uniforms that aren't present in all of them. Only the uniforms of the first one will be used."
+    end
+
+    unis = Dict{Symbol, Any}([k => [v] for (k, v) in uniforms(renderables[1])])
+    for renderable in renderables[2:end]
+        for (k, v) in uniforms(renderable)
+            push!(unis[k], v)
+        end
+    end
+
+    buffers = [generate_buffers(mesh(renderables[1]), main_program(pass));
+               generate_buffers(unis, main_program(pass))]
+    indices = faces(mesh(renderables[1]))
+
+# hmm using the first renderable as the source feels not quite right but fine whatever for now.
+    return GLRenderable(renderables[1], VertexArray(buffers, indices, length(renderables)), NamedTuple())
+end
+
+function generate_buffers(uniform_dict::UniformDict, program::Program)
+    buffers = BufferAttachmentInfo[]
+    for (k, v) in uniform_dict
+        loc = attribute_location(program, k)
+        if loc != INVALID_ATTRIBUTE
+            push!(buffers, BufferAttachmentInfo(loc, Buffer(v), GLint(1)))
+        end
+    end
+    return buffers
 end
 
 function set_uniforms(program::Program, renderable::GLRenderable)

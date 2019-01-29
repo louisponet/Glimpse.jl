@@ -1,4 +1,4 @@
-import GLAbstraction: FrameBuffer, VertexArray, Buffer, Program
+import GLAbstraction: FrameBuffer, VertexArray, Buffer, Program, BufferAttachmentInfo
 import GLAbstraction: textureformat_from_type_sym, getfirst, gluniform, clear!
 
 #----------------GLAbstraction-------------------------#
@@ -19,9 +19,14 @@ function compositing_vertexarray(program::Program)
                 nothing;
                 facelength=5)
 end
-fullscreen_vertexarray() = VertexArray([GLint(0) => Buffer(fullscreen_pos),
-                                        GLint(1) => Buffer(fullscreen_uv)],
-                                       5)
+fullscreen_vertexarray() =
+    VertexArray([BufferAttachmentInfo(GLint(0),
+                                       Buffer(fullscreen_pos),
+                                       GEOMETRY_DIVISOR),
+                 BufferAttachmentInfo(GLint(1),
+                                       Buffer(fullscreen_uv),
+                                       GEOMETRY_DIVISOR)],
+                5)
 
 @inline function sleep_pessimistic(sleep_time)
     st = convert(Float64, sleep_time) - 0.002

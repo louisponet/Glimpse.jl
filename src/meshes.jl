@@ -1,6 +1,10 @@
 import GeometryTypes: vertices, normals, faces, decompose, normals
+import GLAbstraction: INVALID_ATTRIBUTE, attribute_location, GEOMETRY_DIVISOR
+
 
 abstract type AbstractGlimpseMesh end
+
+const INSTANCED_MESHES = Dict{Type, AbstractGlimpseMesh}()
 
 struct BasicMesh{D, T, FD, FT} <: AbstractGlimpseMesh
     vertices ::Vector{Point{D, T}}
@@ -27,7 +31,7 @@ end
 Base.eltype(::Type{BasicMesh{D, T, FD, FT}}) where {D, T, FD, FT} = (D, T, FD, FT)
 Base.eltype(mesh::BM) where {BM <: BasicMesh} = eltype(BM)
 
-basicmesh(mesh::BasicMesh)   = mesh
+basicmesh(mesh::BasicMesh)          = mesh
 vertices(mesh::AbstractGlimpseMesh) = basicmesh(mesh).vertices
 normals(mesh::AbstractGlimpseMesh)  = basicmesh(mesh).normals
 faces(mesh::AbstractGlimpseMesh)    = basicmesh(mesh).faces
@@ -54,11 +58,11 @@ Base.eltype(mesh::AM) where {AM <: AttributeMesh} = eltype(AM)
 basicmesh(mesh::AttributeMesh) = mesh.basic
 
 function generate_buffers(mesh::BasicMesh, program::Program)
-    buffers = Pair{GLint, Buffer}[]
+    buffers = BufferAttachmentInfo[]
     for n in (:vertices, :normals)
-        location = attribute_location(program, n)
-        if location != -1
-            push!(buffers, location => Buffer(vertices(mesh)))
+        loc = attribute_location(program, n)
+        if loc != INVALID_ATTRIBUTE
+            push!(buffers, BufferAttachmentInfo(loc, Buffer(getfield(mesh, n)), GEOMETRY_DIVISOR))
         end
     end
     return buffers
@@ -68,13 +72,13 @@ function generate_buffers(mesh::AttributeMesh{AT}, program::Program) where AT
     buffers = generate_buffers(basicmesh(mesh), program)
     buflen  = length(mesh)
     for (name, val) in pairs(mesh.attributes)
-        location = attribute_location(program, name)
-        if location != -1
+        loc = attribute_location(program, name)
+        if loc != INVALID_ATTRIBUTE
             vallen = length(val)
             if vallen == buflen
-                push!(buffers, location => Buffer(val))
+                push!(buffers, BufferAttachmentInfo(loc, Buffer(val), GEOMETRY_DIVISOR))
             elseif !isa(val, Vector)
-                push!(buffers, location => Buffer(fill(val, buflen)))
+                push!(buffers, BufferAttachmentInfo(loc, Buffer(fill(val, buflen)), GEOMETRY_DIVISOR))
             end
         end
     end

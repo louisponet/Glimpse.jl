@@ -90,11 +90,7 @@ center!(dio::Diorama)    = dio.scene!=nothing && center!(dio.scene)
 
 function upload(dio::Diorama)
     for rp in dio.pipeline
-        for renderable in renderables(dio.scene)
-            if !isuploaded(renderable, rp)
-                upload(renderable, rp)
-            end
-        end
+        upload(renderables(dio.scene), rp)
     end
 end
 
