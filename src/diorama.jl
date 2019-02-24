@@ -79,7 +79,6 @@ end
 
 renderables(dio::Diorama) = isempty(dio.scene.renderables) ? MeshRenderable[] : renderables(dio.scene)
 
-darken!(dio::Diorama, percentage) = darken!(dio.scene, percentage)
 
 windowsize(dio::Diorama) = windowsize(dio.screen)
 
@@ -106,6 +105,11 @@ function set!(dio::Diorama, pipeline::Vector{Renderpass}, reupload=true)
     dio.reupload = true
 end
 
+
+set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
+
+
+# manipulations
 """
 Empties the scene that is linked to the diorama, i.e. clearing all the renderables.
 """
@@ -116,6 +120,8 @@ function clear_renderables!(dio::Diorama)
     end
 end
 
-set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
-
 set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.scene.campera.rotation_speed = Float32(rotation_speed)
+set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, color)
+
+
+

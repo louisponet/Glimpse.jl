@@ -76,4 +76,5 @@ set_uniforms!(sc::Scene, name::String, uniforms::Pair{Symbol, Any}...; fuzzy=tru
     set_uniforms!.(renderables(sc, name; fuzzy=fuzzy), uniforms...)
 
 "Darken all the lights in the scene by a certain amount"
-darken!(scene::Scene, percentage) = darken!.(scene.lights, percentage)
+darken!(scene::Scene, percentage)  = darken!.(scene.lights, percentage)
+lighten!(scene::Scene, percentage) = lighten!.(scene.lights, percentage)

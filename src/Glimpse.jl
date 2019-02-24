@@ -43,13 +43,11 @@ export context_renderpass, default_renderpass, windowsize
 
 #package exports, functions
 export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-        draw, current_context, renderloop, add!, expose, center!, darken!,
+        draw, current_context, renderloop, add!, expose, center!, darken!, lighten!,
+        set_background_color!
         destroy_current_context
 
 export set_uniforms!
-export set_rotation_speed!
-
-
 
 #package exports, default geometries
 

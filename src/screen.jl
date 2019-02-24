@@ -75,4 +75,5 @@ function raise(s::Screen; canvas_kwargs...)
     return s
 end
 
-windowsize(screen::Screen) = windowsize(screen.canvas)
+windowsize(screen::Screen)                   = windowsize(screen.canvas)
+set_background_color!(screen::Screen, color) = set_background_color!(screen.canvas, color)

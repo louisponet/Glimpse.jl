@@ -39,7 +39,7 @@ mutable struct Canvas <: AbstractContext
     id            ::Int
     area          ::Area
     native_window ::GLFW.Window
-    background    ::Colorant
+    background    ::Colorant{Float32, 4}
     callbacks     ::Dict{Symbol, Any}
 	fullscreenvao ::VertexArray
 	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
@@ -172,6 +172,9 @@ callback_value(c::Canvas, cb::Symbol) = c.callbacks[cb][]
 callback(c::Canvas, cb::Symbol)       = c.callbacks[cb]
 
 windowsize(canvas::Canvas) = GetWindowSize(nativewindow(canvas))
+
+set_background_color!(canvas::Canvas, color::Colorant)  = canvas.background = convert(RGBA{Float32}, color)
+set_background_color!(canvas::Canvas, color::NTuple)    = canvas.background = convert(RGBA{Float32}, color)
 
 #---------------------DEFAULTS-------------------#
 
