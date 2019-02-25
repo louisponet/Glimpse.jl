@@ -76,16 +76,18 @@ resize_targets(rp::Renderpass, wh) =
     resize!.(values(rp.targets), (wh,))
 
 function create_transparancy_passes(wh, npasses)
-    peel_prog    = Program(peeling_shaders())
+    peel_prog              = Program(peeling_shaders())
     peel_instanced_prog    = Program(peeling_instanced_shaders())
-    comp_prog    = Program(compositing_shaders())
-    blend_prog   = Program(blending_shaders())
+    comp_prog              = Program(compositing_shaders())
+    blend_prog             = Program(blending_shaders())
 
     color_blender, peel1, peel2 =
         [FrameBuffer(wh, (RGBA{Float32}, Depth{Float32}), true) for i= 1:3]
     context_fbo  = current_context()
-    targets = RenderTargetDict(:colorblender => color_blender, :context => context_fbo,
-                               :peel1 => peel1, :peel2 => peel2)
+    targets = RenderTargetDict(:colorblender => color_blender,
+                               :context      => context_fbo,
+                               :peel1        => peel1,
+                               :peel2        => peel2)
     return [Renderpass{:depth_peeling}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog),  targets, num_passes=npasses)]
 end
 
@@ -119,7 +121,7 @@ function render(renderables::Vector{GLRenderable}, program::Program)
     end
     for rend in renderables
         bind(rend)
-        set_uniforms(program, rend)
+        upload_uniforms(program, rend)
         draw(rend)
     end
     unbind(renderables[end])
