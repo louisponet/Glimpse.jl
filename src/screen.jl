@@ -42,7 +42,9 @@ function Screen(name = :Glimpse; area=Area(0, 0, standard_screen_resolution()...
 end
 Screen(name::Symbol, resolution::Tuple{Int, Int}, args...; kwargs...) = Screen(name, area=Area(0, 0, resolution...), args...; kwargs...)
 
-Base.isopen(screen::Screen) = isopen(screen.canvas)
+isopen(screen::Screen) = isopen(screen.canvas)
+close(screen::Screen)  = (close.(screen.children); close(screen.canvas))
+
 clearcanvas!(s::Screen) = clear!(s.canvas)
 
 focus(s::Screen)        = make_current(s.canvas)

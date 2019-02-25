@@ -24,7 +24,6 @@ Diorama(name::Symbol, scene::Scene; kwargs...) = Diorama(name, scene, nothing, n
 Diorama(name::Symbol, scene::Scene, screen::Screen; kwargs...) = Diorama(name, scene, screen, nothing; kwargs...)
 
 function free!(dio::Diorama)
-    dio.loop     = nothing
     free!(dio.screen)
     free!.(dio.pipeline)
 end
@@ -48,14 +47,17 @@ function renderloop(dio, framerate = 1/60)
         tm = time() - tm
         sleep_pessimistic(framerate - tm)
     end
-    free!(dio)
+	dio.loop = nothing
+    # free!(dio)
 end
 
 function reload(dio::Diorama)
 	if isopen(dio.screen)
 		close(dio.screen)
 	end
-	free!(dio)
+	#HACK: figure out something a bit more clean than this
+	sleep(1/60)
+	# free!(dio)
 	dio.reupload = true
     expose(dio)
 end

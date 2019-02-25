@@ -42,11 +42,9 @@ export pixel, orthographic, perspective
 export context_renderpass, default_renderpass, windowsize
 
 #package exports, functions
-export destroy!, pollevents, swapbuffers, waitevents, clearcanvas!, resize!,
-        draw, current_context, renderloop, add!, expose, center!, darken!, lighten!,
-        set_background_color!
-        destroy_current_context
-
+export destroy!, expose, reload
+export add!, center!, darken!, lighten!, set_background_color!
+        
 export set_uniforms!
 
 #package exports, default geometries

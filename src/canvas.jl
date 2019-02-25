@@ -96,15 +96,25 @@ function swapbuffers(c::Canvas)
 end
 
 function make_current(c::Canvas)
+	# if GLFW.GetCurrentContext() != c.native_window
+	# end
+	GLFW.SetWindowShouldClose(c.native_window, false)
     GLFW.MakeContextCurrent(c.native_window)
     set_context!(c)
 	c.fullscreenvao=fullscreen_vertexarray()
 end
 
-function Base.isopen(canvas::Canvas)
+function isopen(canvas::Canvas)
     canvas.native_window.handle == C_NULL && return false
     !GLFW.WindowShouldClose(canvas.native_window)
 end
+
+function close(canvas::Canvas)
+	if isopen(canvas)
+		GLFW.SetWindowShouldClose(canvas.native_window, true)
+	end
+end
+
 function clear!(c::Canvas)
     glClearColor(c.background.r, c.background.b, c.background.g, c.background.alpha)
     # glClearColor(1,1,1,1)

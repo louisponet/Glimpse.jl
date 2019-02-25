@@ -117,7 +117,7 @@ function generate_buffers(uniform_dict::UniformDict, program::Program)
     return buffers
 end
 
-function set_uniforms(program::Program, renderable::GLRenderable)
+function upload_uniforms(program::Program, renderable::GLRenderable)
     for (key, val) in pairs(renderable.uniforms)
         set_uniform(program, key, val)
     end
