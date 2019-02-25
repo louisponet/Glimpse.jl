@@ -34,7 +34,6 @@ function renderloop(dio, framerate = 1/60)
     pipeline = dio.pipeline
     scene    = dio.scene
     while isopen(dio.screen)
-        # clear!(screen.canvas)
         if dio.reupload
             upload(dio)
             dio.reupload = false
@@ -45,10 +44,20 @@ function renderloop(dio, framerate = 1/60)
             render(dio.pipeline, dio.scene)
         end
         swapbuffers(dio.screen)
+
         tm = time() - tm
         sleep_pessimistic(framerate - tm)
     end
     free!(dio)
+end
+
+function reload(dio::Diorama)
+	if isopen(dio.screen)
+		close(dio.screen)
+	end
+	free!(dio)
+	dio.reupload = true
+    expose(dio)
 end
 
 function expose(dio::Diorama;  kwargs...)
@@ -119,6 +128,9 @@ function clear_renderables!(dio::Diorama)
         empty!(rp.renderables)
     end
 end
+
+darken!(dio::Diorama, percentage)  = darken!(dio.scene, percentage)
+lighten!(dio::Diorama, percentage) = lighten!(dio.scene, percentage)
 
 set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.scene.campera.rotation_speed = Float32(rotation_speed)
 set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, color)
