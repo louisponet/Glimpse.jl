@@ -16,26 +16,20 @@ import GeometryTypes: HomogenousMesh, homogenousmesh, StaticVector
 # end
 
 #---------------------- New renderables ---------------- #
-const UniformDict = Dict{Symbol, Any}
-mutable struct MeshRenderable{T, MT<:AbstractGlimpseMesh}
-    renderee     ::T #the original type
-    mesh         ::MT
-    uniforms     ::UniformDict
-    renderpasses ::Dict{Symbol, Bool}
-    instanced    ::Bool
-end
+
+
 
 MeshRenderable(renderee, renderpasses::Vector{Symbol}, args...; uniforms...) =
-    MeshRenderable(renderee, BasicMesh(renderee, args...), UniformDict(uniforms), RenderpassDict(renderpasses), false)
+    MeshRenderable(renderee, BasicMesh(renderee, args...), UniformDict(uniforms), RenderPassDict(renderpasses), false)
 MeshRenderable(renderee, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...) =
-    MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), UniformDict(uniforms), RenderpassDict(renderpasses) , false)
+    MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), UniformDict(uniforms), RenderPassDict(renderpasses) , false)
 
 function MeshRenderable(renderee::HyperSphere, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...)
     unis = UniformDict(uniforms)
     if !haskey(unis, :modelmat)
         unis[:modelmat] = translmat(renderee.center) * scalemat(Point3f0(renderee.r))
     end
-    MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), unis, RenderpassDict(renderpasses) , false)
+    MeshRenderable(renderee, AttributeMesh(attributes, renderee, args...), unis, RenderPassDict(renderpasses) , false)
 end
 
 function InstancedMeshRenderable(renderee::T, renderpasses::Vector{Symbol}, attributes::NamedTuple, args...; uniforms...) where T
@@ -52,10 +46,10 @@ function InstancedMeshRenderable(renderee::T, renderpasses::Vector{Symbol}, attr
     if !haskey(unis, :modelmat) && T <: HyperSphere
         unis[:modelmat] = translmat(renderee.center) * scalemat(Point3f0(renderee.r))
     end
-    return MeshRenderable(renderee, mesh, unis, RenderpassDict(renderpasses), true)
+    return MeshRenderable(renderee, mesh, unis, RenderPassDict(renderpasses), true)
 end
 
-RenderpassDict(renderpasses::Vector{Symbol}) = Dict([r => false for r in renderpasses])
+RenderPassDict(renderpasses::Vector{Symbol}) = Dict([r => false for r in renderpasses])
 
 uniforms(renderable::MeshRenderable) = renderable.uniforms
 Base.eltype(::Type{MeshRenderable{T, MT}}) where {T, MT} = (T, MT)
@@ -67,15 +61,12 @@ basicmesh(renderable::MeshRenderable) = basicmesh(mesh(renderable))
 
 isinstanced(rend::MeshRenderable) = rend.instanced
 
+haspass(rend::MeshRenderable, pass::RenderPass{name}) where name = haspass(rend, name)
 haspass(rend::MeshRenderable, pass_name::Symbol) = haskey(rend.renderpasses, pass_name)
 
 isuploaded(rend::MeshRenderable, pass_name::Symbol) = rend.renderpasses[pass_name]
 
-struct GLRenderable{MR <: MeshRenderable, VT <: VertexArray, NT <: NamedTuple}
-    source         ::MR
-    vertexarray    ::VT
-    uniforms       ::NT
-end
+
 
 function GLRenderable(renderable::MeshRenderable, renderpass)
     vao      = VertexArray(renderable.mesh, main_program(renderpass))
@@ -117,6 +108,8 @@ function generate_buffers(uniform_dict::UniformDict, program::Program)
     return buffers
 end
 
+isinstanced(renderable::GLRenderable) = isinstanced(renderable.source)
+
 function upload_uniforms(program::Program, renderable::GLRenderable)
     for (key, val) in pairs(renderable.uniforms)
         set_uniform(program, key, val)
@@ -131,3 +124,20 @@ unbind(renderable::GLRenderable) = unbind(renderable.vertexarray)
 function free!(r::GLRenderable)
     free!(r.vertexarray)
 end
+
+
+#api
+
+function translate(r::AbstractRenderable, vector::Vec3)
+	r.uniforms[:modelmat] = translmat(convert(Vec3{Float32}, vector)) * r.uniforms[:modelmat]
+	r.should_upload = true
+end
+
+
+
+
+
+
+
+
+

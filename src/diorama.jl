@@ -1,22 +1,6 @@
 import GLAbstraction: free!
 
 #TODO, make it so args and kwargs get all passed around to pipelines and screens etc
-mutable struct Diorama
-    name     ::Symbol
-    scene    ::Scene
-    screen   ::Union{Screen, Nothing}
-    pipeline ::Union{Vector{Renderpass}, Nothing}
-    loop     ::Union{Task, Nothing}
-    reupload ::Bool
-    function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
-        dio = new(name, scene, screen, pipeline, nothing, true)
-        makecurrentdio(dio)
-        expose(dio; kwargs...)
-        finalizer(free!, dio)
-        return dio
-    end
-end
-
 Diorama(; kwargs...) = Diorama(:Glimpse, Scene(); kwargs...)
 Diorama(scene::Scene; kwargs...) = Diorama(:Glimpse, scene, nothing, nothing; kwargs...)
 Diorama(scene::Scene, screen::Screen; kwargs...) = Diorama(:Glimpse, scene, screen, nothing; kwargs...)
@@ -34,7 +18,8 @@ function renderloop(dio, framerate = 1/60)
     scene    = dio.scene
     while isopen(dio.screen)
         if dio.reupload
-            upload(dio)
+            reupload(dio)
+            println("reuploading")
             dio.reupload = false
         end
         tm = time()
@@ -57,7 +42,6 @@ function reload(dio::Diorama)
 	end
 	#HACK: figure out something a bit more clean than this
 	sleep(1/60)
-	# free!(dio)
 	dio.reupload = true
     expose(dio)
 end
@@ -97,12 +81,12 @@ pixelsize(dio::Diorama)  = (windowsize(dio)...,)
 
 center!(dio::Diorama)    = dio.scene!=nothing && center!(dio.scene)
 
-function upload(dio::Diorama)
-    for rp in dio.pipeline
-        upload(renderables(dio.scene), rp)
-    end
+function reupload(dio::Diorama)
+	renderables = filter(x -> x.should_upload, dio.scene.renderables)
+	for rp in dio.pipeline
+		upload(filter(x->haspass(x, rp), renderables), rp)
+	end
 end
-
 present(dio::Diorama, object, args...; kwargs...) = add!(dio, MeshRenderable(object, args...; kwargs...))
 
 add!(dio::Diorama, renderable::MeshRenderable; reupload=true) =
@@ -110,7 +94,7 @@ add!(dio::Diorama, renderable::MeshRenderable; reupload=true) =
 
 add!(dio::Diorama, light::Light) = add!(dio.scene, light)
 
-function set!(dio::Diorama, pipeline::Vector{Renderpass}, reupload=true)
+function set!(dio::Diorama, pipeline::Vector{RenderPass}, reupload=true)
     dio.pipeline = pipeline
     register_callbacks(pipeline, dio.screen.canvas)
     dio.reupload = true
@@ -125,7 +109,7 @@ set!(dio::Diorama, camera::Camera) = set!(dio.scene, camera)
 Empties the scene that is linked to the diorama, i.e. clearing all the renderables.
 """
 function clear_renderables!(dio::Diorama)
-    clear_renderables!(dio.scene)
+    empty!(dio.scene)
     for rp in dio.pipeline
         empty!(rp.renderables)
     end

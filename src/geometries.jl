@@ -48,7 +48,7 @@ end
 
 function sphere(dio::Diorama, pos, radius, complexity=2, attributes_...; uniforms...)
     sphpos = convert(Point3f0, pos)
-    sphrad = convert(f32, radius)
+    sphrad = convert(Float32, radius)
     modelmat = translmat(sphpos) * scalemat(Point3f0(sphrad,sphrad,sphrad))
 
     verts, norms, faces = Sphere(complexity)
@@ -61,7 +61,7 @@ function sphere(dio::Diorama, pos, radius, complexity=2, attributes_...; uniform
     elseif haskey(atdict, :colors)
         colors = pop!(atdict, :colors)
     else
-        colors = fill(RGB{f32}(0,0,0), length(verts))
+        colors = fill(RGB{Float32}(0,0,0), length(verts))
     end
     unidict[:modelmat] = modelmat
     mesh = AttributeMesh((color = colors,), BasicMesh(verts, faces, norms))
@@ -77,7 +77,7 @@ loadobj(filename::String) = load(joinpath(@__DIR__, "../../assets/obj", filename
 function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attributes...; uniforms...)
     startp = convert(Point3f0, startpos)
     endp   = convert(Point3f0, endpos)
-    cylrad = convert(f32, radius)
+    cylrad = convert(Float32, radius)
     rotmat = rotate(startp, endp)
     scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp-startp)))
     tmat   = translmat(startp)
@@ -91,7 +91,7 @@ function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attri
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(cylmesh.vertices))
     else
-        atdict[:color] = fill(RGB{f32}(0,0,0), length(cylmesh.vertices))
+        atdict[:color] = fill(RGB{Float32}(0,0,0), length(cylmesh.vertices))
     end
     unidict[:modelmat] = modelmat
 
@@ -116,7 +116,7 @@ function rectangle(dio::Diorama, startpos, endpos, widths, name="rectangle", att
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(cubmesh.vertices))
     else
-        atdict[:color] = fill(RGB{f32}(0,0,0), length(cubmesh.vertices))
+        atdict[:color] = fill(RGB{Float32}(0,0,0), length(cubmesh.vertices))
     end
     unidict[:modelmat] = modelmat
     cubrend = MeshRenderable(0, name, cubmesh, atdict...; unidict...)
@@ -127,7 +127,7 @@ end
 function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...; uniforms...)
     startp = convert(Point3f0, startpos)
     endp   = convert(Point3f0, endpos)
-    cylrad = convert(f32, radius)
+    cylrad = convert(Float32, radius)
     rotmat = rotate(startp, endp)
     scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp-startp)))
     tmat   = translmat(startp)
@@ -141,7 +141,7 @@ function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(cylmesh.vertices))
     else
-        atdict[:color] = fill(RGB{f32}(0,0,0), length(cylmesh.vertices))
+        atdict[:color] = fill(RGB{Float32}(0,0,0), length(cylmesh.vertices))
     end
     unidict[:modelmat] = modelmat
 
@@ -179,7 +179,7 @@ function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name="arrow", headrat
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(allverts))
     else
-        atdict[:color] = fill(RGB{f32}(0,0,0), length(allverts))
+        atdict[:color] = fill(RGB{Float32}(0,0,0), length(allverts))
     end
     unidict[:modelmat] = modelmat
     atdict[:vertices] = allverts

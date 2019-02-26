@@ -3,12 +3,6 @@ import GLAbstraction: free!
 #TODO so what should ultimately happen is that we allow for multiple cameras,
 #     which would result in multiple canvasses inside one big screen.
 #TODO: finalizer free!
-mutable struct Scene
-    name::Symbol
-    renderables::Vector{<:MeshRenderable}
-    camera::Camera
-    lights::Vector{<:Light}
-end
 function Scene(name::Symbol, renderables::MeshRenderable...)
     dim = 2
     for r in renderables

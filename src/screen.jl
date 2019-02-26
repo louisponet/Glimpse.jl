@@ -7,29 +7,6 @@ const screen_id_counter = Base.RefValue(0)
 # a lot of small screens and display them simultanously
 new_screen_id() = (screen_id_counter[] = mod1(screen_id_counter[] + 1, 255); screen_id_counter[])[]
 
-mutable struct Screen
-    name      ::Symbol
-    id        ::Int
-    area      ::Area
-    canvas    ::Union{Canvas, Nothing}
-    background::Colorant
-    parent    ::Union{Screen, Nothing}
-    children  ::Vector{Screen}
-    hidden    ::Bool # if window is hidden. Will not render
-    function Screen(name      ::Symbol,
-                    area      ::Area,
-                    canvas    ::Canvas,
-                    background::Colorant,
-                    parent    ::Union{Screen, Nothing},
-                    children  ::Vector{Screen},
-                    hidden    ::Bool)
-        id = new_screen_id()
-        canvas.id = id
-        obj = new(name, id, area, canvas,background, parent, children, hidden)
-        finalizer(free!, obj)
-        return obj
-    end
-end
 function Screen(name = :Glimpse; area=Area(0, 0, standard_screen_resolution()...),
                                  background=RGBA(1.0f0),
                                  hidden    = false,
@@ -42,17 +19,17 @@ function Screen(name = :Glimpse; area=Area(0, 0, standard_screen_resolution()...
 end
 Screen(name::Symbol, resolution::Tuple{Int, Int}, args...; kwargs...) = Screen(name, area=Area(0, 0, resolution...), args...; kwargs...)
 
-isopen(screen::Screen) = isopen(screen.canvas)
-close(screen::Screen)  = (close.(screen.children); close(screen.canvas))
+isopen(screen::Screen)        = isopen(screen.canvas)
+close(screen::Screen)         = (close.(screen.children); close(screen.canvas))
 
-clearcanvas!(s::Screen) = clear!(s.canvas)
+clearcanvas!(s::Screen)       = clear!(s.canvas)
 
-focus(s::Screen)        = make_current(s.canvas)
-GLAbstraction.bind(s::Screen)    = GLAbstraction.bind(s.canvas)
-nativewindow(s::Screen) = nativewindow(s.canvas)
-swapbuffers(s::Screen)  = swapbuffers(s.canvas)
-pollevents(s::Screen)   = pollevents(s.canvas)
-waitevents(s::Screen)   = waitevents(s.canvas)
+focus(s::Screen)              = make_current(s.canvas)
+GLAbstraction.bind(s::Screen) = GLAbstraction.bind(s.canvas)
+nativewindow(s::Screen)       = nativewindow(s.canvas)
+swapbuffers(s::Screen)        = swapbuffers(s.canvas)
+pollevents(s::Screen)         = pollevents(s.canvas)
+waitevents(s::Screen)         = waitevents(s.canvas)
 
 function free!(s::Screen)
     free!(s.canvas)

@@ -20,32 +20,7 @@ projmat(x::CamKind, wh::SimpleRectangle, args...) =
     projmat(x, wh.w, wh.h, args...)
 
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
-mutable struct Camera{Kind, Dim, T}
-    eyepos ::Vec{Dim, T}
-    lookat ::Vec{Dim, T}
-    up     ::Vec{Dim, T}
-    right  ::Vec{Dim, T}
-    fov    ::T
-    near   ::T
-    far    ::T
-    view   ::Mat4{T}
-    proj        ::Mat4{T}
-    projview    ::Mat4{T}
-    rotation_speed    ::T
-    translation_speed ::T
-    mouse_pos         ::Vec{2, T}
 
-    function (::Type{Camera{Kind}})(eyepos::Vec{Dim, T}, lookat, up, right, area, fov, near, far, rotation_speed, translation_speed) where {Kind, Dim, T}
-
-
-        up    = normalizeperp(lookat - eyepos, up)
-        right = normalize(cross(lookat - eyepos, up))
-
-        viewm = lookatmat(eyepos, lookat, up)
-        projm = projmat(Kind, area, near, far, fov)
-        new{Kind, Dim, T}(eyepos, lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0))
-    end
-end
 
 function (::Type{Camera{Kind}})(eyepos::T, lookat::T, up::T, right::T; overrides...) where {Kind, T}
 
@@ -175,37 +150,37 @@ function scroll_event(cam::Camera, dx, dy)
 end
 
 #----------------------------------DEFAULTS----------------------------#
-const perspective_defaults = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
+perspective_defaults() = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
                                                :lookat => Vec3(0f0,  0f0, 0f0),
                                                :up     => Vec3(0f0,  0f0, 1f0),
                                                :right  => Vec3(1f0,  0f0, 0f0),
-                                               :area   => Area(0,0,standard_screen_resolution()...),
+                                               :area   => Area(0,0,  standard_screen_resolution()...),
                                                :fov    => 42f0,
                                                :near   => 0.1f0,
                                                :far    => 300f0,
                                                :rotation_speed    => 0.001f0,
                                                :translation_speed => 0.01f0)
-const orthographic_defaults = copy(perspective_defaults)
-const pixel_defaults        = copy(perspective_defaults)
-pixel_defaults[:fov] = 0f0
-pixel_defaults[:near] = 0f0
-pixel_defaults[:far]  = 0f0
-pixel_defaults[:rotation_speed]    = 0f0
-pixel_defaults[:translation_speed] = 0f0
-
+orthographic_defaults() = perspective_defaults()
+pixel_defaults()        = merge(perspective_defaults(), Dict(
+								:fov  => 0f0,
+								:near => 0f0,
+								:far  => 0f0,
+								:rotation_speed    => 0f0,
+								:translation_speed => 0f0)
+								)
 
 function merge_defaults(x::CamKind; overrides...)
     if x == orthographic
-        merge(orthographic_defaults, overrides)
+        merge(orthographic_defaults(), overrides)
     elseif x == perspective
-        merge(perspective_defaults, overrides)
+        merge(perspective_defaults(), overrides)
     end
 end
 
 function mergepop_defaults!(x::CamKind; overrides...)
     if x == orthographic
-        mergepop!(orthographic_defaults, overrides)
+        mergepop!(orthographic_defaults(), overrides)
     elseif x == perspective
-        mergepop!(perspective_defaults, overrides)
+        mergepop!(perspective_defaults(), overrides)
     end
 end

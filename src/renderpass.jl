@@ -1,78 +1,63 @@
 import GLAbstraction: Program, Shader, FrameBuffer, Float24
-import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id
+import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id, current_context
 #Do we really need the context if it is already in frambuffer and program?
-const RenderTarget = Union{FrameBuffer, Canvas}
-const RenderTargetDict = Dict{Symbol, RenderTarget}
-const ProgramDict = Dict{Symbol, Program}
-#TODO: finalizer free!
-# The program is the main program for the heavy rendering and will be used to put the
-# correct renderable buffers in the vao in the correct attriblocations
-# In the children one can put other renderpasses that hold compositing stuff etc.
-mutable struct Renderpass{Name, NT <: NamedTuple}
-    # id::Int
-    programs              ::ProgramDict
-    targets               ::RenderTargetDict
-    renderables           ::Vector{GLRenderable}
-    instanced_renderables ::Vector{GLRenderable}
-    options               ::NT
-    function Renderpass{name}(programs::ProgramDict, fbs::RenderTargetDict, renderables::Vector{GLRenderable}, irenderables::Vector{GLRenderable}, options::NT) where {name, NT <: NamedTuple}
-        obj = new{name, NT}(programs, fbs, renderables, irenderables, options)
-        finalizer(free!, obj)
-        return obj
-    end
-end
 
-Renderpass{name}(programs::ProgramDict, targets::RenderTargetDict; options...) where name =
-    Renderpass{name}(programs, targets, GLRenderable[], GLRenderable[], options.data)
+RenderPass{name}(programs::ProgramDict, targets::RenderTargetDict; options...) where name =
+    RenderPass{name}(programs, targets, GLRenderable[], options.data)
 
-Renderpass{name}(shaderdict::Dict{Symbol, Vector{Shader}}, targets::RenderTargetDict; options...) where name =
-    Renderpass{name}(Dict([sym => Program(shaders) for (sym, shaders) in shaderdict]), targets; options...)
+RenderPass{name}(shaderdict::Dict{Symbol, Vector{Shader}}, targets::RenderTargetDict; options...) where name =
+    RenderPass{name}(Dict([sym => Program(shaders) for (sym, shaders) in shaderdict]), targets; options...)
 
-Renderpass(name::Symbol, args...; options...) =
-    Renderpass{name}(args...; options...)
+RenderPass(name::Symbol, args...; options...) =
+    RenderPass{name}(args...; options...)
 
 default_renderpass() = context_renderpass(:default, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
 context_renderpass(name::Symbol, shaderdict::Dict{Symbol, Vector{Shader}}) =
-    Renderpass(name, shaderdict, RenderTargetDict(:context=>current_context()))
+    RenderPass(name, shaderdict, RenderTargetDict(:context=>current_context()))
 
-name(::Renderpass{n}) where n = n
-main_program(rp::Renderpass) = rp.programs[:main]
-main_instanced_program(rp::Renderpass) = rp.programs[:main_instanced]
-should_render(rp::Renderpass) = !isempty(rp.renderables) || !isempty(rp.instanced_renderables)
+name(::RenderPass{n}) where n = n
+main_program(rp::RenderPass) = rp.programs[:main]
+main_instanced_program(rp::RenderPass) = rp.programs[:main_instanced]
+should_render(rp::RenderPass) = !isempty(rp.renderables)
 
-valid_uniforms(rp::Renderpass) = [uniform_names(p) for p in values(rp.programs)]
+valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
 
-# render(rp::Renderpass, args...) = rp.render(args...)
-function upload(renderables::Vector{<:MeshRenderable}, pass::Renderpass{name}) where name
+instanced_renderables(rp::RenderPass) = filter(isinstanced, rp.renderables)
+
+# render(rp::RenderPass, args...) = rp.render(args...)
+function upload(renderables::Vector{<:MeshRenderable}, pass::RenderPass{name}) where name
     #I'm not clear when this would ever happen but fine
-    instanced_renderables, normal_renderables = separate(isinstanced, filter(x -> !isuploaded(x, name), filter(x -> haspass(x, name), renderables)))
-    if !isempty(instanced_renderables)
-        push!(pass.instanced_renderables, InstancedGLRenderable(instanced_renderables, pass))
+    instanced_renderables, normal_renderables = separate(isinstanced, renderables)
+    !isempty(instanced_renderables) && upload(InstancedGLRenderable(instanced_renderables, pass), pass)
+    upload.(GLRenderable.(normal_renderables, (pass,)), (pass,))
+    for r in pass.renderables
+        r.source.renderpasses[name] = true
     end
-    for r in instanced_renderables
-        r.renderpasses[name] = true
-    end
-    upload.(normal_renderables, (pass,))
 end
 
-function upload(rend::MeshRenderable, pass::Renderpass{name}) where name
-    push!(pass.renderables, GLRenderable(rend, pass))
-    rend.renderpasses[name] = true
+function upload(rend::GLRenderable, pass::RenderPass{name}) where name
+	println("ping")
+	id = findfirst(x->x.source == rend.source, pass.renderables)
+	if id == nothing
+    	push!(pass.renderables, rend)
+    else
+	    pass.renderables[id] = rend
+    end
 end
 
-isuploaded(rend::MeshRenderable, pass::Renderpass{name}) where name = isuploaded(rend, name)
+isuploaded(rend::MeshRenderable, pass::RenderPass{name}) where name = isuploaded(rend, name)
 
 
-function free!(rp::Renderpass)
+function free!(rp::RenderPass)
     free!.(values(rp.programs))
     free!.(filter(t-> t != current_context(), collect(values(rp.targets))))
 end
 
-function register_callbacks(rp::Renderpass, context=current_context())
+function register_callbacks(rp::RenderPass, context=current_context())
     on(wh -> resize_targets(rp, Tuple(wh)),
         callback(context, :framebuffer_size))
 end
-resize_targets(rp::Renderpass, wh) =
+resize_targets(rp::RenderPass, wh) =
     resize!.(values(rp.targets), (wh,))
 
 function create_transparancy_passes(wh, npasses)
@@ -88,12 +73,12 @@ function create_transparancy_passes(wh, npasses)
                                :context      => context_fbo,
                                :peel1        => peel1,
                                :peel2        => peel2)
-    return [Renderpass{:depth_peeling}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog),  targets, num_passes=npasses)]
+    return [RenderPass{:depth_peeling}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog),  targets, num_passes=npasses)]
 end
 
 #-------------------- Rendering Functions ------------------------#
 # during rendering
-function render(pipe::Vector{Renderpass}, sc::Scene, args...)
+function render(pipe::Vector{RenderPass}, sc::Scene, args...)
     for pass in pipe
         if !should_render(pass)
             continue
@@ -102,7 +87,7 @@ function render(pipe::Vector{Renderpass}, sc::Scene, args...)
     end
 end
 
-function render(rp::Renderpass, scene::Scene)
+function render(rp::RenderPass, scene::Scene)
     function r(renderables, program)
         if !isempty(renderables)
             bind(program)
@@ -142,7 +127,7 @@ end
 
 #------------------ DIFFERENT KINDS OF RENDERPASSES ------------------#
 #TODO only allows for one light at this point!
-function (rp::Renderpass{:default})(scene::Scene)
+function (rp::RenderPass{:default})(scene::Scene)
     clear!(rp.targets[:context])
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
@@ -151,7 +136,7 @@ function (rp::Renderpass{:default})(scene::Scene)
     # glCullFace(GL_BACK)
 end
 
-function (rp::Renderpass{:simple_transparency})(scene::Scene)
+function (rp::RenderPass{:simple_transparency})(scene::Scene)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
@@ -161,7 +146,7 @@ end
 rem1(x, y) = (x - 1) % y + 1
 # TODO: pass options
 # depth peeling with instanced_renderables might give a weird situation?
-function (rp::Renderpass{:depth_peeling})(scene::Scene)
+function (rp::RenderPass{:depth_peeling})(scene::Scene)
     peeling_program     = main_program(rp)
     peeling_instanced_program   = main_instanced_program(rp)
     blending_program    = rp.programs[:blending]
@@ -175,8 +160,8 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
     clear!(colorblender, context_target.background)
     # glClearBufferfv(GL_COLOR, 0, [0,0,0,1])
     glEnable(GL_DEPTH_TEST)
-    canvas_width  = f32(size(colorblender)[1])
-    canvas_height = f32(size(colorblender)[2])
+    canvas_width  = Float32(size(colorblender)[1])
+    canvas_height = Float32(size(colorblender)[2])
 
     function first_pass(renderables, program)
         if isempty(renderables)
@@ -192,7 +177,7 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
     end
 
     first_pass(rp.renderables, peeling_program)
-    first_pass(rp.instanced_renderables, peeling_instanced_program)
+    first_pass(instanced_renderables(rp), peeling_instanced_program)
 
     for layer=1:rp.options.num_passes
         currid = rem1(layer, 2)
@@ -213,8 +198,7 @@ function (rp::Renderpass{:depth_peeling})(scene::Scene)
 
         bind(peeling_instanced_program)
         set_uniform(peeling_instanced_program, :depth_texture, (0, depth_attachment(prevfbo)))
-        render(rp.instanced_renderables, peeling_instanced_program)
-
+        render(instanced_renderables(rp), peeling_instanced_program)
         bind(colorblender)
         draw(colorblender)
 

@@ -2,10 +2,11 @@ import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractCon
 import GLAbstraction: bind, swapbuffers, clear!, free!, draw, exists_context, clear_context!, set_context!, GLOBAL_CONTEXT
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
 
-const Area = SimpleRectangle
 Base.size(area::Area) = (area.w, area.h)
 
 #TODO Framebuffer context
+#TODO canvas should be able to be a drawing target too
+#
 """
 Standard window hints for creating a plain context without any multisampling
 or extra buffers beside the color buffer
@@ -33,25 +34,9 @@ end
 
 standard_screen_resolution() =  GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
 
-#TODO canvas should be able to be a drawing target too
-mutable struct Canvas <: AbstractContext
-    name          ::Symbol
-    id            ::Int
-    area          ::Area
-    native_window ::GLFW.Window
-    background    ::Colorant{Float32, 4}
-    callbacks     ::Dict{Symbol, Any}
-	fullscreenvao ::VertexArray
-	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
-		obj = new(name, id, area, nw, background, callback_dict)
-		finalizer(free!, obj)
-		return obj
-	end
-    # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
-end
 function Canvas(name, id; kwargs...)
 
-    defaults = mergepop!(canvas_defaults, kwargs)
+    defaults = mergepop!(canvas_defaults(), kwargs)
 
     window_hints = default_window_hints()
     context_hints = GLFW.standard_context_hints(defaults[:major], defaults[:minor])
@@ -86,6 +71,15 @@ function Canvas(name, id; kwargs...)
     return Canvas(name, id, area, nw, background, callback_dict)
 end
 
+function make_current(c::Canvas)
+	# if GLFW.GetCurrentContext() != c.native_window
+	# end
+	GLFW.SetWindowShouldClose(c.native_window, false)
+    GLFW.MakeContextCurrent(c.native_window)
+    set_context!(c)
+	c.fullscreenvao = fullscreen_vertexarray()
+end
+
 function swapbuffers(c::Canvas)
     if c.native_window.handle == C_NULL
         warn("Native Window handle of canvas $(c.name) == C_NULL!")
@@ -93,15 +87,6 @@ function swapbuffers(c::Canvas)
     end
     GLFW.SwapBuffers(c.native_window)
     return
-end
-
-function make_current(c::Canvas)
-	# if GLFW.GetCurrentContext() != c.native_window
-	# end
-	GLFW.SetWindowShouldClose(c.native_window, false)
-    GLFW.MakeContextCurrent(c.native_window)
-    set_context!(c)
-	c.fullscreenvao=fullscreen_vertexarray()
 end
 
 function isopen(canvas::Canvas)
@@ -188,16 +173,16 @@ set_background_color!(canvas::Canvas, color::NTuple)    = canvas.background = co
 
 #---------------------DEFAULTS-------------------#
 
-const canvas_defaults = SymAnyDict(:area       => Area(0, 0, standard_screen_resolution()...),
-                                   :background => RGBA(1.0f0),
-                                   :depth      => Depth{Float32},
-                                   :callbacks  => standard_callbacks(),
-                                   :debugging  => false,
-                                   :major => 3,
-                                   :minor => 3,
-                                   :clear      => true,
-                                   :hidden     => false,
-                                   :visible    => true,
-                                   :focus      => false,
-                                   :fullscreen => false,
-                                   :monitor    => nothing)
+canvas_defaults() = SymAnyDict(:area       => Area(0, 0, standard_screen_resolution()...),
+                           	   :background => RGBA(1.0f0),
+                           	   :depth      => Depth{Float32},
+                           	   :callbacks  => standard_callbacks(),
+                           	   :debugging  => false,
+                           	   :major => 3,
+                           	   :minor => 3,
+                           	   :clear      => true,
+                           	   :hidden     => false,
+                           	   :visible    => true,
+                           	   :focus      => false,
+                           	   :fullscreen => false,
+                           	   :monitor    => nothing)

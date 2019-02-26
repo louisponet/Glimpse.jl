@@ -38,7 +38,7 @@ end
 
 #REVIEW: not used
 function glenum2julia(x::UInt32)
-    x == GL_FLOAT      && return f32
+    x == GL_FLOAT      && return Float32
     x == GL_FLOAT_VEC3 && return Vec3f0
     x == GL_FLOAT_VEC4 && return Vec4f0
     x == GL_FLOAT_MAT2 && return Mat2f0

@@ -2,15 +2,6 @@ import GeometryTypes: vertices, normals, faces, decompose, normals
 import GLAbstraction: INVALID_ATTRIBUTE, attribute_location, GEOMETRY_DIVISOR
 
 
-abstract type AbstractGlimpseMesh end
-
-const INSTANCED_MESHES = Dict{Type, AbstractGlimpseMesh}()
-
-struct BasicMesh{D, T, FD, FT} <: AbstractGlimpseMesh
-    vertices ::Vector{Point{D, T}}
-    faces    ::Vector{Face{FD, FT}}
-    normals  ::Vector{Point{D, T}}
-end
 
 BasicMesh(geometry::T, ft=Face{3, Glint}) where T =
     error("Please implement a `BasicMesh` constructor for type $T.")
@@ -39,11 +30,6 @@ facelength(mesh::BasicMesh{D, T, FD, FT} where {D, T, FD}) where FT = length(FT)
 
 Base.length(mesh::AbstractGlimpseMesh) = length(vertices(mesh))
 
-
-struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
-    attributes ::AT
-    basic      ::BM
-end
 
 AttributeMesh(attributes, args...) =
     AttributeMesh(attributes, BasicMesh(args...))
