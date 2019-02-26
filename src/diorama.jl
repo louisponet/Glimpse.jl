@@ -16,10 +16,9 @@ function renderloop(dio, framerate = 1/60)
     screen   = dio.screen
     pipeline = dio.pipeline
     scene    = dio.scene
-    while isopen(dio.screen)
+    while !should_close(dio.screen)
         if dio.reupload
             reupload(dio)
-            println("reuploading")
             dio.reupload = false
         end
         tm = time()
@@ -32,16 +31,16 @@ function renderloop(dio, framerate = 1/60)
         tm = time() - tm
         sleep_pessimistic(framerate - tm)
     end
+    close(dio.screen)
 	dio.loop = nothing
     # free!(dio)
 end
 
 function reload(dio::Diorama)
-	if isopen(dio.screen)
-		close(dio.screen)
+	close(dio)
+	while isopen(dio.screen) && dio.loop != nothing
+		sleep(0.01)
 	end
-	#HACK: figure out something a bit more clean than this
-	sleep(1/60)
 	dio.reupload = true
     expose(dio)
 end
@@ -56,6 +55,9 @@ function expose(dio::Diorama;  kwargs...)
     end
     return dio
 end
+
+close(dio::Diorama) = should_close!(dio.screen, true)
+
 
 function register_callbacks(dio::Diorama)
     register_callbacks(dio.scene.camera, dio.screen.canvas)

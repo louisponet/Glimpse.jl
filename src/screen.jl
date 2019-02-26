@@ -56,3 +56,6 @@ end
 
 windowsize(screen::Screen)                   = windowsize(screen.canvas)
 set_background_color!(screen::Screen, color) = set_background_color!(screen.canvas, color)
+
+should_close!(screen::Screen, b::Bool) = should_close!(screen.canvas, b)
+should_close(screen::Screen) = should_close(screen.canvas)

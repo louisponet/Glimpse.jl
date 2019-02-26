@@ -75,6 +75,7 @@ function make_current(c::Canvas)
 	# if GLFW.GetCurrentContext() != c.native_window
 	# end
 	GLFW.SetWindowShouldClose(c.native_window, false)
+	GLFW.ShowWindow(c.native_window)
     GLFW.MakeContextCurrent(c.native_window)
     set_context!(c)
 	c.fullscreenvao = fullscreen_vertexarray()
@@ -91,14 +92,17 @@ end
 
 function isopen(canvas::Canvas)
     canvas.native_window.handle == C_NULL && return false
-    !GLFW.WindowShouldClose(canvas.native_window)
+    GLFW.GetWindowAttrib(canvas.native_window, GLFW.VISIBLE) == 1
 end
 
-function close(canvas::Canvas)
-	if isopen(canvas)
-		GLFW.SetWindowShouldClose(canvas.native_window, true)
-	end
+#Should this clear the context?
+function close(c::Canvas)
+	GLFW.HideWindow(c.native_window)
+	should_close!(c, false)
 end
+
+should_close!(c::Canvas, b) = GLFW.SetWindowShouldClose(c.native_window, b)
+should_close(c::Canvas) = GLFW.WindowShouldClose(c.native_window)
 
 function clear!(c::Canvas)
     glClearColor(c.background.r, c.background.b, c.background.g, c.background.alpha)
@@ -170,6 +174,7 @@ windowsize(canvas::Canvas) = GetWindowSize(nativewindow(canvas))
 
 set_background_color!(canvas::Canvas, color::Colorant)  = canvas.background = convert(RGBA{Float32}, color)
 set_background_color!(canvas::Canvas, color::NTuple)    = canvas.background = convert(RGBA{Float32}, color)
+
 
 #---------------------DEFAULTS-------------------#
 

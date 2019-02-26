@@ -42,7 +42,7 @@ export pixel, orthographic, perspective
 export context_renderpass, default_renderpass, windowsize
 
 #package exports, functions
-export destroy!, expose, reload
+export destroy!, expose, reload, close
 export add!, center!, darken!, lighten!, set_background_color!
         
 export translate
