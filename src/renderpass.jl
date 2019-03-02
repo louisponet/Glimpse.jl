@@ -36,7 +36,6 @@ function upload(renderables::Vector{<:MeshRenderable}, pass::RenderPass{name}) w
 end
 
 function upload(rend::GLRenderable, pass::RenderPass{name}) where name
-	println("ping")
 	id = findfirst(x->x.source == rend.source, pass.renderables)
 	if id == nothing
     	push!(pass.renderables, rend)
