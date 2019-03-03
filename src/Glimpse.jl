@@ -14,6 +14,9 @@ using GLFW
 using Observables
 include("extensions.jl")
 include("types.jl")
+# include("components.jl")
+include("entities.jl")
+include("systems.jl")
 include("utils.jl")
 include("maths/matrices.jl")
 include("maths/vecmath.jl")

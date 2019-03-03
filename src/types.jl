@@ -3,6 +3,25 @@ const UniformDict     = Dict{Symbol, Any}
 const SymAnyDict      = Dict{Symbol, Any}
 const EmptyNamedTuple = NamedTuple{(), Tuple{}}
 const Area            = SimpleRectangle
+const RGBAf0          = RGBA{Float32}
+const RGBf0           = RGB{Float32}
+@enum CamKind pixel orthographic perspective
+
+#Should I use DataFrames/Tables?
+struct Entity{NT <: NamedTuple} #we will create a name component #maybe it's not so bad that these are not contiguous?
+	id       ::Int
+	data_ids ::NT
+end
+
+struct Component{name, T}
+	id   ::Int
+	data ::Vector{T}
+end
+
+struct System{name, NT <: NamedTuple}
+	components::NT #these are our fixed tuple of components
+end
+
 
 abstract type AbstractGlimpseMesh end
 
@@ -20,78 +39,11 @@ struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
 end
 
 #Should we really dispatch on the original type? Maybe
-abstract type AbstractRenderable end
-
-mutable struct MeshRenderable{T, MT<:AbstractGlimpseMesh} <: AbstractRenderable
-    renderee     ::T #the original type
-    mesh         ::MT
-    uniforms     ::UniformDict
-    renderpasses ::Dict{Symbol, Bool}
-    instanced    ::Bool
-    should_upload::Bool
-    function MeshRenderable(r::T, m::MT, u, rp, i) where {T, MT}
-	    return new{T, MT}(r, m, u, rp, i, true)
-    end
-end
-
-struct GLRenderable{MR <: MeshRenderable, VT <: VertexArray, NT <: NamedTuple}
-    source         ::MR
-    vertexarray    ::VT
-    uniforms       ::NT
-end
-
-mutable struct Camera{Kind, Dim, T}
-    eyepos ::Vec{Dim, T}
-    lookat ::Vec{Dim, T}
-    up     ::Vec{Dim, T}
-    right  ::Vec{Dim, T}
-    fov    ::T
-    near   ::T
-    far    ::T
-    view   ::Mat4{T}
-    proj        ::Mat4{T}
-    projview    ::Mat4{T}
-    rotation_speed    ::T
-    translation_speed ::T
-    mouse_pos         ::Vec{2, T}
-
-    function (::Type{Camera{Kind}})(eyepos::Vec{Dim, T}, lookat, up, right, area, fov, near, far, rotation_speed, translation_speed) where {Kind, Dim, T}
-
-        up    = normalizeperp(lookat - eyepos, up)
-        right = normalize(cross(lookat - eyepos, up))
-
-        viewm = lookatmat(eyepos, lookat, up)
-        projm = projmat(Kind, area, near, far, fov)
-        new{Kind, Dim, T}(eyepos, lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0))
-    end
-end
-
-abstract type Light{T} end
-
-mutable struct PointLight{T <: AbstractFloat} <: Light{T}
-    position::Vec3{T}
-    diffuse ::T
-    specular::T
-    ambient ::T
-    color   ::RGB{T}
-end
-
-PointLight() = PointLight{Float32}(Vec3f0(0,0,20), 0.8f0, 1.0f0, 0.8f0, RGB{Float32}(1,1,1))
-
-#Direction always has to be normalized!
-mutable struct DirectionLight{T <: AbstractFloat} <: Light{T}
-    direction::Vec3{T}
-    diffuse ::T
-    specular::T
-    ambient ::T
-    color   ::RGB{T}
-end
 
 mutable struct Scene
     name::Symbol
-    renderables::Vector{<:MeshRenderable}
-    camera::Camera
-    lights::Vector{<:Light}
+    entities   ::Vector{Entity}
+    components ::Vector{Component}
 end
 
 mutable struct Canvas <: GLA.AbstractContext
@@ -142,31 +94,39 @@ mutable struct RenderPass{Name, NT <: NamedTuple}
     # id::Int
     programs              ::ProgramDict
     targets               ::RenderTargetDict
-    renderables           ::Vector{GLRenderable}
+    # renderables           ::Vector{GLRenderable}
     options               ::NT
-    function RenderPass{name}(programs::ProgramDict, fbs::RenderTargetDict, renderables::Vector{GLRenderable}, options::NT) where {name, NT <: NamedTuple}
-        obj = new{name, NT}(programs, fbs, renderables, options)
+    function RenderPass{name}(programs::ProgramDict, fbs::RenderTargetDict, options::NT) where {name, NT <: NamedTuple}
+        obj = new{name, NT}(programs, fbs, options)
         finalizer(free!, obj)
         return obj
     end
 end
 
+mutable struct SimData
+	time  ::Float64
+	dtime ::Float64
+	frames::Int
+end
+
 mutable struct Diorama
     name     ::Symbol
     scene    ::Scene
+    systems  ::Vector{System}
     screen   ::Union{Screen, Nothing}
     pipeline ::Union{Vector{RenderPass}, Nothing}
     loop     ::Union{Task, Nothing}
     reupload ::Bool
-    function Diorama(name, scene, screen, pipeline; interactive=false, kwargs...)
-        dio = new(name, scene, screen, pipeline, nothing, true)
+    simdata  ::SimData
+    function Diorama(name, scene, systems, screen, pipeline; interactive=false, kwargs...)
+        dio = new(name, scene, systems, screen, pipeline, nothing, true, SimData(time(),0.0, 0))
         makecurrentdio(dio)
         expose(dio; kwargs...)
         finalizer(free!, dio)
         return dio
     end
 end
-
+include("components.jl")
 include("meshes.jl")
 include("renderable.jl")
 include("light.jl")

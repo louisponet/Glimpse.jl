@@ -1,50 +1,18 @@
 import GLAbstraction: free!
 
-#TODO so what should ultimately happen is that we allow for multiple cameras,
-#     which would result in multiple canvasses inside one big screen.
-#TODO: finalizer free!
-function Scene(name::Symbol, renderables::MeshRenderable...)
-    dim = 2
-    for r in renderables
-        dim = eltypes(meshtype(r))[2] > dim ? eltypes(meshtype(r))[2] : dim
-    end
-    area = Area(0, 0, standard_screen_resolution()...)
-    if dim == 2
-        camera = Camera{pixel}()
-    elseif dim == 3
-        camera = Camera{perspective}()
-    end
-    return Scene(name, [renderables...], camera, Light[])
-end
-Scene(; kwargs...) = Scene(:Glimpse, MeshRenderable[], Camera{perspective}(; kwargs...), Light[])
-renderables(scene::Scene) = scene.renderables
 
-"""
-Adds a renderable to the scene. If the copy flag is true the renderable will be deepcopied.
-The index of the renderable will be set to it's index inside the renderables list of the Scene.
-"""
-function add!(sc::Scene, renderable::MeshRenderable, _copy=false)
-    rend = _copy ? deepcopy(renderable) : renderable
-    push!(sc.renderables, rend)
-end
+#TODO: change such that there are no components until needed?
+StandardSceneComponents() = [GeometryComponent(1),
+		  					 UploadComponent(2),
+		  					 RenderComponent(3),
+		  					 MaterialComponent(4),
+						     SpatialComponent(5),
+						     PointLightComponent(6),
+						     CameraComponent3D(7)]
 
-"Adds a light to the scene. "
-add!(sc::Scene, light::Light) = push!(sc.lights, light)
+Scene(name::Symbol) = Scene(name, Entity[], StandardSceneComponents())
 
-"""
-Clears all the renderables from a scene.
-"""
-function Base.empty!(sc::Scene)
-    for rb in sc.renderables
-        free!(rb)
-    end
-    empty!(sc.renderables)
-    return sc
-end
-
-function set!(sc::Scene, camera::Camera)
-    sc.camera = camera
-end
+Scene(; kwargs...) = Scene(:Glimpse)
 
 function center!(sc::Scene)
     center = zero(Vec3f0)
@@ -57,18 +25,65 @@ function center!(sc::Scene)
     update!(sc.camera)
 end
 
-projmat(sc::Scene) = sc.camera.proj
-viewmat(sc::Scene) = sc.camera.view
+projmat(sc::Scene)     = sc.camera.proj
+viewmat(sc::Scene)     = sc.camera.view
 projviewmat(sc::Scene) = sc.camera.projview
-
-renderable(sc::Scene, name::String; fuzzy=true) =
-    fuzzy ? getfirst(x -> occursin(name, x.name), sc.renderables) : getfirst(x -> x.name == name, sc.renderables)
-renderables(sc::Scene, name::String; fuzzy=true) =
-    fuzzy ? filter(x -> occursin(name, x.name), sc.renderables) : filter(x -> x.name == name, sc.renderables)
-
-set_uniforms!(sc::Scene, name::String, uniforms::Pair{Symbol, Any}...; fuzzy=true) =
-    set_uniforms!.(renderables(sc, name; fuzzy=fuzzy), uniforms...)
 
 "Darken all the lights in the scene by a certain amount"
 darken!(scene::Scene, percentage)  = darken!.(scene.lights, percentage)
 lighten!(scene::Scene, percentage) = lighten!.(scene.lights, percentage)
+
+component(scene::Scene, n::Symbol) = getfirst(x -> name(x) == n, scene.components)
+# component_id(scene::Scene, name::Symbol) = findfirst( x -> x.name == name, scene.components)
+new_entity_data_id(component::Component) = length(component.data) + 1
+
+new_component!(scene::Scene, component::Component) = push!(scene.components, component)
+
+#TODO handle freeing and reusing stuff
+function add_to_components!(datas, components)
+	data_ids  = Int[]
+	for (data, comp) in zip(datas, components)
+		data_id    = new_entity_data_id(comp)
+		push!(data_ids, data_id)
+		push!(comp.data, data)
+	end
+	return data_ids
+end
+
+function new_entity!(scene::Scene; name_data...)
+	entity_id  = length(scene.entities) + 1
+
+	names      = keys(name_data)
+	components = component.((scene, ), names)
+	data_ids   = add_to_components!(values(name_data), components)
+	
+	push!(scene.entities, Entity(entity_id, NamedTuple{(names...,)}(data_ids)))
+end
+
+function add_entity_components!(scene::Scene, entity_id::Int; name_data...)
+	entity = getfirst(x->x.id == entity_id, scene.entities)
+	if entity == nothing
+		error("entity id $entity_id doesn't exist")
+	end
+
+	names      = keys(name_data)
+	components = component.((scene, ), names)
+	data_ids   = add_to_components!(values(name_data), components)
+
+	append!(data_ids, values(entity.data_ids))
+	allnames = (keys(entity.data_ids)..., names...)
+	scene.entities[entity_id] = Entity(entity_id, NamedTuple{allnames}(data_ids))
+end
+
+
+"""
+Clears all the renderables from a scene.
+"""
+function Base.empty!(sc::Scene)
+
+    for rb in sc.renderables
+        free!(rb)
+    end
+    empty!(sc.renderables)
+    return sc
+end

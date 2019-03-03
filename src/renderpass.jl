@@ -3,13 +3,15 @@ import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, unifo
 #Do we really need the context if it is already in frambuffer and program?
 
 RenderPass{name}(programs::ProgramDict, targets::RenderTargetDict; options...) where name =
-    RenderPass{name}(programs, targets, GLRenderable[], options.data)
+    RenderPass{name}(programs, targets, options.data)
 
 RenderPass{name}(shaderdict::Dict{Symbol, Vector{Shader}}, targets::RenderTargetDict; options...) where name =
     RenderPass{name}(Dict([sym => Program(shaders) for (sym, shaders) in shaderdict]), targets; options...)
 
 RenderPass(name::Symbol, args...; options...) =
     RenderPass{name}(args...; options...)
+
+valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
 
 default_renderpass() = context_renderpass(:default, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
 context_renderpass(name::Symbol, shaderdict::Dict{Symbol, Vector{Shader}}) =
@@ -18,33 +20,6 @@ context_renderpass(name::Symbol, shaderdict::Dict{Symbol, Vector{Shader}}) =
 name(::RenderPass{n}) where n = n
 main_program(rp::RenderPass) = rp.programs[:main]
 main_instanced_program(rp::RenderPass) = rp.programs[:main_instanced]
-should_render(rp::RenderPass) = !isempty(rp.renderables)
-
-valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
-
-instanced_renderables(rp::RenderPass) = filter(isinstanced, rp.renderables)
-
-# render(rp::RenderPass, args...) = rp.render(args...)
-function upload(renderables::Vector{<:MeshRenderable}, pass::RenderPass{name}) where name
-    #I'm not clear when this would ever happen but fine
-    instanced_renderables, normal_renderables = separate(isinstanced, renderables)
-    !isempty(instanced_renderables) && upload(InstancedGLRenderable(instanced_renderables, pass), pass)
-    upload.(GLRenderable.(normal_renderables, (pass,)), (pass,))
-    for r in pass.renderables
-        r.source.renderpasses[name] = true
-    end
-end
-
-function upload(rend::GLRenderable, pass::RenderPass{name}) where name
-	id = findfirst(x->x.source == rend.source, pass.renderables)
-	if id == nothing
-    	push!(pass.renderables, rend)
-    else
-	    pass.renderables[id] = rend
-    end
-end
-
-isuploaded(rend::MeshRenderable, pass::RenderPass{name}) where name = isuploaded(rend, name)
 
 
 function free!(rp::RenderPass)
@@ -56,6 +31,7 @@ function register_callbacks(rp::RenderPass, context=current_context())
     on(wh -> resize_targets(rp, Tuple(wh)),
         callback(context, :framebuffer_size))
 end
+
 resize_targets(rp::RenderPass, wh) =
     resize!.(values(rp.targets), (wh,))
 
@@ -76,61 +52,79 @@ function create_transparancy_passes(wh, npasses)
 end
 
 #-------------------- Rendering Functions ------------------------#
-# during rendering
-function render(pipe::Vector{RenderPass}, sc::Scene, args...)
-    for pass in pipe
-        if !should_render(pass)
-            continue
-        end
-        pass(sc, args...)
-    end
-end
+# function render(pipe::Vector{RenderPass}, sc::Scene, args...)
+#     for pass in pipe
+#         if !should_render(pass)
+#             continue
+#         end
+#         pass(sc, args...)
+#     end
+# end
 
-function render(rp::RenderPass, scene::Scene)
-    function r(renderables, program)
-        if !isempty(renderables)
-            bind(program)
-            set_scene_uniforms(program, scene)
-            render(renderables, program)
-        end
-    end
-    r(rp.renderables, main_program(rp))
-    r(rp.instanced_renderables, main_instanced_program(rp))
-    unbind(main_program(rp))
-end
+# function render(rp::RenderPass, scene::Scene, vaos_to_render)
+#     function r(renderables, program)
+#         if !isempty(renderables)
+#             bind(program)
+#             set_scene_uniforms(program, scene)
+#             render(renderables, program)
+#         end
+#     end
+#     r(rp.renderables, main_program(rp))
+#     r(rp.instanced_renderables, main_instanced_program(rp))
+#     unbind(main_program(rp))
+# end
 
-function render(renderables::Vector{GLRenderable}, program::Program)
-    if isempty(renderables)
-        return
-    end
-    for rend in renderables
-        bind(rend)
-        upload_uniforms(program, rend)
-        draw(rend)
-    end
-    unbind(renderables[end])
-end
-
+# function render(renderables::Vector{GLRenderable}, program::Program)
+#     if isempty(renderables)
+#         return
+#     end
+#     for rend in renderables
+#         bind(rend)
+#         upload_uniforms(program, rend)
+#         draw(rend)
+#     end
+#     unbind(renderables[end])
+# end
+#TODO only one light exists
 function set_scene_uniforms(program, scene)
-    set_uniform(program, :projview, projviewmat(scene))
-    set_uniform(program, :campos, scene.camera.eyepos)
-    if !isempty(scene.lights)
-        l = scene.lights[1]
-        set_uniform(program, Symbol("plight.color"), l.color)
-        set_uniform(program, Symbol("plight.position"), l.position)
-        set_uniform(program, Symbol("plight.amb_intensity"), l.ambient)
-        set_uniform(program, Symbol("plight.specular_intensity"), l.specular)
-        set_uniform(program, Symbol("plight.diff_intensity"), l.diffuse)
+
+    c = component(scene, :camera3d)
+    if c != nothing && !isempty(data(c))
+	    set_uniform(program, :projview, data(c)[1].projview)
+	    set_uniform(program, :campos, data(c)[1].eyepos)
     end
+
+    l = component(scene, :point_light)
+    if l != nothing && !isempty(data(l))
+        set_uniform(program, Symbol("plight.color"),              data(l)[1].color)
+        set_uniform(program, Symbol("plight.position"),           data(l)[1].position)
+        set_uniform(program, Symbol("plight.amb_intensity"),      data(l)[1].ambient)
+        set_uniform(program, Symbol("plight.specular_intensity"), data(l)[1].specular)
+        set_uniform(program, Symbol("plight.diff_intensity"),     data(l)[1].diffuse)
+    end
+
 end
 
+function set_uniforms(program::Program, unidict::UniformDict)
+    for (key, val) in unidict
+        set_uniform(program, key, val)
+    end
+end
 #------------------ DIFFERENT KINDS OF RENDERPASSES ------------------#
 #TODO only allows for one light at this point!
-function (rp::RenderPass{:default})(scene::Scene)
+function (rp::RenderPass{:default})(scene::Scene, vaos, uniforms)
+	program = main_program(rp)
     clear!(rp.targets[:context])
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
-    render(rp, scene)
+    bind(program)
+	set_scene_uniforms(program, scene)
+	for (vao, unidict) in zip(vaos, uniforms)
+		set_uniforms(program, unidict)
+		bind(vao)
+    	draw(vao)
+    	unbind(vao)
+	end
     # glEnable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
 end
