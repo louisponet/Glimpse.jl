@@ -40,10 +40,14 @@ function CameraData3D(; overrides...)
 end
 
 
-camera_system(sc::Scene) = System{:camera}((camera3d = component(sc, :camera3d),))
 
-function update(updater::System{:camera}, entities::Vector{Entity}, dio::Diorama)
-	camera_data = data(updater.components.camera3d)
+abstract type InteractiveSystem <: SystemKind end
+struct Camera <: InteractiveSystem end
+
+camera_system(sc::Scene) = System{Camera}(sc, :camera3d)
+
+function update(updater::System{Camera}, entities::Vector{Entity}, dio::Diorama)
+	camera_data = data(updater[:camera3d])
 	if isempty(camera_data)
 		return
 	end

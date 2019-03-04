@@ -3,9 +3,9 @@ import GLAbstraction: free!
 
 #TODO: change such that there are no components until needed?
 StandardSceneComponents() = [GeometryComponent(1),
-		  					 UploadComponent(2),
-		  					 RenderComponent(3),
-		  					 MaterialComponent(4),
+		  					 DefaultRenderComponent(2),
+		  					 MaterialComponent(3),
+		  					 ShapeComponent(4),
 						     SpatialComponent(5),
 						     PointLightComponent(6),
 						     CameraComponent3D(7)]
@@ -55,6 +55,7 @@ function new_entity!(scene::Scene; name_data...)
 
 	names      = keys(name_data)
 	components = component.((scene, ), names)
+	@assert !any(components .== nothing) "Error, $(names[findall(isequal(nothing), components)]) is not present in the scene yet. TODO add this automatically"
 	data_ids   = add_to_components!(values(name_data), components)
 	
 	push!(scene.entities, Entity(entity_id, NamedTuple{(names...,)}(data_ids)))

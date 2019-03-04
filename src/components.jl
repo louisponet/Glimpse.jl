@@ -19,46 +19,32 @@ struct GeometryData{M <: AbstractGlimpseMesh}
 end
 GeometryComponent(id) = Component{:geometry}(id, GeometryData[])
 
-struct UploadData
-	isinstanced ::Bool
-	renderpasses::Vector{Symbol}
-end
-UploadComponent(id) = Component{:render}(id, RenderData[])
 
-struct ChildData
-	child_id::Int
-end
-ChildComponent(id) = Component{:child}(id, ChildData[])
-
-struct ParentData
-	parent_id::Int
-end
-ParentComponent(id) = Component{:parent}(id, ParentData[])
-
-struct RenderData
+mutable struct RenderData
 	is_instanced::Bool
 	is_visible  ::Bool
-	renderpasses::Vector{Symbol}
-	is_uploaded ::Vector{Bool}      # Bool is whether it's uploaded or not
-	vertexarrays::Vector{VertexArray}
+	vertexarray ::VertexArray
 end
-RenderComponent(id) = Component{:render}(id, RenderData[])
+
+DefaultRenderComponent(id)      = Component{:default_render}(id, RenderData[])
+DepthPeelingRenderComponent(id) = Component{:depth_peeling_render}(id, RenderData[])
 
 is_instanced(data::RenderData) = data.is_instanced
-
-has_pass(data::RenderData, pass::RenderPass{name}) where name = in(name, data.renderpasses)
-pass_id(data::RenderData, pass::RenderPass{name})  where name = findfirst(isequal(name), data.renderpasses) 
-is_uploaded(data::RenderData, pass::RenderPass)               = data.is_uploaded[pass_id(data, pass)]
-set_uploaded(data::RenderData, pass::RenderPass, b::Bool)     = data.is_uploaded[pass_id(data, pass)] = b
-renderpass_vao(data::RenderData, pass::RenderPass)            = data.vertexarrays[pass_id(data, pass)]
-
+is_uploaded(data::RenderData) = !GLA.is_null(data.vertexarray)
 
 struct MaterialData
 	specpow ::Float32
 	specint ::Float32
+	color   ::RGBf0
 end
 
 MaterialComponent(id) = Component{:material}(id, MaterialData[])
+
+struct ShapeData
+	scale::Float32
+end
+
+ShapeComponent(id) = Component{:shape}(id, ShapeData[])
 
 struct PointLightData
     position::Vec3f0

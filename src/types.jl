@@ -18,10 +18,11 @@ struct Component{name, T}
 	data ::Vector{T}
 end
 
-struct System{name, NT <: NamedTuple}
-	components::NT #these are our fixed tuple of components
-end
+abstract type SystemKind end
 
+struct System{Kind <: SystemKind, T <: Tuple} #T has the components 
+	components::T
+end
 
 abstract type AbstractGlimpseMesh end
 

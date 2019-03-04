@@ -13,7 +13,7 @@ RenderPass(name::Symbol, args...; options...) =
 
 valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
 
-default_renderpass() = context_renderpass(:default, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
+default_renderpass() = context_renderpass(:default_render, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
 context_renderpass(name::Symbol, shaderdict::Dict{Symbol, Vector{Shader}}) =
     RenderPass(name, shaderdict, RenderTargetDict(:context=>current_context()))
 
@@ -52,90 +52,6 @@ function create_transparancy_passes(wh, npasses)
 end
 
 #-------------------- Rendering Functions ------------------------#
-# function render(pipe::Vector{RenderPass}, sc::Scene, args...)
-#     for pass in pipe
-#         if !should_render(pass)
-#             continue
-#         end
-#         pass(sc, args...)
-#     end
-# end
-
-# function render(rp::RenderPass, scene::Scene, vaos_to_render)
-#     function r(renderables, program)
-#         if !isempty(renderables)
-#             bind(program)
-#             set_scene_uniforms(program, scene)
-#             render(renderables, program)
-#         end
-#     end
-#     r(rp.renderables, main_program(rp))
-#     r(rp.instanced_renderables, main_instanced_program(rp))
-#     unbind(main_program(rp))
-# end
-
-# function render(renderables::Vector{GLRenderable}, program::Program)
-#     if isempty(renderables)
-#         return
-#     end
-#     for rend in renderables
-#         bind(rend)
-#         upload_uniforms(program, rend)
-#         draw(rend)
-#     end
-#     unbind(renderables[end])
-# end
-#TODO only one light exists
-function set_scene_uniforms(program, scene)
-
-    c = component(scene, :camera3d)
-    if c != nothing && !isempty(data(c))
-	    set_uniform(program, :projview, data(c)[1].projview)
-	    set_uniform(program, :campos, data(c)[1].eyepos)
-    end
-
-    l = component(scene, :point_light)
-    if l != nothing && !isempty(data(l))
-        set_uniform(program, Symbol("plight.color"),              data(l)[1].color)
-        set_uniform(program, Symbol("plight.position"),           data(l)[1].position)
-        set_uniform(program, Symbol("plight.amb_intensity"),      data(l)[1].ambient)
-        set_uniform(program, Symbol("plight.specular_intensity"), data(l)[1].specular)
-        set_uniform(program, Symbol("plight.diff_intensity"),     data(l)[1].diffuse)
-    end
-
-end
-
-function set_uniforms(program::Program, unidict::UniformDict)
-    for (key, val) in unidict
-        set_uniform(program, key, val)
-    end
-end
-#------------------ DIFFERENT KINDS OF RENDERPASSES ------------------#
-#TODO only allows for one light at this point!
-function (rp::RenderPass{:default})(scene::Scene, vaos, uniforms)
-	program = main_program(rp)
-    clear!(rp.targets[:context])
-    glEnable(GL_DEPTH_TEST)
-    glDepthFunc(GL_LEQUAL)
-    bind(program)
-	set_scene_uniforms(program, scene)
-	for (vao, unidict) in zip(vaos, uniforms)
-		set_uniforms(program, unidict)
-		bind(vao)
-    	draw(vao)
-    	unbind(vao)
-	end
-    # glEnable(GL_CULL_FACE)
-    # glCullFace(GL_BACK)
-end
-
-function (rp::RenderPass{:simple_transparency})(scene::Scene)
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-    render(rp, scene)
-end
-
 rem1(x, y) = (x - 1) % y + 1
 # TODO: pass options
 # depth peeling with instanced_renderables might give a weird situation?
