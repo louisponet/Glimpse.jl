@@ -2,20 +2,23 @@ import GLAbstraction: Program, Shader, FrameBuffer, Float24
 import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id, current_context
 #Do we really need the context if it is already in frambuffer and program?
 
+struct DefaultPass      <: RenderPassKind end
+struct DepthPeelingPass <: RenderPassKind end
+
 RenderPass{name}(programs::ProgramDict, targets::RenderTargetDict; options...) where name =
     RenderPass{name}(programs, targets, options.data)
 
 RenderPass{name}(shaderdict::Dict{Symbol, Vector{Shader}}, targets::RenderTargetDict; options...) where name =
     RenderPass{name}(Dict([sym => Program(shaders) for (sym, shaders) in shaderdict]), targets; options...)
 
-RenderPass(name::Symbol, args...; options...) =
+RenderPass(name::RenderPassKind, args...; options...) =
     RenderPass{name}(args...; options...)
 
 valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
 
-default_renderpass() = context_renderpass(:default_render, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
-context_renderpass(name::Symbol, shaderdict::Dict{Symbol, Vector{Shader}}) =
-    RenderPass(name, shaderdict, RenderTargetDict(:context=>current_context()))
+default_renderpass() = context_renderpass(DefaultPass, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
+context_renderpass(::Type{Kind}, shaderdict::Dict{Symbol, Vector{Shader}}) where {Kind <: RenderPassKind} =
+    RenderPass{Kind}(shaderdict, RenderTargetDict(:context=>current_context()))
 
 name(::RenderPass{n}) where n = n
 main_program(rp::RenderPass) = rp.programs[:main]
@@ -55,7 +58,7 @@ end
 rem1(x, y) = (x - 1) % y + 1
 # TODO: pass options
 # depth peeling with instanced_renderables might give a weird situation?
-function (rp::RenderPass{:depth_peeling})(scene::Scene)
+function (rp::RenderPass{:depth_peeling})(scene::Diorama)
     peeling_program     = main_program(rp)
     peeling_instanced_program   = main_instanced_program(rp)
     blending_program    = rp.programs[:blending]

@@ -20,23 +20,23 @@ projmat(x::CamKind, wh::SimpleRectangle, args...) =
 
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
 
-function CameraData3D(eyepos, lookat, up, right, area, fov, near, far, rotation_speed, translation_speed)
+function Camera3D(eyepos, lookat, up, right, area, fov, near, far, rotation_speed, translation_speed)
     up    = normalizeperp(lookat - eyepos, up)
     right = normalize(cross(lookat - eyepos, up))
 
     viewm = lookatmat(eyepos, lookat, up)
     projm = projmat(perspective, area, near, far, fov)
-    return CameraData3D(eyepos, lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0), 0.0f0, 0.0f0)
+    return Camera3D(eyepos, lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0), 0.0f0, 0.0f0)
 end
 
-function CameraData3D(eyepos, lookat, up, right; overrides...)
+function Camera3D(eyepos, lookat, up, right; overrides...)
     defaults = mergepop_defaults!(perspective; overrides...)
-    return CameraData3D(eyepos, lookat, up, right, defaults[:area], defaults[:fov], defaults[:near], defaults[:far], defaults[:rotation_speed], defaults[:translation_speed])
+    return Camera3D(eyepos, lookat, up, right, defaults[:area], defaults[:fov], defaults[:near], defaults[:far], defaults[:rotation_speed], defaults[:translation_speed])
 end
 
-function CameraData3D(; overrides...)
+function Camera3D(; overrides...)
     defaults = mergepop_defaults!(perspective, overrides...)
-    return CameraData3D(defaults[:eyepos], defaults[:lookat], defaults[:up], defaults[:right]; defaults...)
+    return Camera3D(defaults[:eyepos], defaults[:lookat], defaults[:up], defaults[:right]; defaults...)
 end
 
 
@@ -44,10 +44,10 @@ end
 abstract type InteractiveSystem <: SystemKind end
 struct Camera <: InteractiveSystem end
 
-camera_system(sc::Scene) = System{Camera}(sc, :camera3d)
+camera_system(dio::Diorama) = System{Camera}(dio, Camera3D)
 
-function update(updater::System{Camera}, entities::Vector{Entity}, dio::Diorama)
-	camera_data = data(updater[:camera3d])
+function update(updater::System{Camera}, dio::Diorama)
+	camera_data = data(updater[Camera3D])
 	if isempty(camera_data)
 		return
 	end
@@ -109,13 +109,13 @@ function update(updater::System{Camera}, entities::Vector{Entity}, dio::Diorama)
     end
 end
 
-calcforward(cam::CameraData3D) = normalize(cam.lookat-cam.eyepos)
-calcright(cam::CameraData3D)   = normalize(cross(calcforward(cam), cam.up))
-calcup(cam::CameraData3D)      = -normalize(cross(calcforward(cam), cam.right))
+calcforward(cam::Camera3D) = normalize(cam.lookat-cam.eyepos)
+calcright(cam::Camera3D)   = normalize(cross(calcforward(cam), cam.up))
+calcup(cam::Camera3D)      = -normalize(cross(calcforward(cam), cam.right))
 
 
 #maybe it would be better to make the eyepos up etc vectors already vec4 but ok
-function wasd_event(cam::CameraData3D, button)
+function wasd_event(cam::Camera3D, button)
     #ok this is a bit hacky but fine
     origlen = norm(cam.eyepos)
     if button[1] == Int(KEY_A)

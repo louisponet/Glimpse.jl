@@ -1,52 +1,48 @@
 data(component::Component) = component.data
-name(component::Component{n}) where n = n
 
-Component{name}(id, data::Vector{T}) where {name, T} = Component{name, T}(id, data)
 
-struct SpatialData
+# Component(id, data::Vector{T}) where {T<:ComponentData} = Component{T}(id, data)
+
+struct Spatial <: ComponentData
 	position::Vec3f0
 	velocity::Vec3f0
 end
-SpatialComponent(id) = Component{:spatial}(id, SpatialData[]) 
+SpatialComponent(id) = Component(id, Spatial[]) 
 
-struct TypeData
-	typ::Type
+struct Geometry <: ComponentData
+	mesh
 end
-TypeComponent(id) = Component{:type}(id, TypeData[])
-
-struct GeometryData{M <: AbstractGlimpseMesh}
-	mesh::M
-end
-GeometryComponent(id) = Component{:geometry}(id, GeometryData[])
+GeometryComponent(id) = Component(id, Geometry[])
 
 
-mutable struct RenderData
+mutable struct Render{RP <: RenderPassKind} <: ComponentData
 	is_instanced::Bool
 	is_visible  ::Bool
 	vertexarray ::VertexArray
 end
 
-DefaultRenderComponent(id)      = Component{:default_render}(id, RenderData[])
-DepthPeelingRenderComponent(id) = Component{:depth_peeling_render}(id, RenderData[])
+DefaultRenderComponent(id)      = Component(id, Render{DefaultPass}[])
+DepthPeelingRenderComponent(id) = Component(id, Render{DepthPeelingPass}[])
 
-is_instanced(data::RenderData) = data.is_instanced
-is_uploaded(data::RenderData) = !GLA.is_null(data.vertexarray)
+is_instanced(data::Render) = data.is_instanced
+is_uploaded(data::Render)  = !GLA.is_null(data.vertexarray)
+kind(::Type{Render{Kind}}) where Kind = Kind
 
-struct MaterialData
+struct Material <: ComponentData
 	specpow ::Float32
 	specint ::Float32
 	color   ::RGBf0
 end
 
-MaterialComponent(id) = Component{:material}(id, MaterialData[])
+MaterialComponent(id) = Component(id, Material[])
 
-struct ShapeData
+struct Shape <: ComponentData
 	scale::Float32
 end
 
-ShapeComponent(id) = Component{:shape}(id, ShapeData[])
+ShapeComponent(id) = Component(id, Shape[])
 
-struct PointLightData
+struct PointLight <: ComponentData
     position::Vec3f0
     diffuse ::Float32
     specular::Float32
@@ -54,9 +50,9 @@ struct PointLightData
     color   ::RGBf0
 end
 
-PointLightComponent(id) = Component{:point_light}(id, PointLightData[])
+PointLightComponent(id) = Component(id, PointLight[])
 
-struct DirectionLightData
+struct DirectionLight <: ComponentData
 	direction::Vec3f0
     diffuse  ::Float32
     specular ::Float32
@@ -64,9 +60,9 @@ struct DirectionLightData
     color    ::RGBf0	
 end
 
-DirectionLightComponent(id) = Component{:direction_light}(id, PointLightData[])
+DirectionLightComponent(id) = Component(id, PointLight[])
 
-mutable struct CameraData3D
+mutable struct Camera3D <: ComponentData
     eyepos ::Vec3f0
     lookat ::Vec3f0
     up     ::Vec3f0
@@ -84,7 +80,7 @@ mutable struct CameraData3D
     scroll_dy         ::Float32
 end
 
-CameraComponent3D(id) = Component{:camera3d}(id, CameraData3D[])
-# const RenderPassData = NamedTuple{(:programs, :targets, :renderable_ids, :vertexarrays,  
+CameraComponent3D(id) = Component(id, Camera3D[])
+# const RenderPass = NamedTuple{(:programs, :targets, :renderable_ids, :vertexarrays,  
 
 

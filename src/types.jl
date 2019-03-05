@@ -7,22 +7,34 @@ const RGBAf0          = RGBA{Float32}
 const RGBf0           = RGB{Float32}
 @enum CamKind pixel orthographic perspective
 
-#Should I use DataFrames/Tables?
-struct Entity{NT <: NamedTuple} #we will create a name component #maybe it's not so bad that these are not contiguous?
-	id       ::Int
-	data_ids ::NT
-end
+abstract type AbstractComponent end
+abstract type Singleton <: AbstractComponent end
 
-struct Component{name, T}
+abstract type ComponentData end
+
+struct Component{T <: ComponentData} <: AbstractComponent
 	id   ::Int
 	data ::Vector{T}
 end
+Base.eltype(::Component{T}) where { T<:ComponentData } = T
+
+struct DataID{T <: ComponentData}
+	id     ::Int
+end
+Base.eltype(::DataID{T}) where {T} = T
+#Should I use DataFrames/Tables?
+struct Entity #we will create a name component #maybe it's not so bad that these are not contiguous?
+	id       ::Int
+	data_ids ::Vector{DataID}
+end
+
 
 abstract type SystemKind end
 
-struct System{Kind <: SystemKind, T <: Tuple} #T has the components 
-	components::T
+struct System{Kind <: SystemKind, DT} #DT has the components datatypes 
+	components
 end
+
 
 abstract type AbstractGlimpseMesh end
 
@@ -37,14 +49,6 @@ end
 struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
     attributes ::AT
     basic      ::BM
-end
-
-#Should we really dispatch on the original type? Maybe
-
-mutable struct Scene
-    name::Symbol
-    entities   ::Vector{Entity}
-    components ::Vector{Component}
 end
 
 mutable struct Canvas <: GLA.AbstractContext
@@ -91,12 +95,12 @@ mutable struct Screen
     end
 end
 
-mutable struct RenderPass{Name, NT <: NamedTuple}
-    # id::Int
-    programs              ::ProgramDict
-    targets               ::RenderTargetDict
-    # renderables           ::Vector{GLRenderable}
-    options               ::NT
+abstract type RenderPassKind end
+
+mutable struct RenderPass{RenderPassKind, NT <: NamedTuple} <: Singleton
+    programs::ProgramDict
+    targets ::RenderTargetDict
+    options ::NT
     function RenderPass{name}(programs::ProgramDict, fbs::RenderTargetDict, options::NT) where {name, NT <: NamedTuple}
         obj = new{name, NT}(programs, fbs, options)
         finalizer(free!, obj)
@@ -104,23 +108,30 @@ mutable struct RenderPass{Name, NT <: NamedTuple}
     end
 end
 
+kind(::Type{RenderPass{Kind}}) where Kind = Kind
+kind(::RenderPass{Kind}) where Kind = Kind
+
 mutable struct SimData
 	time  ::Float64
 	dtime ::Float64
 	frames::Int
 end
 
+
 mutable struct Diorama
-    name     ::Symbol
-    scene    ::Scene
-    systems  ::Vector{System}
-    screen   ::Union{Screen, Nothing}
-    pipeline ::Union{Vector{RenderPass}, Nothing}
-    loop     ::Union{Task, Nothing}
-    reupload ::Bool
-    simdata  ::SimData
-    function Diorama(name, scene, systems, screen, pipeline; interactive=false, kwargs...)
-        dio = new(name, scene, systems, screen, pipeline, nothing, true, SimData(time(),0.0, 0))
+    name       ::Symbol
+
+    entities   ::Vector{Entity}
+    components ::Vector{Component}
+    singletons ::Vector{Singleton}
+    systems    ::Vector{System}
+
+    screen     ::Union{Screen, Nothing}
+    loop       ::Union{Task, Nothing}
+    reupload   ::Bool
+    simdata    ::SimData
+    function Diorama(name, entities, components,  singletons, systems, screen; interactive=false, kwargs...)
+        dio = new(name, entities, components, singletons, systems, screen, nothing, true, SimData(time(),0.0, 0))
         makecurrentdio(dio)
         expose(dio; kwargs...)
         finalizer(free!, dio)
@@ -129,14 +140,10 @@ mutable struct Diorama
 end
 include("components.jl")
 include("meshes.jl")
-include("renderable.jl")
-include("light.jl")
 include("camera.jl")
-include("scene.jl")
 include("canvas.jl")
 include("screen.jl")
 include("renderpass.jl")
-
 include("diorama.jl")
 
 
