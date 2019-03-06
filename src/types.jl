@@ -53,10 +53,11 @@ struct Component{T <: ComponentData} <: AbstractComponent
 end
 Base.eltype(::Component{T}) where { T<:ComponentData } = T
 
-struct DataID{T <: ComponentData}
-	id     ::Int
+# struct DataID{T <: ComponentData}
+struct DataID
+	comp_id::Int
+	data_id::Int
 end
-Base.eltype(::DataID{T}) where {T} = T
 #Should I use DataFrames/Tables?
 struct Entity #we will create a name component #maybe it's not so bad that these are not contiguous?
 	id       ::Int

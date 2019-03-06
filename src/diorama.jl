@@ -42,78 +42,6 @@ projviewmat(dio::Diorama) = dio.camera.projview
 darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
 lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
 
-
-
-
-# __/\\\\\\\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\\\___        
-#  _\/\\\///////////______/\\\////////____/\\\/////////\\\_       
-#   _\/\\\_______________/\\\/____________\//\\\______\///__      
-#    _\/\\\\\\\\\\\______/\\\_______________\////\\\_________     
-#     _\/\\\///////______\/\\\__________________\////\\\______    
-#      _\/\\\_____________\//\\\____________________\////\\\___   
-#       _\/\\\______________\///\\\___________/\\\______\//\\\__  
-#        _\/\\\\\\\\\\\\\\\____\////\\\\\\\\\_\///\\\\\\\\\\\/___ 
-#         _\///////////////________\/////////____\///////////_____
-  
-
-
-
-# component_id(dio::Diorama, name::Symbol) = findfirst( x -> x.name == name, dio.components)
-new_entity_data_id(component::Component) = length(component.data) + 1
-
-new_component!(dio::Diorama, component::Component) = push!(dio.components, component)
-
-#TODO handle freeing and reusing stuff
-#TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
-function add_to_components!(datas, components)
-	data_ids  = DataID[]
-	for (data, comp) in zip(datas, components)
-		data_id    = DataID{eltype(comp)}(new_entity_data_id(comp))
-		push!(data_ids, data_id)
-		push!(comp.data, data)
-	end
-	return data_ids
-end
-
-function new_entity!(dio::Diorama, data...)
-	entity_id  = length(dio.entities) + 1
-
-	names      = typeof.(data)
-	components = component.((dio, ), names)
-	@assert !any(components .== nothing) "Error, $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
-	data_ids   = add_to_components!(data, components)
-	
-	push!(dio.entities, Entity(entity_id, data_ids))
-end
-
-# function add_entity_components!(dio::Diorama, entity_id::Int; name_data...)
-# 	entity = getfirst(x->x.id == entity_id, dio.entities)
-# 	if entity == nothing
-# 		error("entity id $entity_id doesn't exist")
-# 	end
-
-# 	names      = keys(name_data)
-# 	components = component.((dio, ), names)
-# 	data_ids   = add_to_components!(values(name_data), components)
-
-# 	append!(data_ids, values(entity.data_ids))
-# 	allnames = (keys(entity.data_ids)..., names...)
-# 	dio.entities[entity_id] = Entity(entity_id, NamedTuple{allnames}(data_ids))
-# end
-
-
-"""
-Clears all the renderables from a dio.
-"""
-function Base.empty!(dio::Diorama)
-
-    for rb in dio.renderables
-        free!(rb)
-    end
-    empty!(dio.renderables)
-    return dio
-end
-###########
 function free!(dio::Diorama)
     free!(dio.screen)
     # free!.(dio.pipeline)
@@ -123,7 +51,7 @@ function renderloop(dio, framerate = 1/60)
     screen   = dio.screen
     dio    = dio
     while !should_close(dio.screen)
-        @time for sys in dio.systems
+        for sys in dio.systems
 	        update(sys, dio)
         end
         swapbuffers(dio.screen)
@@ -170,85 +98,164 @@ function makecurrentdio(x)
     currentdio[] = x
 end
 
-get_singleton(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) == T, dio.singletons)
-get_renderpass(dio::Diorama, ::Type{T}) where {T <: RenderPassKind} = getfirst(x -> kind(x) == T, dio.singletons)
-
-
 windowsize(dio::Diorama) = windowsize(dio.screen)
 
 pixelsize(dio::Diorama)  = (windowsize(dio)...,)
 
+set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, color)
 
-# function set!(dio::Diorama, pipeline::Vector{RenderPass}, reupload=true)
-    # dio.pipeline = pipeline
-    # register_callbacks(pipeline, dio.screen.canvas)
-    # dio.reupload = true
+
+
+# __/\\\\\\\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\\\___        
+#  _\/\\\///////////______/\\\////////____/\\\/////////\\\_       
+#   _\/\\\_______________/\\\/____________\//\\\______\///__      
+#    _\/\\\\\\\\\\\______/\\\_______________\////\\\_________     
+#     _\/\\\///////______\/\\\__________________\////\\\______    
+#      _\/\\\_____________\//\\\____________________\////\\\___   
+#       _\/\\\______________\///\\\___________/\\\______\//\\\__  
+#        _\/\\\\\\\\\\\\\\\____\////\\\\\\\\\_\///\\\\\\\\\\\/___ 
+#         _\///////////////________\/////////____\///////////_____
+  
+
+
+
+# component_id(dio::Diorama, name::Symbol) = findfirst( x -> x.name == name, dio.components)
+new_entity_data_id(component::Component) = length(component.data) + 1
+
+new_component!(dio::Diorama, component::Component) = push!(dio.components, component)
+
+#TODO handle freeing and reusing stuff
+#TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
+function add_to_components!(datas, components)
+	data_ids  = DataID[]
+	for (data, comp) in zip(datas, components)
+		data_id    = DataID(comp.id, new_entity_data_id(comp))
+		push!(data_ids, data_id)
+		push!(comp.data, data)
+	end
+	return data_ids
+end
+
+function new_entity!(dio::Diorama, data...)
+	entity_id  = length(dio.entities) + 1
+
+	names      = typeof.(data)
+	components = component.((dio, ), names)
+	@assert !any(components .== nothing) "Error, $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
+	data_ids   = add_to_components!(data, components)
+	
+	push!(dio.entities, Entity(entity_id, data_ids))
+end
+
+# function add_entity_components!(dio::Diorama, entity_id::Int; name_data...)
+# 	entity = getfirst(x->x.id == entity_id, dio.entities)
+# 	if entity == nothing
+# 		error("entity id $entity_id doesn't exist")
+# 	end
+
+# 	names      = keys(name_data)
+# 	components = component.((dio, ), names)
+# 	data_ids   = add_to_components!(values(name_data), components)
+
+# 	append!(data_ids, values(entity.data_ids))
+# 	allnames = (keys(entity.data_ids)..., names...)
+# 	dio.entities[entity_id] = Entity(entity_id, NamedTuple{allnames}(data_ids))
 # end
 
+
+###########
+get_singleton(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) == T, dio.singletons)
+get_renderpass(dio::Diorama, ::Type{T}) where {T <: RenderPassKind} = getfirst(x -> kind(x) == T, dio.singletons)
+components(dio::Diorama) = dio.components
 # manipulations
 
 
 # set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.camera.rotation_speed = Float32(rotation_speed)
-set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, color)
 
 
 # SIMDATA
-abstract type SimulationSystem <: SystemKind end
-struct Timer <: SimulationSystem end 
-
-sim_system(dio::Diorama) = System{Timer}(dio, Spatial)
-
-#maybe this should be splitted into a couple of systems
-function update(renderer::System{Timer}, dio::Diorama)
-	sd = dio.simdata
-	nt         = time()
-	sd.dtime   = nt - sd.time
-	sd.time    = time()
-	sd.frames += 1
-end
-
-component_types(sys::System) = eltype.(sys.components)
-component_id(sys::System, ::Type{DT}) where {DT<:ComponentData}   = findfirst(isequal(DT), component_types(sys))
-
-function has_components(e::Entity, ComponentTypes...)
-	c = 0
-	for ct in ComponentTypes
-		for d in e.data_ids
-			if ct == eltype(d)
-				c += 1
+function component_ids(dio::Diorama, ComponentTypes)
+	diocomps = components(dio)
+	ids      = zeros(Int, length(ComponentTypes))
+	for (ic, ct) in enumerate(ComponentTypes)
+		for c in diocomps
+			if eltype(c) == ct
+				ids[ic] = c.id
 			end
 		end
 	end
-	return c == length(ComponentTypes)
+	return ids
 end
 
-has_components(e::Entity, sys::System)       = has_components(e, component_types(sys))
-
-function get_components(dio::Diorama, ComponentTypes...)
-	comps = Component[]
-	for comptyp in ComponentTypes
-		tc = getfirst(x -> eltype(x) == comptyp, dio.components)
-		if tc != nothing
-			push!(comps, tc)
+function get_components(dio::Diorama, component_ids::Vector{Int})
+	ncomps   = length(component_ids)
+	diocomps = components(dio)
+	comps    = Vector{Component}(undef, ncomps)
+	for (ic, cid) in enumerate(component_ids)
+		for c in diocomps
+			if c.id == cid
+				comps[ic] = c
+			end
 		end
 	end
 	return comps
 end
 
-get_valid_entities(dio::Diorama, ComponentTypes...) = filter(x -> has_components(x, ComponentTypes), dio.entities)
+function get_components(dio::Diorama, ComponentTypes::Type{<:ComponentData}...)
+	ncomps   = length(ComponentTypes)
+	diocomps = components(dio)
+	comps    = Vector{Component}(undef, ncomps)
+	for (ic, ct) in enumerate(ComponentTypes)
+		for c in diocomps
+			if eltype(c) == ct
+				comps[ic] = c
+			end
+		end
+	end
+	return comps
+end
+#maybe this should be splitted into a couple of systems
 
+component_types(sys::System) = eltype.(sys.components)
+component_ids(sys::System)   = [c.id for c in sys.components]
+component_id(sys::System, ::Type{DT}) where {DT<:ComponentData} = findfirst(isequal(DT), component_types(sys))
 
-function generate_gapped_arrays(dio::Diorama, ComponentTypes...)
-	valid_ids = [Int[] for i = 1:length(ComponentTypes)]
+function has_components(e::Entity, component_ids::Vector{Int})
+	c = 0
+	for ct in component_ids
+		for d in e.data_ids
+			if ct == d
+				c += 1
+			end
+		end
+	end
+	return c == length(component_ids)
+end
+
+has_components(e::Entity, sys::System) = has_components(e, component_ids(sys))
+
+get_valid_entities(dio::Diorama, ComponentTypes...) = filter(x -> has_components(x, component_ids(dio::Diorama, ComponentTypes)), dio.entities)
+
+function haszeros(v)
+	for i in v
+		if iszero(i)
+			return true
+		end
+	end
+	return false
+end
+
+function generate_gapped_arrays(dio::Diorama, ComponentTypes::Type{<:ComponentData}...)
+	cids = component_ids(dio, ComponentTypes)
+	@assert !haszeros(cids) "Not all components required by the system were found"
+	
+	valid_ids = [Int[] for i = 1:length(cids)]
 	for entity in dio.entities
-		if !has_components(entity, ComponentTypes)
+		if !has_components(entity, cids)
 			continue
 		end
-		for (ic, c_type) in enumerate(ComponentTypes)
-			i = data_id(entity, c_type)
-			if i != nothing
-				push!(valid_ids[ic], i)
-			end
+		for (ic, cid) in enumerate(cids)
+			push!(valid_ids[ic], data_id(entity, cid))
 		end
 	end
 	#TODO SCARY WATCHOUT!!!!!!! should we do this?
@@ -262,17 +269,13 @@ function generate_gapped_arrays(dio::Diorama, ComponentTypes...)
 			end
 		end
 	end
-	components = get_components(dio, ComponentTypes...)
-	@assert length(components) == length(ComponentTypes) "Not all components required by the system were found"
+	components = get_components(dio, cids)
 	arrs = [GappedArray(component.data, gap) for (component, gap) in zip(components,gaps)]
 	return arrs
 end
 
 generate_gapped_arrays(dio::Diorama, sys::System{<:SystemKind})  =
 	generate_gapped_arrays(dio, component_types(sys)...)
-
-
-
 
 
 # function reupload(::Diorama)

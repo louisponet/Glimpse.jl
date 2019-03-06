@@ -12,6 +12,17 @@ Base.getindex(sys::System, id::Int) = sys.components[id]
 Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: ComponentData} =
 	sys.components[findfirst(isequal(T), component_types(sys))]
 
+abstract type SimulationSystem <: SystemKind end
+struct Timer <: SimulationSystem end 
+
+sim_system(dio::Diorama) = System{Timer}(dio, Spatial)
+function update(renderer::System{Timer}, dio::Diorama)
+	sd = dio.simdata
+	nt         = time()
+	sd.dtime   = nt - sd.time
+	sd.time    = time()
+	sd.frames += 1
+end
 
 abstract type UploaderSystem <: SystemKind     end
 struct DefaultUploader       <: UploaderSystem end

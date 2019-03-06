@@ -1,7 +1,5 @@
-component_types(e::Entity) = eltype.(e.data_ids)
-
 # WATCHOUT FOR NOTHING
-data_id(e::Entity, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) == T, e.data_ids).id
+data_id(e::Entity, id::Int) = getfirst(x -> x.comp_id == id, e.data_ids).data_id
 
 # All entity Assemblages go here
 
