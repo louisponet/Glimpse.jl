@@ -42,12 +42,29 @@ projviewmat(dio::Diorama) = dio.camera.projview
 darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
 lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
 
+
+
+
+# __/\\\\\\\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\\\___        
+#  _\/\\\///////////______/\\\////////____/\\\/////////\\\_       
+#   _\/\\\_______________/\\\/____________\//\\\______\///__      
+#    _\/\\\\\\\\\\\______/\\\_______________\////\\\_________     
+#     _\/\\\///////______\/\\\__________________\////\\\______    
+#      _\/\\\_____________\//\\\____________________\////\\\___   
+#       _\/\\\______________\///\\\___________/\\\______\//\\\__  
+#        _\/\\\\\\\\\\\\\\\____\////\\\\\\\\\_\///\\\\\\\\\\\/___ 
+#         _\///////////////________\/////////____\///////////_____
+  
+
+
+
 # component_id(dio::Diorama, name::Symbol) = findfirst( x -> x.name == name, dio.components)
 new_entity_data_id(component::Component) = length(component.data) + 1
 
 new_component!(dio::Diorama, component::Component) = push!(dio.components, component)
 
 #TODO handle freeing and reusing stuff
+#TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
 function add_to_components!(datas, components)
 	data_ids  = DataID[]
 	for (data, comp) in zip(datas, components)
@@ -189,6 +206,71 @@ function update(renderer::System{Timer}, dio::Diorama)
 	sd.time    = time()
 	sd.frames += 1
 end
+
+component_types(sys::System) = eltype.(sys.components)
+component_id(sys::System, ::Type{DT}) where {DT<:ComponentData}   = findfirst(isequal(DT), component_types(sys))
+
+function has_components(e::Entity, ComponentTypes...)
+	c = 0
+	for ct in ComponentTypes
+		for d in e.data_ids
+			if ct == eltype(d)
+				c += 1
+			end
+		end
+	end
+	return c == length(ComponentTypes)
+end
+
+has_components(e::Entity, sys::System)       = has_components(e, component_types(sys))
+
+function get_components(dio::Diorama, ComponentTypes...)
+	comps = Component[]
+	for comptyp in ComponentTypes
+		tc = getfirst(x -> eltype(x) == comptyp, dio.components)
+		if tc != nothing
+			push!(comps, tc)
+		end
+	end
+	return comps
+end
+
+get_valid_entities(dio::Diorama, ComponentTypes...) = filter(x -> has_components(x, ComponentTypes), dio.entities)
+
+
+function generate_gapped_arrays(dio::Diorama, ComponentTypes...)
+	valid_ids = [Int[] for i = 1:length(ComponentTypes)]
+	for entity in dio.entities
+		if !has_components(entity, ComponentTypes)
+			continue
+		end
+		for (ic, c_type) in enumerate(ComponentTypes)
+			i = data_id(entity, c_type)
+			if i != nothing
+				push!(valid_ids[ic], i)
+			end
+		end
+	end
+	#TODO SCARY WATCHOUT!!!!!!! should we do this?
+	sort!.(valid_ids)
+	gaps = [Gap[] for i=1:length(ComponentTypes)]
+	for (ic, vids) in enumerate(valid_ids)
+		for i = 1:2:length(vids)
+			gap = vids[i+1] - vids[i] 
+			if gap != 1
+				push!(gaps[ic], Gap(vids[i] + 1, gap))
+			end
+		end
+	end
+	components = get_components(dio, ComponentTypes...)
+	@assert length(components) == length(ComponentTypes) "Not all components required by the system were found"
+	arrs = [GappedArray(component.data, gap) for (component, gap) in zip(components,gaps)]
+	return arrs
+end
+
+generate_gapped_arrays(dio::Diorama, sys::System{<:SystemKind})  =
+	generate_gapped_arrays(dio, component_types(sys)...)
+
 
 
 

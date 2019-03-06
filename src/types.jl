@@ -7,6 +7,41 @@ const RGBAf0          = RGBA{Float32}
 const RGBf0           = RGB{Float32}
 @enum CamKind pixel orthographic perspective
 
+# Gapped Arrays are used in systems
+struct Gap
+	start::Int
+	len  ::Int
+end
+
+function Base.sum(v::Vector{Gap})
+	t = 0
+	for g in v
+		t += g.len
+	end
+	return t
+end
+
+struct GappedArray{T, N} <: AbstractArray{T, N}
+	base::DenseArray{T, N}
+	gaps::Vector{Gap}
+end
+
+function gapped_index(A::GappedArray, i::Int)
+	t_id = i 
+	for g in A.gaps
+		if t_id >= g.start
+			t_id += g.len
+		end
+	end
+	return t_id
+end
+
+Base.size(A::GappedArray)                 = size(A.base)   .- sum(A.gaps)
+Base.length(A::GappedArray)               = length(A.base) .- sum(A.gaps)
+Base.getindex(A::GappedArray, i::Int)     = A.base[gapped_index(A, i)]
+Base.setindex!(A::GappedArray, v, i::Int) = A.base[gapped_index(A, i)] = v
+Base.IndexStyle(::Type{<:GappedArray})    = IndexLinear()
+
 abstract type AbstractComponent end
 abstract type Singleton <: AbstractComponent end
 
@@ -31,7 +66,7 @@ end
 
 abstract type SystemKind end
 
-struct System{Kind <: SystemKind, DT} #DT has the components datatypes 
+struct System{Kind <: SystemKind} #DT has the components datatypes 
 	components
 end
 
@@ -138,6 +173,10 @@ mutable struct Diorama
         return dio
     end
 end
+
+
+
+
 include("components.jl")
 include("meshes.jl")
 include("camera.jl")

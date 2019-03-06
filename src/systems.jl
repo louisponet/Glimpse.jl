@@ -1,5 +1,5 @@
 # COnstructors
-System{kind}(components::Tuple) where {kind} = System{kind, Tuple{eltype.(components)...}}(components)
+# System{kind}(components::Tuple) where {kind} = System{kind, (eltype.(components)...,)}(components)
 
 function System{kind}(dio::Diorama, comp_names...) where {kind}
 	components = component.((dio,), comp_names)
@@ -9,17 +9,9 @@ end
 
 # Access
 Base.getindex(sys::System, id::Int) = sys.components[id]
-Base.getindex(sys::System{Kind, TT} where Kind, ::Type{T}) where {TT, T <: ComponentData} =
-	sys.components[findfirst(isequal(T), TT.parameters)]
+Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: ComponentData} =
+	sys.components[findfirst(isequal(T), component_types(sys))]
 
-component_types(sys::System{Kind, T} where Kind) where {T<:Tuple} = T.parameters
-component_id(sys::System, ::Type{DT}) where {DT<:ComponentData} = findfirst(isequal(DT), component_types(sys))
-
-
-has_all_components(e::Entity, sys::System) = all(component_types(sys) .∈ (component_types(e),))
-
-
-has_components(e::Entity, names...) = all(names .∈ (component_types(e),))
 
 abstract type UploaderSystem <: SystemKind     end
 struct DefaultUploader       <: UploaderSystem end
@@ -37,21 +29,20 @@ depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, 
 
 function update(uploader::System{<: UploaderSystem}, dio::Diorama)
 	rendercomp_name = kind(eltype(uploader.components[2]))
-	renderpass = get_renderpass(dio, rendercomp_name)
+	renderpass      = get_renderpass(dio, rendercomp_name)
 	if renderpass == nothing
 		return
 	end
-	valid_entities = filter(x -> has_all_components(x, uploader), dio.entities)
-	if isempty(valid_entities)
+
+	geometry, render = generate_gapped_arrays(dio, uploader)
+	if isempty(geometry)
 		return
 	end
-	geometry, render = data.(uploader.components)
 
 	instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
-
-	for entity in valid_entities
-		e_render = render[data_id(entity, Render{rendercomp_name})]
-		e_geom   = geometry[data_id(entity, Geometry)]
+	for (e_render, e_geom) in zip(render, geometry)
+		# e_render = render[data_id(entity, Render{rendercomp_name})]
+		# e_geom   = geometry[data_id(entity, Geometry)]
 
 		if is_uploaded(e_render)
 			continue
@@ -84,11 +75,8 @@ depth_peeling_render_system(dio::Diorama) =
 #maybe this should be splitted into a couple of systems
 function update(renderer::System{DefaultRenderer}, dio::Diorama)
 
-	valid_entities = filter(x -> has_components(x, Render{DefaultPass}, Material, Shape, Spatial), dio.entities)
-	if isempty(valid_entities)
-		return
-	end
-	render, spatial, material, shape, light, camera = data.(renderer.components)
+	render, spatial, material, shape = generate_gapped_arrays(dio, Render{DefaultPass}, Spatial, Material, Shape)
+	light, camera = data.(get_components(dio, PointLight, Camera3D))
 	renderpass = get_renderpass(dio, DefaultPass)
 
 	clear!(renderpass.targets[:context])
@@ -112,13 +100,12 @@ function update(renderer::System{DefaultRenderer}, dio::Diorama)
         set_uniform(program, Symbol("plight.diff_intensity"),     light[1].diffuse)
     end
 
-	for entity in valid_entities
-
-		e_render   = render[  data_id(entity, Render{DefaultPass})]
-		e_material = material[data_id(entity, Material)]
-		e_spatial  = spatial[ data_id(entity, Spatial)]
-		e_shape    = shape[   data_id(entity, Shape)]
-
+	# @time for (e_render, e_spatial, e_material, e_shape) in zip(render, spatial, material, shape)
+	for i=1:length(render)
+		e_render = render[i]
+		e_material = material[i]
+		e_spatial  = spatial[i]
+		e_shape = shape[i]
 		mat = translmat(e_spatial.position) * scalemat(Vec3f0(e_shape.scale))
 		set_uniform(program, :specpow, e_material.specpow)
 		set_uniform(program, :specint, e_material.specint)
