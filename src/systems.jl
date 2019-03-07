@@ -86,7 +86,6 @@ depth_peeling_render_system(dio::Diorama) =
 
 #maybe this should be splitted into a couple of systems
 function update(renderer::System{DefaultRenderer}, dio::Diorama)
-	# @time begin
 	render        = renderer[Render{DefaultPass}].data
 	spatial       = renderer[Spatial].data
 	material      = renderer[Material].data
@@ -115,7 +114,6 @@ function update(renderer::System{DefaultRenderer}, dio::Diorama)
         set_uniform(program, Symbol("plight.diff_intensity"),     light[1].diffuse)
     end
 
-	# @time for (e_render, e_spatial, e_material, e_shape) in zip(render, spatial, material, shape)
 	for i in shared_indices(render, spatial, material, shape)
 		e_render   = render[i]
 		e_material = material[i]
@@ -129,7 +127,6 @@ function update(renderer::System{DefaultRenderer}, dio::Diorama)
 		draw(e_render.vertexarray)
 		GLA.unbind(e_render.vertexarray)
 	end
-# end
 #TODO light entities, camera entities
 end
 

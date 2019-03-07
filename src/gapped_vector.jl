@@ -127,26 +127,44 @@ function has_index(A::GappedVector, i)
 end
 
 #TODO Performance: this can be optimized quite a bit
-shared_indices(As::GappedVector...) = intersect(eachindex.(As)...)
-
-
-struct SharedIterator{T}
-	data::T
-end
-
-length(it::SharedIterator) = length(it.data)
-function Base.iterate(it::SharedIterator, state=(ones(Int, length(it)), ones(Int, length(it)))
-	for (vid, gvec) in zip(state[1], it.data)
-		if vid > length(gvec.data)
-			return nothing
+function shared_indices(As::GappedVector...)
+	maxlen =  maximum(length.(As))
+	Alen   = length(As)
+	ids = zeros(Int, maxlen)
+	for i = 1:maxlen
+		c = 0
+		for A in As
+			if has_index(A, i)
+				c += 1
+			end
 		end
-	if state[1] > length(A.data)
-		return nothing
-	elseif state[2] == length(A.data[state[1]])
-		return A.data[state[1]][state[2]], (state[1]+1, 1)
-	else
-		return A.data[state[1]][state[2]], (state[1], state[2]+1)
+		if c == Alen
+			push!(ids, i)
+		end
 	end
+	return filter(!iszero, ids)
 end
+
+	# intersect(eachindex.(As)...)
+
+
+# struct SharedIterator{T}
+# 	data::T
+# end
+
+# length(it::SharedIterator) = length(it.data)
+# function Base.iterate(it::SharedIterator, state=(ones(Int, length(it)), ones(Int, length(it)))
+# 	for (vid, gvec) in zip(state[1], it.data)
+# 		if vid > length(gvec.data)
+# 			return nothing
+# 		end
+# 	if state[1] > length(A.data)
+# 		return nothing
+# 	elseif state[2] == length(A.data[state[1]])
+# 		return A.data[state[1]][state[2]], (state[1]+1, 1)
+# 	else
+# 		return A.data[state[1]][state[2]], (state[1], state[2]+1)
+# 	end
+# end
 	
 
