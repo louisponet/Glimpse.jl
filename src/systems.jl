@@ -45,15 +45,16 @@ function update(uploader::System{<: UploaderSystem}, dio::Diorama)
 		return
 	end
 
-	geometry, render = generate_gapped_arrays(dio, uploader)
+	geometry = uploader[Geometry].data
+	render   = uploader[Render{DefaultPass}].data
 	if isempty(geometry)
 		return
 	end
-
 	instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
-	for (e_render, e_geom) in zip(render, geometry)
-		# e_render = render[data_id(entity, Render{rendercomp_name})]
-		# e_geom   = geometry[data_id(entity, Geometry)]
+	for i in shared_indices(render, geometry)
+		e_render = render[i]
+		# println(i)
+		e_geom   = geometry[i]
 
 		if is_uploaded(e_render)
 			continue
@@ -85,10 +86,13 @@ depth_peeling_render_system(dio::Diorama) =
 
 #maybe this should be splitted into a couple of systems
 function update(renderer::System{DefaultRenderer}, dio::Diorama)
-
-	render, spatial, material, shape = generate_gapped_arrays(dio, Render{DefaultPass}, Spatial, Material, Shape)
+	# @time begin
+	render        = renderer[Render{DefaultPass}].data
+	spatial       = renderer[Spatial].data
+	material      = renderer[Material].data
+	shape         = renderer[Shape].data
 	light, camera = data.(get_components(dio, PointLight, Camera3D))
-	renderpass = get_renderpass(dio, DefaultPass)
+	renderpass    = get_renderpass(dio, DefaultPass)
 
 	clear!(renderpass.targets[:context])
 
@@ -112,12 +116,12 @@ function update(renderer::System{DefaultRenderer}, dio::Diorama)
     end
 
 	# @time for (e_render, e_spatial, e_material, e_shape) in zip(render, spatial, material, shape)
-	for i=1:length(render)
-		e_render = render[i]
+	for i in shared_indices(render, spatial, material, shape)
+		e_render   = render[i]
 		e_material = material[i]
 		e_spatial  = spatial[i]
-		e_shape = shape[i]
-		mat = translmat(e_spatial.position) * scalemat(Vec3f0(e_shape.scale))
+		e_shape    = shape[i]
+		mat        = translmat(e_spatial.position) * scalemat(Vec3f0(e_shape.scale))
 		set_uniform(program, :specpow, e_material.specpow)
 		set_uniform(program, :specint, e_material.specint)
 		set_uniform(program, :modelmat, mat)
@@ -125,6 +129,7 @@ function update(renderer::System{DefaultRenderer}, dio::Diorama)
 		draw(e_render.vertexarray)
 		GLA.unbind(e_render.vertexarray)
 	end
+# end
 #TODO light entities, camera entities
 end
 

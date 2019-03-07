@@ -1,18 +1,20 @@
 data(component::Component) = component.data
 
 
-# Component(id, data::Vector{T}) where {T<:ComponentData} = Component{T}(id, data)
+Component(id, ::Type{T}) where {T<:ComponentData} = Component(id, GappedVector([T[]], Int[1]))
+Base.length(::ComponentData) = 1
+Base.iterate(t::ComponentData) = (t, nothing)
 
 struct Spatial <: ComponentData
 	position::Vec3f0
 	velocity::Vec3f0
 end
-SpatialComponent(id) = Component(id, Spatial[]) 
+SpatialComponent(id) = Component(id, Spatial) 
 
 struct Geometry <: ComponentData
 	mesh
 end
-GeometryComponent(id) = Component(id, Geometry[])
+GeometryComponent(id) = Component(id, Geometry)
 
 
 mutable struct Render{RP <: RenderPassKind} <: ComponentData
@@ -21,8 +23,8 @@ mutable struct Render{RP <: RenderPassKind} <: ComponentData
 	vertexarray ::VertexArray
 end
 
-DefaultRenderComponent(id)      = Component(id, Render{DefaultPass}[])
-DepthPeelingRenderComponent(id) = Component(id, Render{DepthPeelingPass}[])
+DefaultRenderComponent(id)      = Component(id, Render{DefaultPass})
+DepthPeelingRenderComponent(id) = Component(id, Render{DepthPeelingPass})
 
 is_instanced(data::Render) = data.is_instanced
 is_uploaded(data::Render)  = !GLA.is_null(data.vertexarray)
@@ -34,13 +36,13 @@ struct Material <: ComponentData
 	color   ::RGBf0
 end
 
-MaterialComponent(id) = Component(id, Material[])
+MaterialComponent(id) = Component(id, Material)
 
 struct Shape <: ComponentData
 	scale::Float32
 end
 
-ShapeComponent(id) = Component(id, Shape[])
+ShapeComponent(id) = Component(id, Shape)
 
 struct PointLight <: ComponentData
     position::Vec3f0
@@ -50,7 +52,7 @@ struct PointLight <: ComponentData
     color   ::RGBf0
 end
 
-PointLightComponent(id) = Component(id, PointLight[])
+PointLightComponent(id) = Component(id, PointLight)
 
 struct DirectionLight <: ComponentData
 	direction::Vec3f0
@@ -60,7 +62,7 @@ struct DirectionLight <: ComponentData
     color    ::RGBf0	
 end
 
-DirectionLightComponent(id) = Component(id, PointLight[])
+DirectionLightComponent(id) = Component(id, PointLight)
 
 mutable struct Camera3D <: ComponentData
     eyepos ::Vec3f0
@@ -80,7 +82,7 @@ mutable struct Camera3D <: ComponentData
     scroll_dy         ::Float32
 end
 
-CameraComponent3D(id) = Component(id, Camera3D[])
+CameraComponent3D(id) = Component(id, Camera3D)
 # const RenderPass = NamedTuple{(:programs, :targets, :renderable_ids, :vertexarrays,  
 
 

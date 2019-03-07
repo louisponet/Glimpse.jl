@@ -119,21 +119,14 @@ set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, c
 
 
 
-# component_id(dio::Diorama, name::Symbol) = findfirst( x -> x.name == name, dio.components)
-new_entity_data_id(component::Component) = length(component.data) + 1
-
 new_component!(dio::Diorama, component::Component) = push!(dio.components, component)
 
 #TODO handle freeing and reusing stuff
 #TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
 function add_to_components!(datas, components)
-	data_ids  = DataID[]
 	for (data, comp) in zip(datas, components)
-		data_id    = DataID(comp.id, new_entity_data_id(comp))
-		push!(data_ids, data_id)
 		push!(comp.data, data)
 	end
-	return data_ids
 end
 
 function new_entity!(dio::Diorama, data...)
@@ -142,9 +135,9 @@ function new_entity!(dio::Diorama, data...)
 	names      = typeof.(data)
 	components = component.((dio, ), names)
 	@assert !any(components .== nothing) "Error, $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
-	data_ids   = add_to_components!(data, components)
+    add_to_components!(data, components)
 	
-	push!(dio.entities, Entity(entity_id, data_ids))
+	push!(dio.entities, Entity(entity_id))
 end
 
 # function add_entity_components!(dio::Diorama, entity_id::Int; name_data...)
@@ -220,21 +213,19 @@ component_types(sys::System) = eltype.(sys.components)
 component_ids(sys::System)   = [c.id for c in sys.components]
 component_id(sys::System, ::Type{DT}) where {DT<:ComponentData} = findfirst(isequal(DT), component_types(sys))
 
-function has_components(e::Entity, component_ids::Vector{Int})
+function has_components(e::Entity, components::Vector{<:Component})
 	c = 0
-	for ct in component_ids
-		for d in e.data_ids
-			if ct == d
-				c += 1
-			end
+	for ct in components
+		if has_index(ct.data, e.id)
+			c += 1
 		end
 	end
 	return c == length(component_ids)
 end
 
-has_components(e::Entity, sys::System) = has_components(e, component_ids(sys))
+has_components(e::Entity, sys::System) = has_components(e, components(sys))
 
-get_valid_entities(dio::Diorama, ComponentTypes...) = filter(x -> has_components(x, component_ids(dio::Diorama, ComponentTypes)), dio.entities)
+get_valid_entities(dio::Diorama, ComponentTypes...) = filter(x -> has_components(x, get_components(dio::Diorama, ComponentTypes)), dio.entities)
 
 function haszeros(v)
 	for i in v

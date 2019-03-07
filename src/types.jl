@@ -8,39 +8,7 @@ const RGBf0           = RGB{Float32}
 @enum CamKind pixel orthographic perspective
 
 # Gapped Arrays are used in systems
-struct Gap
-	start::Int
-	len  ::Int
-end
-
-function Base.sum(v::Vector{Gap})
-	t = 0
-	for g in v
-		t += g.len
-	end
-	return t
-end
-
-struct GappedArray{T, N} <: AbstractArray{T, N}
-	base::DenseArray{T, N}
-	gaps::Vector{Gap}
-end
-
-function gapped_index(A::GappedArray, i::Int)
-	t_id = i 
-	for g in A.gaps
-		if t_id >= g.start
-			t_id += g.len
-		end
-	end
-	return t_id
-end
-
-Base.size(A::GappedArray)                 = size(A.base)   .- sum(A.gaps)
-Base.length(A::GappedArray)               = length(A.base) .- sum(A.gaps)
-Base.getindex(A::GappedArray, i::Int)     = A.base[gapped_index(A, i)]
-Base.setindex!(A::GappedArray, v, i::Int) = A.base[gapped_index(A, i)] = v
-Base.IndexStyle(::Type{<:GappedArray})    = IndexLinear()
+include("gapped_vector.jl")
 
 abstract type AbstractComponent end
 abstract type Singleton <: AbstractComponent end
@@ -49,19 +17,13 @@ abstract type ComponentData end
 
 struct Component{T <: ComponentData} <: AbstractComponent
 	id   ::Int
-	data ::Vector{T}
+	data ::GappedVector{T}
 end
 Base.eltype(::Component{T}) where { T<:ComponentData } = T
 
-# struct DataID{T <: ComponentData}
-struct DataID
-	comp_id::Int
-	data_id::Int
-end
 #Should I use DataFrames/Tables?
 struct Entity #we will create a name component #maybe it's not so bad that these are not contiguous?
 	id       ::Int
-	data_ids ::Vector{DataID}
 end
 
 
