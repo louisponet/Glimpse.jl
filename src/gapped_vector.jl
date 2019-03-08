@@ -111,13 +111,13 @@ function remove_entry!(A::GappedVector, i::Int)
 	val = A[i]
 	for (vid, (startid, bvec)) in enumerate(zip(A.start_ids, A.data))
 		endid   = startid + length(bvec)
-		if startid < i < endid - 1 # overwrite
+		if startid < i < endid - 1 #insert new vector
 			push!(A.start_ids, i+1)
-			push!(A.data, bvec[i+1:end]) 
-			A.data[vid] = bvec[1:i - 1]
-		elseif i == endid - 1 # grow right
+			push!(A.data, bvec[i - startid + 2:end]) 
+			A.data[vid] = bvec[1:i - startid]
+		elseif i == endid - 1 #remove last element
 			pop!(bvec)
-		elseif i == startid # grow left
+		elseif i == startid #reseat one element over
 			A.start_ids[vid] = startid + 1
 			A.data[vid]      = bvec[2:end]
 		end
