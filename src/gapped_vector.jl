@@ -65,29 +65,70 @@ function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
 		if !handled
 			add!()
 		end
+		sort!(A)
+		clean!(A)
+		return conv_v
+	end
+end
 
-		p = zeros(Int, length(A.start_ids))
-		sortperm!(p, A.start_ids)
-		A.data      .= A.data[p]
-		A.start_ids .= A.start_ids[p]
+function Base.sort!(A::GappedVector)
+	p = zeros(Int, length(A.start_ids))
+	sortperm!(p, A.start_ids)
+	A.data      .= A.data[p]
+	A.start_ids .= A.start_ids[p]
+end
 
-		#TODO Performance: This should maybe be saved for a manual clean?
-		vid = 1
-		while vid < length(A.data)
-			startid = A.start_ids[vid]
-			bvec    = A.data[vid]
-			if startid + length(bvec) == A.start_ids[vid+1]
-				append!(bvec, A.data[vid+1])
-				deleteat!(A.data, vid+1)
-				deleteat!(A.start_ids, vid+1)
-				break
-			else
-				vid += 1
-			end
+function clean!(A::GappedVector)
+	#TODO Performance: This should maybe be saved for a manual clean?
+	ids_to_remove = Int[]
+	for (i, bvec) in enumerate(A.data)
+		if isempty(bvec)
+			push!(ids_to_remove, i)
 		end
 	end
-	return conv_v
+	for i in reverse(sort(ids_to_remove))
+		deleteat!(A.data, i)
+		deleteat!(A.start_ids, i)
+	end
+
+	vid = 1
+	while vid < length(A.data)
+		startid = A.start_ids[vid]
+		bvec    = A.data[vid]
+		if startid + length(bvec) == A.start_ids[vid+1]
+			append!(bvec, A.data[vid+1])
+			deleteat!(A.data, vid+1)
+			deleteat!(A.start_ids, vid+1)
+			break
+		else
+			vid += 1
+		end
+	end
 end
+
+#does nothing when it doesn't have the index i
+function remove_entry!(A::GappedVector, i::Int)
+	val = A[i]
+	for (vid, (startid, bvec)) in enumerate(zip(A.start_ids, A.data))
+		endid   = startid + length(bvec)
+		if startid < i < endid - 1 # overwrite
+			push!(A.start_ids, i+1)
+			push!(A.data, bvec[i+1:end]) 
+			A.data[vid] = bvec[1:i - 1]
+		elseif i == endid - 1 # grow right
+			pop!(bvec)
+		elseif i == startid # grow left
+			A.start_ids[vid] = startid + 1
+			A.data[vid]      = bvec[2:end]
+		end
+	end
+	sort!(A)
+	clean!(A)
+	return val
+end
+
+
+
 
 Base.IndexStyle(::Type{<:GappedVector}) = IndexLinear()
 
@@ -126,45 +167,40 @@ function has_index(A::GappedVector, i)
 	return false
 end
 
-#TODO Performance: this can be optimized quite a bit
-function shared_indices(As::GappedVector...)
-	maxlen =  maximum(length.(As))
-	Alen   = length(As)
-	ids = zeros(Int, maxlen)
-	for i = 1:maxlen
-		c = 0
-		for A in As
-			if has_index(A, i)
-				c += 1
-			end
+Base.isempty(A::GappedVector) = isempty(A.start_ids)
+
+function Base.eachindex(A::GappedVector)
+	if isempty(A)
+		return Int[]
+	else
+		t_r = collect(A.start_ids[1]:length(A.data[1]))
+		for (sid, vec) in zip(A.start_ids, A.data)
+			append!(t_r, collect(sid:length(vec)))
 		end
-		if c == Alen
-			push!(ids, i)
-		end
+		return t_r
 	end
-	return filter(!iszero, ids)
 end
 
-	# intersect(eachindex.(As)...)
 
+#TODO Performance: this can be optimized quite a bit
+ranges(A::GappedVector) = [sid:sid + length(vec) - 1  for (sid, vec) in zip(A.start_ids, A.data)]
+ranges(As::GappedVector...) = find_overlaps(ranges.(As))
 
-# struct SharedIterator{T}
-# 	data::T
-# end
+function find_overlaps(ranges)
+	out_ranges = UnitRange{Int}[]
+	for r1 in ranges[1], r2 in ranges[2]
+		tr = intersect(r1, r2)
+		if !isempty(tr)
+			push!(out_ranges, tr)
+		end
+	end
+	return out_ranges
+end
 
-# length(it::SharedIterator) = length(it.data)
-# function Base.iterate(it::SharedIterator, state=(ones(Int, length(it)), ones(Int, length(it)))
-# 	for (vid, gvec) in zip(state[1], it.data)
-# 		if vid > length(gvec.data)
-# 			return nothing
-# 		end
-# 	if state[1] > length(A.data)
-# 		return nothing
-# 	elseif state[2] == length(A.data[state[1]])
-# 		return A.data[state[1]][state[2]], (state[1]+1, 1)
-# 	else
-# 		return A.data[state[1]][state[2]], (state[1], state[2]+1)
-# 	end
-# end
-	
-
+function find_overlaps(rangevecvec::Vector{Vector{UnitRange{Int}}})
+	rs = rangevecvec[1]
+	for rs2 in rangevecvec[2:end]
+		rs = find_overlaps(rs, rs2)
+	end
+	return rs
+end

@@ -51,7 +51,7 @@ function update(uploader::System{<: UploaderSystem}, dio::Diorama)
 		return
 	end
 	instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
-	for i in shared_indices(render, geometry)
+	for ir in ranges(render, geometry), i in ir
 		e_render = render[i]
 		# println(i)
 		e_geom   = geometry[i]
@@ -114,7 +114,8 @@ function update(renderer::System{DefaultRenderer}, dio::Diorama)
         set_uniform(program, Symbol("plight.diff_intensity"),     light[1].diffuse)
     end
 
-	for i in shared_indices(render, spatial, material, shape)
+	ids   = ranges(render, spatial, material, shape)
+	for id in ids, i in id
 		e_render   = render[i]
 		e_material = material[i]
 		e_spatial  = spatial[i]
