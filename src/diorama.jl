@@ -13,15 +13,13 @@ function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
 		          PointLightComponent(6),
 		          CameraComponent3D(7)]
 
-	dio = Diorama(name, Entity[], components, [renderpass], System[], screen; kwargs...)
-	push!(dio.systems, default_uploader_system(dio), default_render_system(dio), sim_system(dio), camera_system(dio))
+	dio = Diorama(name, Entity[], components, [renderpass, TimingData(time(),0.0, 0, 1/60)], System[], screen; kwargs...)
+	push!(dio.systems, timer_system(dio), default_uploader_system(dio), camera_system(dio), default_render_system(dio), sleeper_system(dio))
 	return dio
 end
 
 
 
-#TODO: change such that there are no components until needed?
-component(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) <: T, dio.components)
 
 function center!(dio::Diorama)
     center = zero(Vec3f0)
@@ -47,16 +45,14 @@ function free!(dio::Diorama)
     # free!.(dio.pipeline)
 end
 
-function renderloop(dio, framerate = 1/60)
-    screen   = dio.screen
+function renderloop(dio)
+    screen = dio.screen
     dio    = dio
     while !should_close(dio.screen)
         for sys in dio.systems
-	        update(sys, dio)
+	        update(sys)
         end
         swapbuffers(dio.screen)
-
-        sleep_pessimistic(framerate - (time()-dio.simdata.time))
     end
     close(dio.screen)
 	dio.loop = nothing
@@ -119,6 +115,10 @@ set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, c
 
 
 
+#TODO: change such that there are no components until needed?
+component(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) <: T, dio.components)
+singleton(dio::Diorama, ::Type{T}) where {T <: Singleton}     = getfirst(x -> isa(x, T),      dio.singletons)
+
 new_component!(dio::Diorama, component::Component) = push!(dio.components, component)
 
 #TODO handle freeing and reusing stuff
@@ -157,16 +157,10 @@ end
 
 
 ###########
-get_singleton(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) == T, dio.singletons)
-get_renderpass(dio::Diorama, ::Type{T}) where {T <: RenderPassKind} = getfirst(x -> kind(x) == T, dio.singletons)
 components(dio::Diorama) = dio.components
 # manipulations
-
-
 # set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.camera.rotation_speed = Float32(rotation_speed)
 
-
-# SIMDATA
 function component_ids(dio::Diorama, ComponentTypes)
 	diocomps = components(dio)
 	ids      = zeros(Int, length(ComponentTypes))

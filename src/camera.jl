@@ -44,15 +44,15 @@ end
 abstract type InteractiveSystem <: SystemKind end
 struct Camera <: InteractiveSystem end
 
-camera_system(dio::Diorama) = System{Camera}(dio, Camera3D)
+camera_system(dio::Diorama) = System{Camera}(dio, (Camera3D,), ())
 
-function update(updater::System{Camera}, dio::Diorama)
+function update(updater::System{Camera})
 	camera_data = data(updater[Camera3D])
 	if isempty(camera_data)
 		return
 	end
-	pollevents(dio.screen)
 	context = current_context()
+	pollevents(context)
 
 	x, y = Float32.(callback_value(context, :cursor_position))
 	mouse_button = callback_value(context, :mouse_buttons)

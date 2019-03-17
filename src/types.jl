@@ -31,6 +31,7 @@ abstract type SystemKind end
 
 struct System{Kind <: SystemKind} #DT has the components datatypes 
 	components
+	singletons
 end
 
 
@@ -109,27 +110,32 @@ end
 kind(::Type{RenderPass{Kind}}) where Kind = Kind
 kind(::RenderPass{Kind}) where Kind = Kind
 
-mutable struct SimData
+const MeshDict = Dict{Symbol, AbstractGlimpseMesh}
+struct MeshCache <: Singleton
+	meshes::MeshDict
+end
+
+mutable struct TimingData <: Singleton
 	time  ::Float64
 	dtime ::Float64
 	frames::Int
+	preferred_fps::Float64
 end
-
 
 mutable struct Diorama
     name       ::Symbol
 
-    entities   ::Vector{Entity}
-    components ::Vector{Component}
-    singletons ::Vector{Singleton}
-    systems    ::Vector{System}
-
+    entities  ::Vector{Entity}
+    components::Vector{Component}
+	singletons::Vector{Singleton}
+    systems   ::Vector{System}
+    
     screen     ::Union{Screen, Nothing}
     loop       ::Union{Task, Nothing}
     reupload   ::Bool
-    simdata    ::SimData
     function Diorama(name, entities, components,  singletons, systems, screen; interactive=false, kwargs...)
-        dio = new(name, entities, components, singletons, systems, screen, nothing, true, SimData(time(),0.0, 0))
+        dio = new(name, entities, components, singletons, systems, screen, nothing, true)
+
         makecurrentdio(dio)
         expose(dio; kwargs...)
         finalizer(free!, dio)

@@ -28,14 +28,6 @@ fullscreen_vertexarray() =
                                        GEOMETRY_DIVISOR)],
                 5)
 
-@inline function sleep_pessimistic(sleep_time)
-    st = convert(Float64, sleep_time) - 0.002
-    start_time = time()
-    while (time() - start_time) < st
-        sleep(0.001) # sleep for the minimal amount of time
-    end
-end
-
 #REVIEW: not used
 function glenum2julia(x::UInt32)
     x == GL_FLOAT      && return Float32

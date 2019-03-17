@@ -83,6 +83,5 @@ mutable struct Camera3D <: ComponentData
 end
 
 CameraComponent3D(id) = Component(id, Camera3D)
-# const RenderPass = NamedTuple{(:programs, :targets, :renderable_ids, :vertexarrays,  
 
 

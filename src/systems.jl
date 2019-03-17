@@ -1,28 +1,52 @@
 # COnstructors
 # System{kind}(components::Tuple) where {kind} = System{kind, (eltype.(components)...,)}(components)
 
-function System{kind}(dio::Diorama, comp_names...) where {kind}
+function System{kind}(dio::Diorama, comp_names, singleton_names) where {kind}
 	components = component.((dio,), comp_names)
+	singletons = singleton.((dio,), singleton_names)
 	@assert !any(components .== nothing) "Error, $(components[findall(isequal(nothing), components)]) is not present in the scene yet. TODO add this automatically"
-	return System{kind}(components)
+	return System{kind}(components, singletons)
 end
 
 # Access
-Base.getindex(sys::System, id::Int) = sys.components[id]
-Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: ComponentData} =
-	sys.components[findfirst(isequal(T), component_types(sys))]
+function Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: ComponentData}
+	comp = getfirst(x -> eltype(x) == T, sys.components)
+	@assert comp != nothing "Component $T not found in system's components"
+	return comp
+end
+
+function Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: Singleton}
+	singleton = getfirst(x -> eltype(x) == T, sys.singletons)
+	@assert singleton != nothing "Singleton $T not found in system's components"
+	return singleton
+end
 
 abstract type SimulationSystem <: SystemKind end
 struct Timer <: SimulationSystem end 
 
-sim_system(dio::Diorama) = System{Timer}(dio, Spatial)
-function update(renderer::System{Timer}, dio::Diorama)
-	sd = dio.simdata
+timer_system(dio::Diorama) = System{Timer}(dio, (), (TimingData,))
+
+function update(timer::System{Timer})
+	sd = timer.singletons[1]
 	nt         = time()
 	sd.dtime   = nt - sd.time
-	sd.time    = time()
+	sd.time    = nt
 	sd.frames += 1
 end
+
+struct Sleeper <: SimulationSystem end 
+sleeper_system(dio::Diorama) = System{Sleeper}(dio, (), (TimingData,))
+
+function update(sleeper::System{Sleeper})
+	sd         = sleeper.singletons[1]
+	curtime    = time()
+	sleep_time = sd.preferred_fps - (curtime - sd.time)
+    st         = sleep_time - 0.002
+    while (time() - curtime) < st
+        sleep(0.001) # sleep for the minimal amount of time
+    end
+end
+
 
 abstract type UploaderSystem <: SystemKind     end
 struct DefaultUploader       <: UploaderSystem end
@@ -30,20 +54,17 @@ struct DepthPeelingUploader  <: UploaderSystem end
 
 # UPLOADER
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
-default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, Geometry, Render{DefaultPass})
+default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Geometry, Render{DefaultPass}), (RenderPass{DefaultPass}))
 
-depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, Geometry, Render{DepthPeelingPass})
+depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Geometry, Render{DepthPeelingPass}),(RenderPass{DepthPeelingPass}))
 
 #TODO figure out a better way of vao <-> renderpass maybe really multiple entities with child and parent things
 #TODO decouple renderpass into some component, or at least the info needed to create the vaos
 #TODO Renderpass and rendercomponent carry same name
 
-function update(uploader::System{<: UploaderSystem}, dio::Diorama)
+function update(uploader::System{<: UploaderSystem})
 	rendercomp_name = kind(eltype(uploader.components[2]))
-	renderpass      = get_renderpass(dio, rendercomp_name)
-	if renderpass == nothing
-		return
-	end
+	renderpass      = uploader.singletons[1]
 
 	geometry = uploader[Geometry].data
 	render   = uploader[Render{DefaultPass}].data
@@ -80,18 +101,20 @@ struct DefaultRenderer      <: RenderSystem end
 struct DepthPeelingRenderer <: RenderSystem end
 
 default_render_system(dio::Diorama) =
-	System{DefaultRenderer}(dio, Render{DefaultPass}, Spatial, Material, Shape, PointLight, Camera3D)
+	System{DefaultRenderer}(dio, (Render{DefaultPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DefaultPass},))
+
 depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, Render{DepthPeelingPass}, Spatial, Material, Shape, PointLight, Camera3D)
+	System{DepthPeelingRenderer}(dio, (Render{DepthPeelingPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
 
 #maybe this should be splitted into a couple of systems
-function update(renderer::System{DefaultRenderer}, dio::Diorama)
-	render        = renderer[Render{DefaultPass}].data
-	spatial       = renderer[Spatial].data
-	material      = renderer[Material].data
-	shape         = renderer[Shape].data
-	light, camera = data.(get_components(dio, PointLight, Camera3D))
-	renderpass    = get_renderpass(dio, DefaultPass)
+function update(renderer::System{DefaultRenderer})
+	render     = renderer[Render{DefaultPass}].data
+	spatial    = renderer[Spatial].data
+	material   = renderer[Material].data
+	shape      = renderer[Shape].data
+	light      = renderer[PointLight].data
+	camera     = renderer[Camera3D].data
+	renderpass = renderer.singletons[1]
 
 	clear!(renderpass.targets[:context])
 
@@ -124,10 +147,10 @@ function update(renderer::System{DefaultRenderer}, dio::Diorama)
 		set_uniform(program, :specpow, e_material.specpow)
 		set_uniform(program, :specint, e_material.specint)
 		set_uniform(program, :modelmat, mat)
-		bind(e_render.vertexarray)
-		draw(e_render.vertexarray)
-		GLA.unbind(e_render.vertexarray)
+		GLA.bind(e_render.vertexarray)
+		GLA.draw(e_render.vertexarray)
 	end
+	GLA.unbind(render[end].vertexarray)
 #TODO light entities, camera entities
 end
 
