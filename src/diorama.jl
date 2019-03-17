@@ -4,17 +4,19 @@ import GLAbstraction: free!
 #TODO, make it so args and kwargs get all passed around to pipelines and screens etc
 function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
 	renderpass = default_renderpass()
-
+	depth_peeling_pass = create_transparancy_pass((1260, 720), 5)
     components = [GeometryComponent(1),
   			      DefaultRenderComponent(2),
   			      MaterialComponent(3),
   			      ShapeComponent(4),
 		          SpatialComponent(5),
 		          PointLightComponent(6),
-		          CameraComponent3D(7)]
+		          CameraComponent3D(7),
+		          DepthPeelingRenderComponent(8),
+		          ]
 
-	dio = Diorama(name, Entity[], components, [renderpass, TimingData(time(),0.0, 0, 1/60)], System[], screen; kwargs...)
-	push!(dio.systems, timer_system(dio), default_uploader_system(dio), camera_system(dio), default_render_system(dio), sleeper_system(dio))
+	dio = Diorama(name, Entity[], components, [renderpass, depth_peeling_pass, TimingData(time(),0.0, 0, 1/60)], System[], screen; kwargs...)
+	push!(dio.systems, timer_system(dio), default_uploader_system(dio), depth_peeling_uploader_system(dio), camera_system(dio), default_render_system(dio), depth_peeling_render_system(dio), sleeper_system(dio))
 	return dio
 end
 

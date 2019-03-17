@@ -63,11 +63,11 @@ depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, 
 #TODO Renderpass and rendercomponent carry same name
 
 function update(uploader::System{<: UploaderSystem})
-	rendercomp_name = kind(eltype(uploader.components[2]))
+	rendercomp_name = eltype(uploader.components[2])
 	renderpass      = uploader.singletons[1]
 
 	geometry = uploader[Geometry].data
-	render   = uploader[Render{DefaultPass}].data
+	render   = uploader[rendercomp_name].data
 	if isempty(geometry)
 		return
 	end
@@ -98,17 +98,30 @@ end
 
 abstract type RenderSystem  <: SystemKind   end
 struct DefaultRenderer      <: RenderSystem end
-struct DepthPeelingRenderer <: RenderSystem end
 
 default_render_system(dio::Diorama) =
 	System{DefaultRenderer}(dio, (Render{DefaultPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DefaultPass},))
 
-depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, (Render{DepthPeelingPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
+function set_uniform(program, camera::Camera3D)
+    set_uniform(program, :projview, camera.projview)
+    set_uniform(program, :campos,   camera.eyepos)
+end
+
+function set_uniform(program, pointlight::PointLight)
+    set_uniform(program, Symbol("plight.color"),              pointlight.color)
+    set_uniform(program, Symbol("plight.position"),           pointlight.position)
+    set_uniform(program, Symbol("plight.amb_intensity"),      pointlight.ambient)
+    set_uniform(program, Symbol("plight.specular_intensity"), pointlight.specular)
+    set_uniform(program, Symbol("plight.diff_intensity"),     pointlight.diffuse)
+end
 
 #maybe this should be splitted into a couple of systems
 function update(renderer::System{DefaultRenderer})
 	render     = renderer[Render{DefaultPass}].data
+	if isempty(render)
+		return
+	end
+
 	spatial    = renderer[Spatial].data
 	material   = renderer[Material].data
 	shape      = renderer[Shape].data
@@ -125,16 +138,11 @@ function update(renderer::System{DefaultRenderer})
 
 	bind(program)
     if !isempty(camera)
-	    set_uniform(program, :projview, camera[1].projview)
-	    set_uniform(program, :campos,   camera[1].eyepos)
+	    set_uniform(program, camera[1])
     end
 
     if !isempty(light)
-        set_uniform(program, Symbol("plight.color"),              light[1].color)
-        set_uniform(program, Symbol("plight.position"),           light[1].position)
-        set_uniform(program, Symbol("plight.amb_intensity"),      light[1].ambient)
-        set_uniform(program, Symbol("plight.specular_intensity"), light[1].specular)
-        set_uniform(program, Symbol("plight.diff_intensity"),     light[1].diffuse)
+		set_uniform(program, light[1])
     end
 
 	ids   = ranges(render, spatial, material, shape)
@@ -147,10 +155,125 @@ function update(renderer::System{DefaultRenderer})
 		set_uniform(program, :specpow, e_material.specpow)
 		set_uniform(program, :specint, e_material.specint)
 		set_uniform(program, :modelmat, mat)
+
 		GLA.bind(e_render.vertexarray)
 		GLA.draw(e_render.vertexarray)
 	end
-	GLA.unbind(render[end].vertexarray)
-#TODO light entities, camera entities
+	# GLA.unbind(render[end].vertexarray)
 end
 
+struct DepthPeelingRenderer <: RenderSystem end
+
+depth_peeling_render_system(dio::Diorama) =
+	System{DepthPeelingRenderer}(dio, (Render{DepthPeelingPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
+
+function update(renderer::System{DepthPeelingRenderer})
+	rp = renderer.singletons[1]
+    peeling_program           = main_program(rp)
+    peeling_instanced_program = main_instanced_program(rp)
+    blending_program    = rp.programs[:blending]
+    colorblender        = rp.targets[:colorblender]
+    peeling_targets     = [rp.targets[:peel1], rp.targets[:peel2]]
+    context_target      = rp.targets[:context]
+    compositing_program = rp.programs[:composite]
+    fullscreenvao       = context_target.fullscreenvao
+    bind(colorblender)
+    draw(colorblender)
+    clear!(colorblender, context_target.background)
+    # glClearBufferfv(GL_COLOR, 0, [0,0,0,1])
+    glEnable(GL_DEPTH_TEST)
+    canvas_width  = Float32(size(colorblender)[1])
+    canvas_height = Float32(size(colorblender)[2])
+
+	render     = renderer[Render{DepthPeelingPass}].data
+	spatial    = renderer[Spatial].data
+	material   = renderer[Material].data
+	shape      = renderer[Shape].data
+	light      = renderer[PointLight].data
+	camera     = renderer[Camera3D].data
+    # function first_pass(renderables, program)
+    bind(peeling_program)
+    set_uniform(peeling_program, :first_pass, true)
+    if !isempty(light)
+	    set_uniform(peeling_program, light[1])
+    end
+    if !isempty(camera)
+	    set_uniform(peeling_program, camera[1])
+    end
+    set_uniform(peeling_program, :canvas_width, canvas_width)
+    set_uniform(peeling_program, :canvas_height, canvas_height)
+
+	ids   = ranges(render, spatial, material, shape)
+	function renderall()
+		for id in ids, i in id
+			e_render   = render[i]
+			e_material = material[i]
+			e_spatial  = spatial[i]
+			e_shape    = shape[i]
+			mat        = translmat(e_spatial.position) * scalemat(Vec3f0(e_shape.scale))
+			set_uniform(peeling_program, :specpow, e_material.specpow)
+			set_uniform(peeling_program, :specint, e_material.specint)
+			set_uniform(peeling_program, :modelmat, mat)
+
+			GLA.bind(e_render.vertexarray)
+			GLA.draw(e_render.vertexarray)
+		end
+		GLA.unbind(render[end].vertexarray)
+	end
+	renderall()
+
+    set_uniform(peeling_program, :first_pass, false)
+    # end
+
+    # first_pass(rp.renderables, peeling_program)
+    # first_pass(instanced_renderables(rp), peeling_instanced_program)
+
+    for layer=1:rp.options.num_passes
+        currid = rem1(layer, 2)
+        currfbo = peeling_targets[currid]
+        previd =  3 - currid
+        prevfbo = layer==1 ? colorblender : peeling_targets[previd]
+        glEnable(GL_DEPTH_TEST)
+        bind(currfbo)
+        draw(currfbo)
+        # clear!(currfbo)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glDisable(GL_BLEND)
+        glEnable(GL_DEPTH_TEST)
+
+        bind(peeling_program)
+        set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
+		renderall()
+
+        # bind(peeling_instanced_program)
+        # set_uniform(peeling_instanced_program, :depth_texture, (0, depth_attachment(prevfbo)))
+        # render(instanced_renderables(rp), peeling_instanced_program)
+        bind(colorblender)
+        draw(colorblender)
+
+        glDisable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glBlendEquation(GL_FUNC_ADD)
+        glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA)
+
+        bind(blending_program)
+        set_uniform(blending_program, :color_texture, (0, color_attachment(currfbo, 1)))
+
+        bind(fullscreenvao)
+        draw(fullscreenvao)
+
+        glDisable(GL_BLEND)
+    end
+    bind(compositing_program)
+    bind(rp.targets[:context])
+    clear!(rp.targets[:context])
+    glDrawBuffer(GL_BACK)
+    glDisable(GL_DEPTH_TEST)
+
+    set_uniform(compositing_program, :color_texture, (0, color_attachment(colorblender, 1)))
+    # set_uniform(compositing_program, :color_texture, (0, color_attachment(peeling_targets[1], 1)))
+    bind(fullscreenvao)
+    draw(fullscreenvao)
+    glFlush()
+
+end
