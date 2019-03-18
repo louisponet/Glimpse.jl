@@ -23,7 +23,7 @@ Base.length(A::GappedVector) = A.start_ids[end] + length(A.data[end]) - 1
 
 Base.isempty(A::GappedVector) = length(A) == 0
 Base.empty!(A::GappedVector{T}) where T = (A.start_ids = Int[1]; A.data = [T[]])
-Base.push!(A::GappedVector{T}, x) where T = A[end+1] = convert(T, x)
+# Base.push!(A::GappedVector{T}, x) where T = A[end+1] = convert(T, x)
 
 function Base.getindex(A::GappedVector, i::Int)
 	for (s_id, bvec) in zip(A.start_ids, A.data)

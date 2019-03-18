@@ -10,22 +10,25 @@ const RGBf0           = RGB{Float32}
 # Gapped Arrays are used in systems
 include("gapped_vector.jl")
 
-abstract type AbstractComponent end
-abstract type Singleton <: AbstractComponent end
-
 abstract type ComponentData end
+abstract type AbstractComponent{T <: ComponentData} end
+Base.eltype(::AbstractComponent{T}) where {T <: ComponentData} = T
 
-struct Component{T <: ComponentData} <: AbstractComponent
-	id   ::Int
-	data ::GappedVector{T}
+struct Component{T <: ComponentData} <: AbstractComponent{T}
+	id  ::Int
+	data::GappedVector{T}
 end
-Base.eltype(::Component{T}) where { T<:ComponentData } = T
+
+struct SharedComponent{T <: ComponentData} <: AbstractComponent{T}
+	id    ::Int
+	data  ::GappedVector{Int} #These are basically the ids
+	shared::Vector{T}
+end
 
 #Should I use DataFrames/Tables?
 struct Entity #we will create a name component #maybe it's not so bad that these are not contiguous?
-	id       ::Int
+	id::Int
 end
-
 
 abstract type SystemKind end
 
@@ -94,6 +97,8 @@ mutable struct Screen
     end
 end
 
+abstract type Singleton end
+
 abstract type RenderPassKind end
 
 mutable struct RenderPass{RenderPassKind, NT <: NamedTuple} <: Singleton
@@ -110,11 +115,6 @@ end
 kind(::Type{RenderPass{Kind}}) where Kind = Kind
 kind(::RenderPass{Kind}) where Kind = Kind
 
-const MeshDict = Dict{Symbol, AbstractGlimpseMesh}
-struct MeshCache <: Singleton
-	meshes::MeshDict
-end
-
 mutable struct TimingData <: Singleton
 	time  ::Float64
 	dtime ::Float64
@@ -126,7 +126,7 @@ mutable struct Diorama
     name       ::Symbol
 
     entities  ::Vector{Entity}
-    components::Vector{Component}
+    components::Vector{AbstractComponent}
 	singletons::Vector{Singleton}
     systems   ::Vector{System}
     

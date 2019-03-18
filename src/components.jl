@@ -1,12 +1,35 @@
-data(component::Component) = component.data
-Component(id, ::Type{T}) where {T<:ComponentData} = Component(id, GappedVector([T[]], Int[]))
 
-Base.length(::ComponentData) = 1
-Base.iterate(t::ComponentData) = (t, nothing)
 
-Base.isempty(c::Component) = isempty(c.data)
-Base.empty!(c::Component)  = empty!(c.data)
+Component(id, ::Type{T}) where {T <: ComponentData} = Component(id, GappedVector([T[]], Int[]))
 
+data(component::AbstractComponent) = component.data
+
+Base.length(::ComponentData)         = 1
+Base.iterate(t::ComponentData)       = (t, nothing)
+
+Base.isempty(c::AbstractComponent)   = isempty(c.data)
+Base.empty!(c::AbstractComponent)    = empty!(c.data)
+
+Base.length(c::AbstractComponent)    = length(c.data)
+Base.size(c::AbstractComponent)      = size(c.data)
+Base.lastindex(c::AbstractComponent) = lastindex(c.data)
+
+Base.getindex(c::Component, i)       = getindex(c.data, i)
+Base.getindex(c::SharedComponent, i) = c.shared[getindex(c.data, i)]
+
+Base.setindex!(c::Component, v, i)   = setindex!(c.data, v, i)
+
+function Base.setindex!(c::SharedComponent,v, i)
+	id = findfirst(v, c.shared)
+	if id == nothing
+		id = length(c.shared)
+		push!(c.shared, v)
+	end
+	c.data[i] = id
+end
+
+ranges(A::AbstractComponent)     = ranges(A.data)
+ranges(As::AbstractComponent...) = ranges(data.(As)...)
 
 # DEFAULT COMPONENTS
 struct Spatial <: ComponentData

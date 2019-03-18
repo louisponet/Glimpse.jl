@@ -68,8 +68,8 @@ function update(uploader::System{<: UploaderSystem})
 	rendercomp_name = eltype(uploader.components[2])
 	renderpass      = uploader.singletons[1]
 
-	geometry = uploader[Geometry].data
-	render   = uploader[rendercomp_name].data
+	geometry = uploader[Geometry]
+	render   = uploader[rendercomp_name]
 
 	sysranges = ranges(render, geometry)
 	if isempty(sysranges)
@@ -122,12 +122,12 @@ end
 
 #maybe this should be splitted into a couple of systems
 function update(renderer::System{DefaultRenderer})
-	render     = renderer[Render{DefaultPass}].data
-	spatial    = renderer[Spatial].data
-	material   = renderer[Material].data
-	shape      = renderer[Shape].data
-	light      = renderer[PointLight].data
-	camera     = renderer[Camera3D].data
+	render     = renderer[Render{DefaultPass}]
+	spatial    = renderer[Spatial]
+	material   = renderer[Material]
+	shape      = renderer[Shape]
+	light      = renderer[PointLight]
+	camera     = renderer[Camera3D]
 	renderpass = renderer.singletons[1]
 
 	sysranges  = ranges(render, spatial, material, shape)
@@ -176,12 +176,12 @@ depth_peeling_render_system(dio::Diorama) =
 	System{DepthPeelingRenderer}(dio, (Render{DepthPeelingPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
 
 function update(renderer::System{DepthPeelingRenderer})
-	render     = renderer[Render{DepthPeelingPass}].data
-	spatial    = renderer[Spatial].data
-	material   = renderer[Material].data
-	shape      = renderer[Shape].data
-	light      = renderer[PointLight].data
-	camera     = renderer[Camera3D].data
+	render     = renderer[Render{DepthPeelingPass}]
+	spatial    = renderer[Spatial]
+	material   = renderer[Material]
+	shape      = renderer[Shape]
+	light      = renderer[PointLight]
+	camera     = renderer[Camera3D]
 	sysranges  = ranges(render, spatial, material, shape)
 	if isempty(sysranges)
 		return
