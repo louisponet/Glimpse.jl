@@ -107,9 +107,9 @@ struct DefaultRenderer      <: RenderSystem end
 default_render_system(dio::Diorama) =
 	System{DefaultRenderer}(dio, (Render{DefaultPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DefaultPass},))
 
-function set_uniform(program, camera::Camera3D)
+function set_uniform(program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
-    set_uniform(program, :campos,   camera.eyepos)
+    set_uniform(program, :campos,   spatial.position)
 end
 
 function set_uniform(program, pointlight::PointLight)
@@ -143,12 +143,15 @@ function update(renderer::System{DefaultRenderer})
 	program = main_program(renderpass)
 
 	bind(program)
-    if !isempty(camera)
-	    set_uniform(program, camera[1])
-    end
-
     if !isempty(light)
-		set_uniform(program, light[1])
+	    for ids in ranges(light), i in ids
+		    set_uniform(peeling_program, light[i])
+	    end
+    end
+    if !isempty(camera)
+	    for ids in ranges(camera, spatial), i in ids
+		    set_uniform(peeling_program, spatial[i], camera[i])
+	    end
     end
 
 	for id in sysranges, i in id
@@ -205,10 +208,14 @@ function update(renderer::System{DepthPeelingRenderer})
     bind(peeling_program)
     set_uniform(peeling_program, :first_pass, true)
     if !isempty(light)
-	    set_uniform(peeling_program, light[1])
+	    for ids in ranges(light), i in ids
+		    set_uniform(peeling_program, light[i])
+	    end
     end
     if !isempty(camera)
-	    set_uniform(peeling_program, camera[1])
+	    for ids in ranges(camera, spatial), i in ids
+		    set_uniform(peeling_program, spatial[i], camera[i])
+	    end
     end
     set_uniform(peeling_program, :canvas_width, canvas_width)
     set_uniform(peeling_program, :canvas_height, canvas_height)

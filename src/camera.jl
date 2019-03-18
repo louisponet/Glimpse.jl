@@ -26,12 +26,17 @@ function Camera3D(eyepos, lookat, up, right, area, fov, near, far, rotation_spee
 
     viewm = lookatmat(eyepos, lookat, up)
     projm = projmat(perspective, area, near, far, fov)
-    return Camera3D(eyepos, lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0), 0.0f0, 0.0f0)
+    return Camera3D(lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0), 0.0f0, 0.0f0)
 end
 
 function Camera3D(eyepos, lookat, up, right; overrides...)
     defaults = mergepop_defaults!(perspective; overrides...)
     return Camera3D(eyepos, lookat, up, right, defaults[:area], defaults[:fov], defaults[:near], defaults[:far], defaults[:rotation_speed], defaults[:translation_speed])
+end
+
+function Camera3D(eyepos; overrides...)
+    defaults = mergepop_defaults!(perspective, overrides...)
+    return Camera3D(eyepos, defaults[:lookat], defaults[:up], defaults[:right]; defaults...)
 end
 
 function Camera3D(; overrides...)
@@ -40,17 +45,17 @@ function Camera3D(; overrides...)
 end
 
 
-
 abstract type InteractiveSystem <: SystemKind end
 struct Camera <: InteractiveSystem end
 
-camera_system(dio::Diorama) = System{Camera}(dio, (Camera3D,), ())
+camera_system(dio::Diorama) = System{Camera}(dio, (Spatial, Camera3D,), ())
 
 function update(updater::System{Camera})
 	if isempty(updater[Camera3D])
 		return
 	end
-	camera_data = data(updater[Camera3D])
+	camera_data  = data(updater[Camera3D])
+	spatial_data = data(updater[Spatial])
 	context = current_context()
 	pollevents(context)
 
@@ -60,7 +65,10 @@ function update(updater::System{Camera})
     w, h = callback_value(context, :framebuffer_size)
     scroll_dx, scroll_dy = callback_value(context, :scroll)
 
-	for cam in camera_data
+	for ids in ranges(camera_data, spatial_data), i in ids
+		cam = camera_data[i]
+		spat = spatial_data[i]
+		new_pos = Point3f0(spat.position)
 		#world orientation/mouse stuff
 	    dx = x - cam.mouse_pos[1]
 	    dy = y - cam.mouse_pos[2]
@@ -73,20 +81,20 @@ function update(updater::System{Camera})
 			    rot2   = rotate(-dx * cam.rotation_speed, cam.up)
 			    trans2 = translmat(cam.lookat)
 			    mat_ = trans2 * rot2 * rot1 * trans1
-			    cam.eyepos = Vec3f0((mat_ * Vec4(cam.eyepos..., 1.0f0))[1:3])
+			    new_pos = Point3f0((mat_ * Vec4(new_pos..., 1.0f0))[1:3])
 
 	        elseif mouse_button[1] == Int(MOUSE_BUTTON_2) #panning
 				rt = cam.right * dx * cam.translation_speed
 				ut = -cam.up   * dy * cam.translation_speed
 				cam.lookat += rt + ut
-				cam.eyepos += rt + ut
+				new_pos += rt + ut
 	        end
         end
 
 		#keyboard stuff
 	    if keyboard_button[3] == Int(PRESS)
 	        if keyboard_button[1] in WASD_KEYS
-	            wasd_event(cam, keyboard_button)
+	            new_pos = wasd_event(new_pos, cam, keyboard_button)
 	        elseif keyboard_button[1] == Int(KEY_Q)
 	            cam.fov -= 1
 	            cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 300f0)
@@ -97,44 +105,45 @@ function update(updater::System{Camera})
 	    cam.proj = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
 
 	    #scroll stuff no dx
-	    translation = calcforward(cam) * (scroll_dy - cam.scroll_dy)* cam.translation_speed * norm(cam.eyepos - cam.lookat)
+	    translation = calcforward(new_pos, cam) * (scroll_dy - cam.scroll_dy)* cam.translation_speed * norm(new_pos - cam.lookat)
 	    cam.scroll_dy = scroll_dy
-	    cam.eyepos += translation
+	    new_pos += translation
 
 		# update_viewmat
-	    cam.right = calcright(cam)
-	    cam.up    = calcup(cam)
-	    cam.view = lookatmat(cam.eyepos, cam.lookat, cam.up)
+	    cam.right = calcright(new_pos, cam)
+	    cam.up    = calcup(new_pos, cam)
+	    cam.view = lookatmat(new_pos, cam.lookat, cam.up)
 	    cam.projview = cam.proj * cam.view
+		spatial_data[i] = Spatial(new_pos, spat.velocity)
     end
 end
 
-calcforward(cam::Camera3D) = normalize(cam.lookat-cam.eyepos)
-calcright(cam::Camera3D)   = normalize(cross(calcforward(cam), cam.up))
-calcup(cam::Camera3D)      = -normalize(cross(calcforward(cam), cam.right))
+calcforward(position, cam::Camera3D) = normalize(cam.lookat-position)
+calcright(position, cam::Camera3D)   = normalize(cross(calcforward(position, cam), cam.up))
+calcup(position, cam::Camera3D)      = -normalize(cross(calcforward(position, cam), cam.right))
 
 
 #maybe it would be better to make the eyepos up etc vectors already vec4 but ok
-function wasd_event(cam::Camera3D, button)
+function wasd_event(position, cam::Camera3D, button)
     #ok this is a bit hacky but fine
-    origlen = norm(cam.eyepos)
+    origlen = norm(position)
     if button[1] == Int(KEY_A)
         #the world needs to move in the opposite direction
-        newpos = Vec3f0((translmat(cam.translation_speed * cam.right) * Vec4f0(cam.eyepos...,1.0))[1:3])
+        newpos = Vec3f0((translmat(cam.translation_speed * cam.right) * Vec4f0(position...,1.0))[1:3])
         newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
 
     elseif button[1] == Int(KEY_D)
-        newpos = Vec3f0((translmat(cam.translation_speed * -cam.right) * Vec4f0(cam.eyepos...,1.0))[1:3])
+        newpos = Vec3f0((translmat(cam.translation_speed * -cam.right) * Vec4f0(position...,1.0))[1:3])
         newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
 
     elseif button[1] == Int(KEY_W)
-        newpos = Vec3f0((translmat(cam.translation_speed * calcforward(cam)) * Vec4f0(cam.eyepos...,1.0))[1:3])
+        newpos = Vec3f0((translmat(cam.translation_speed * calcforward(position, cam)) * Vec4f0(position...,1.0))[1:3])
 
     elseif button[1] == Int(KEY_S)
-        newpos = Vec3f0((translmat(cam.translation_speed * -calcforward(cam)) * Vec4f0(cam.eyepos...,1.0))[1:3])
+        newpos = Vec3f0((translmat(cam.translation_speed * -calcforward(position, cam)) * Vec4f0(position...,1.0))[1:3])
 
     end
-    cam.eyepos = newpos
+    return newpos
 end
 
 #----------------------------------DEFAULTS----------------------------#

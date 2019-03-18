@@ -14,3 +14,7 @@ assemble_sphere(position::Point3f0,
                              Material(specint, specpow, color),
                              Shape(radius))
 
+assemble_camera3d(eyepos  ::Point3f0,
+				  velocity::Vec3f0,
+				  args...) = (Spatial(eyepos, velocity), Camera3D(eyepos, args...))
+

@@ -20,20 +20,6 @@ function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
 	return dio
 end
 
-function center!(dio::Diorama)
-    center = zero(Vec3f0)
-    for rb in dio.renderables
-        modelmat = get(rb.uniforms, :modelmat, Eye4f0())
-        center += Vec3f0((modelmat * Vec4f0(0,0,0,1))[1:3]...)
-    end
-    center /= length(dio.renderables)
-    dio.camera.lookat = center
-    update!(dio.camera)
-end
-
-projmat(dio::Diorama)     = dio.camera.proj
-viewmat(dio::Diorama)     = dio.camera.view
-projviewmat(dio::Diorama) = dio.camera.projview
 
 "Darken all the lights in the dio by a certain amount"
 darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
@@ -130,9 +116,9 @@ add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
 
 #TODO handle freeing and reusing stuff
 #TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
-function add_to_components!(datas, components)
+function add_to_components!(id, datas, components)
 	for (data, comp) in zip(datas, components)
-		push!(comp.data, data)
+		comp.data[id] = data
 	end
 end
 
@@ -142,9 +128,10 @@ function new_entity!(dio::Diorama, data...)
 	names      = typeof.(data)
 	components = component.((dio, ), names)
 	@assert !any(components .== nothing) "Error, $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
-    add_to_components!(data, components)
+    add_to_components!(entity_id, data, components)
 	
 	push!(dio.entities, Entity(entity_id))
+	return entity_id
 end
 
 function set_entity_component!(dio::Diorama, entity_id::Int, componentdatas::ComponentData...)

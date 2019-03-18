@@ -164,8 +164,11 @@ function lookatmat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         T0,       T0,       T0,       T1
     ) * translmat(-eyePos)
 end
-function lookatmat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
-    lookatmat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
+function lookatmat(eyePos, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+    lookatmat(Vec{3, T}(eyePos), lookAt, up)
+end
+function lookatmat(::Type{T}, eyePos, lookAt::Vec{3}, up::Vec{3}) where T
+    lookatmat(Vec{3, T}(eyePos), Vec{3, T}(lookAt), Vec{3, T}(up))
 end
 
 

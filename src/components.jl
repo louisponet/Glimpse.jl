@@ -69,7 +69,6 @@ end
 DirectionLightComponent(id) = Component(id, PointLight)
 
 mutable struct Camera3D <: ComponentData
-    eyepos ::Vec3f0
     lookat ::Vec3f0
     up     ::Vec3f0
     right  ::Vec3f0
