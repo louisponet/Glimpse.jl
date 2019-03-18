@@ -16,10 +16,12 @@ function Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: Comp
 end
 
 function Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: Singleton}
-	singleton = getfirst(x -> eltype(x) == T, sys.singletons)
-	@assert singleton != nothing "Singleton $T not found in system's components"
+	singleton = getfirst(x -> typeof(x) == T, sys.singletons)
+	@assert singleton != nothing "Singleton $T not found in system's singletons"
 	return singleton
 end
+
+#DEFAULT SYSTEMS
 
 abstract type SimulationSystem <: SystemKind end
 struct Timer <: SimulationSystem end 
@@ -68,11 +70,14 @@ function update(uploader::System{<: UploaderSystem})
 
 	geometry = uploader[Geometry].data
 	render   = uploader[rendercomp_name].data
-	if isempty(geometry)
+
+	sysranges = ranges(render, geometry)
+	if isempty(sysranges)
 		return
 	end
+
 	instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
-	for ir in ranges(render, geometry), i in ir
+	for ir in sysranges, i in ir
 		e_render = render[i]
 		# println(i)
 		e_geom   = geometry[i]
@@ -118,16 +123,17 @@ end
 #maybe this should be splitted into a couple of systems
 function update(renderer::System{DefaultRenderer})
 	render     = renderer[Render{DefaultPass}].data
-	if isempty(render)
-		return
-	end
-
 	spatial    = renderer[Spatial].data
 	material   = renderer[Material].data
 	shape      = renderer[Shape].data
 	light      = renderer[PointLight].data
 	camera     = renderer[Camera3D].data
 	renderpass = renderer.singletons[1]
+
+	sysranges  = ranges(render, spatial, material, shape)
+	if isempty(sysranges)
+		return
+	end
 
 	clear!(renderpass.targets[:context])
 
@@ -145,8 +151,7 @@ function update(renderer::System{DefaultRenderer})
 		set_uniform(program, light[1])
     end
 
-	ids   = ranges(render, spatial, material, shape)
-	for id in ids, i in id
+	for id in sysranges, i in id
 		e_render   = render[i]
 		e_material = material[i]
 		e_spatial  = spatial[i]
@@ -168,6 +173,17 @@ depth_peeling_render_system(dio::Diorama) =
 	System{DepthPeelingRenderer}(dio, (Render{DepthPeelingPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
 
 function update(renderer::System{DepthPeelingRenderer})
+	render     = renderer[Render{DepthPeelingPass}].data
+	spatial    = renderer[Spatial].data
+	material   = renderer[Material].data
+	shape      = renderer[Shape].data
+	light      = renderer[PointLight].data
+	camera     = renderer[Camera3D].data
+	sysranges  = ranges(render, spatial, material, shape)
+	if isempty(sysranges)
+		return
+	end
+
 	rp = renderer.singletons[1]
     peeling_program           = main_program(rp)
     peeling_instanced_program = main_instanced_program(rp)
@@ -185,12 +201,6 @@ function update(renderer::System{DepthPeelingRenderer})
     canvas_width  = Float32(size(colorblender)[1])
     canvas_height = Float32(size(colorblender)[2])
 
-	render     = renderer[Render{DepthPeelingPass}].data
-	spatial    = renderer[Spatial].data
-	material   = renderer[Material].data
-	shape      = renderer[Shape].data
-	light      = renderer[PointLight].data
-	camera     = renderer[Camera3D].data
     # function first_pass(renderables, program)
     bind(peeling_program)
     set_uniform(peeling_program, :first_pass, true)
@@ -203,9 +213,8 @@ function update(renderer::System{DepthPeelingRenderer})
     set_uniform(peeling_program, :canvas_width, canvas_width)
     set_uniform(peeling_program, :canvas_height, canvas_height)
 
-	ids   = ranges(render, spatial, material, shape)
 	function renderall()
-		for id in ids, i in id
+		for id in sysranges, i in id
 			e_render   = render[i]
 			e_material = material[i]
 			e_spatial  = spatial[i]

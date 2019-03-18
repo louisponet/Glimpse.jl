@@ -1,8 +1,11 @@
-struct GappedVector{T} <: AbstractVector{T}
+mutable struct GappedVector{T} <: AbstractVector{T}
 	data::Vector{Vector{T}}
 	start_ids::Vector{Int}
 	function GappedVector(vecs::Vector{Vector{T}}, start_ids::Vector{Int}) where T
 		totlen = 0
+		if !in(1, start_ids)
+			prepend!(start_ids, 1)
+		end
 		# Check that no overlaps would happen
 		for (vec, sid) in zip(vecs, start_ids)
 			if sid > totlen
@@ -16,7 +19,11 @@ struct GappedVector{T} <: AbstractVector{T}
 end
 
 Base.size(A::GappedVector)   = (length(A),)
-Base.length(A::GappedVector) =  A.start_ids[end] + length(A.data[end]) - 1
+Base.length(A::GappedVector) = A.start_ids[end] + length(A.data[end]) - 1
+
+Base.isempty(A::GappedVector) = length(A) == 0
+Base.empty!(A::GappedVector{T}) where T = (A.start_ids = Int[1]; A.data = [T[]])
+Base.push!(A::GappedVector{T}, x) where T = A[end+1] = convert(T, x)
 
 function Base.getindex(A::GappedVector, i::Int)
 	for (s_id, bvec) in zip(A.start_ids, A.data)
@@ -127,9 +134,6 @@ function remove_entry!(A::GappedVector, i::Int)
 	return val
 end
 
-
-
-
 Base.IndexStyle(::Type{<:GappedVector}) = IndexLinear()
 
 function Base.iterate(A::GappedVector, state=(1,1))
@@ -142,22 +146,6 @@ function Base.iterate(A::GappedVector, state=(1,1))
 	end
 end
 
-Base.isempty(A::GappedVector) = isempty(A.start_ids)
-
-function Base.eachindex(A::GappedVector)
-	if isempty(A)
-		return Int[]
-	else
-		t_r = collect(A.start_ids[1]:length(A.data[1]))
-		for i=2:length(A.start_ids)
-			append!(t_r, collect(A.start_ids[i]:length(A.data[i])))
-		end
-		return t_r
-	end
-end
-
-Base.push!(A::GappedVector{T}, x) where T = A[end+1] = convert(T, x)
-
 function has_index(A::GappedVector, i)
 	for (sid, vec) in zip(A.start_ids, A.data)
 		if  sid <= i < sid + length(vec)
@@ -167,7 +155,6 @@ function has_index(A::GappedVector, i)
 	return false
 end
 
-Base.isempty(A::GappedVector) = isempty(A.start_ids)
 
 function Base.eachindex(A::GappedVector)
 	if isempty(A)

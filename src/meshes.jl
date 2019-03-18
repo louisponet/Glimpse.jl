@@ -3,7 +3,7 @@ import GLAbstraction: INVALID_ATTRIBUTE, attribute_location, GEOMETRY_DIVISOR
 
 
 
-BasicMesh(geometry::T, ft=Face{3, Glint}) where T =
+BasicMesh(geometry::T, ft=Face{3, GLint}) where T =
     error("Please implement a `BasicMesh` constructor for type $T.")
 
 function BasicMesh(geometry::AbstractGeometry{D, T}, ft=Face{3, GLint}) where {D, T}

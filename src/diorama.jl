@@ -20,9 +20,6 @@ function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
 	return dio
 end
 
-
-
-
 function center!(dio::Diorama)
     center = zero(Vec3f0)
     for rb in dio.renderables
@@ -114,14 +111,22 @@ set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, c
 #        _\/\\\\\\\\\\\\\\\____\////\\\\\\\\\_\///\\\\\\\\\\\/___ 
 #         _\///////////////________\/////////____\///////////_____
   
-
-
+function Base.empty!(dio::Diorama)
+	for component in dio.components
+		empty!(component)
+	end
+	empty!(dio.entities)
+end
 
 #TODO: change such that there are no components until needed?
 component(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) <: T, dio.components)
 singleton(dio::Diorama, ::Type{T}) where {T <: Singleton}     = getfirst(x -> isa(x, T),      dio.singletons)
+ncomponents(dio::Diorama) = length(dio.components)
 
-new_component!(dio::Diorama, component::Component) = push!(dio.components, component)
+add_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
+	push!(dio.components, Component(ncomponents(dio)+1, T))
+
+add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
 
 #TODO handle freeing and reusing stuff
 #TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
@@ -142,20 +147,17 @@ function new_entity!(dio::Diorama, data...)
 	push!(dio.entities, Entity(entity_id))
 end
 
-# function add_entity_components!(dio::Diorama, entity_id::Int; name_data...)
-# 	entity = getfirst(x->x.id == entity_id, dio.entities)
-# 	if entity == nothing
-# 		error("entity id $entity_id doesn't exist")
-# 	end
+function set_entity_component!(dio::Diorama, entity_id::Int, componentdatas::ComponentData...)
+	entity = getfirst(x->x.id == entity_id, dio.entities)
+	if entity == nothing
+		error("entity id $entity_id doesn't exist")
+	end
 
-# 	names      = keys(name_data)
-# 	components = component.((dio, ), names)
-# 	data_ids   = add_to_components!(values(name_data), components)
+	for data in componentdatas
+		component(dio, typeof(data)).data[entity_id] = data
+	end
+end
 
-# 	append!(data_ids, values(entity.data_ids))
-# 	allnames = (keys(entity.data_ids)..., names...)
-# 	dio.entities[entity_id] = Entity(entity_id, NamedTuple{allnames}(data_ids))
-# end
 
 
 ###########

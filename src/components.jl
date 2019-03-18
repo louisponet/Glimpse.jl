@@ -1,10 +1,14 @@
 data(component::Component) = component.data
+Component(id, ::Type{T}) where {T<:ComponentData} = Component(id, GappedVector([T[]], Int[]))
 
-
-Component(id, ::Type{T}) where {T<:ComponentData} = Component(id, GappedVector([T[]], Int[1]))
 Base.length(::ComponentData) = 1
 Base.iterate(t::ComponentData) = (t, nothing)
 
+Base.isempty(c::Component) = isempty(c.data)
+Base.empty!(c::Component)  = empty!(c.data)
+
+
+# DEFAULT COMPONENTS
 struct Spatial <: ComponentData
 	position::Vec3f0
 	velocity::Vec3f0
