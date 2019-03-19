@@ -15,6 +15,7 @@ function projmat(x::CamKind, w::Int, h::Int, near::T, far::T, fov::T) where T
         return projmatpersp(w, h, fov, near, far)
     end
 end
+
 projmat(x::CamKind, wh::SimpleRectangle, args...) =
     projmat(x, wh.w, wh.h, args...)
 
@@ -51,43 +52,44 @@ struct Camera <: InteractiveSystem end
 camera_system(dio::Diorama) = System{Camera}(dio, (Spatial, Camera3D,), ())
 
 function update(updater::System{Camera})
-	if isempty(updater[Camera3D])
+	camera  = component(updater, Camera3D)
+	spatial = component(updater, Spatial)
+	if isempty(component(updater,Camera3D))
 		return
 	end
-	camera_data  = data(updater[Camera3D])
-	spatial_data = data(updater[Spatial])
+
 	context = current_context()
 	pollevents(context)
 
-	x, y = Float32.(callback_value(context, :cursor_position))
-	mouse_button = callback_value(context, :mouse_buttons)
-	keyboard_button = callback_value(context, :keyboard_buttons)
-    w, h = callback_value(context, :framebuffer_size)
+	x, y                 = Float32.(callback_value(context, :cursor_position))
+	mouse_button         = callback_value(context, :mouse_buttons)
+	keyboard_button      = callback_value(context, :keyboard_buttons)
+    w, h                 = callback_value(context, :framebuffer_size)
     scroll_dx, scroll_dy = callback_value(context, :scroll)
 
-	for ids in ranges(camera_data, spatial_data), i in ids
-		cam = camera_data[i]
-		spat = spatial_data[i]
+	for i in valid_entities(camera, spatial)
+		cam     = camera[i]
+		spat    = spatial[i]
 		new_pos = Point3f0(spat.position)
 		#world orientation/mouse stuff
-	    dx = x - cam.mouse_pos[1]
-	    dy = y - cam.mouse_pos[2]
+	    dx      = x - cam.mouse_pos[1]
+	    dy      = y - cam.mouse_pos[2]
 	    cam.mouse_pos = Vec(x, y)
 	    if mouse_button[2] == Int(PRESS)
 
 	        if mouse_button[1] == Int(MOUSE_BUTTON_1) #rotation
-			    trans1 = translmat(-cam.lookat)
-			    rot1   = rotate(dy * cam.rotation_speed, -cam.right)
-			    rot2   = rotate(-dx * cam.rotation_speed, cam.up)
-			    trans2 = translmat(cam.lookat)
-			    mat_ = trans2 * rot2 * rot1 * trans1
+			    trans1  = translmat(-cam.lookat)
+			    rot1    = rotate(dy * cam.rotation_speed, -cam.right)
+			    rot2    = rotate(-dx * cam.rotation_speed, cam.up)
+			    trans2  = translmat(cam.lookat)
+			    mat_    = trans2 * rot2 * rot1 * trans1
 			    new_pos = Point3f0((mat_ * Vec4(new_pos..., 1.0f0))[1:3])
 
 	        elseif mouse_button[1] == Int(MOUSE_BUTTON_2) #panning
-				rt = cam.right * dx * cam.translation_speed
-				ut = -cam.up   * dy * cam.translation_speed
+				rt          = cam.right * dx * cam.translation_speed
+				ut          = -cam.up   * dy * cam.translation_speed
 				cam.lookat += rt + ut
-				new_pos += rt + ut
+				new_pos    += rt + ut
 	        end
         end
 
@@ -102,19 +104,19 @@ function update(updater::System{Camera})
 	    end
 
 	    #resize stuff
-	    cam.proj = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
+	    cam.proj      = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
 
 	    #scroll stuff no dx
-	    translation = calcforward(new_pos, cam) * (scroll_dy - cam.scroll_dy)* cam.translation_speed * norm(new_pos - cam.lookat)
+	    translation   = calcforward(new_pos, cam) * (scroll_dy - cam.scroll_dy)* cam.translation_speed * norm(new_pos - cam.lookat)
 	    cam.scroll_dy = scroll_dy
-	    new_pos += translation
+	    new_pos      += translation
 
 		# update_viewmat
-	    cam.right = calcright(new_pos, cam)
-	    cam.up    = calcup(new_pos, cam)
-	    cam.view = lookatmat(new_pos, cam.lookat, cam.up)
-	    cam.projview = cam.proj * cam.view
-		spatial_data[i] = Spatial(new_pos, spat.velocity)
+	    cam.right     = calcright(new_pos, cam)
+	    cam.up        = calcup(new_pos, cam)
+	    cam.view      = lookatmat(new_pos, cam.lookat, cam.up)
+	    cam.projview  = cam.proj * cam.view
+		spatial[i]    = Spatial(new_pos, spat.velocity)
     end
 end
 

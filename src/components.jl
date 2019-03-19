@@ -1,6 +1,7 @@
 
 
-Component(id, ::Type{T}) where {T <: ComponentData} = Component(id, GappedVector([T[]], Int[]))
+Component(id, ::Type{T}) where {T <: ComponentData}       = Component(id, GappedVector([T[]], Int[]))
+SharedComponent(id, ::Type{T}) where {T <: ComponentData} = SharedComponent(id, GappedVector([Int[]], Int[]), T[])
 
 data(component::AbstractComponent) = component.data
 
@@ -28,8 +29,20 @@ function Base.setindex!(c::SharedComponent,v, i)
 	c.data[i] = id
 end
 
-ranges(A::AbstractComponent)     = ranges(A.data)
-ranges(As::AbstractComponent...) = ranges(data.(As)...)
+valid_entities(c::AbstractComponent)     = Iterators.flatten(ranges(c.data))
+valid_entities(cs::AbstractComponent...) = Iterators.flatten(ranges(data.(cs)...))
+has_entity(c::AbstractComponent, entity) = has_index(c.data, entity)
+
+function shared_entities(c::SharedComponent{T}, dat::T) where T
+	ids = Int[]
+	id = findfirst(x -> x == dat, c.shared)
+	for i in c.data
+		if i == id
+			push!(ids, i)
+		end
+	end
+	return ids
+end
 
 # DEFAULT COMPONENTS
 struct Spatial <: ComponentData
@@ -41,21 +54,25 @@ SpatialComponent(id) = Component(id, Spatial)
 struct Geometry <: ComponentData
 	mesh
 end
-GeometryComponent(id) = Component(id, Geometry)
+GeometryComponent(id)       = Component(id, Geometry)
+GeometrySharedComponent(id) = SharedComponent(id, Geometry)
 
+struct Vao{RP <: RenderPassKind} <: ComponentData
+	vertexarray::VertexArray
+end
+VaoComponent(id)       = Component(id, Vao)
+VaoSharedComponent(id) = SharedComponent(id, Vao)
 
-mutable struct Render{RP <: RenderPassKind} <: ComponentData
+mutable struct Upload{RP <: RenderPassKind} <: ComponentData
 	is_instanced::Bool
 	is_visible  ::Bool
-	vertexarray ::VertexArray
 end
 
-DefaultRenderComponent(id)      = Component(id, Render{DefaultPass})
-DepthPeelingRenderComponent(id) = Component(id, Render{DepthPeelingPass})
+DefaultUploadComponent(id)      = Component(id, Upload{DefaultPass})
+DepthPeelingUploadComponent(id) = Component(id, Upload{DepthPeelingPass})
 
-is_instanced(data::Render) = data.is_instanced
-is_uploaded(data::Render)  = !GLA.is_null(data.vertexarray)
-kind(::Type{Render{Kind}}) where Kind = Kind
+is_instanced(data::Upload) = data.is_instanced
+kind(::Type{Upload{Kind}}) where Kind = Kind
 
 struct Material <: ComponentData
 	specpow ::Float32

@@ -42,17 +42,17 @@ function Canvas(name, id; kwargs...)
     context_hints = GLFW.standard_context_hints(defaults[:major], defaults[:minor])
 
     area = defaults[:area]
-    nw = GLFW.Window(name=string(name),
-                     resolution = (area.w, area.h),
-                     debugging = defaults[:debugging],
-                     major = defaults[:major],
-                     minor = defaults[:minor],
-                     windowhints = window_hints,
-                     contexthints=context_hints,
-                     visible = defaults[:visible],
-                     focus = defaults[:focus],
-                     fullscreen = defaults[:fullscreen],
-                     monitor = defaults[:monitor])
+    nw = GLFW.Window(name         = string(name),
+                     resolution   = (area.w, area.h),
+                     debugging    = defaults[:debugging],
+                     major        = defaults[:major],
+                     minor        = defaults[:minor],
+                     windowhints  = window_hints,
+                     contexthints =context_hints,
+                     visible      = defaults[:visible],
+                     focus        = defaults[:focus],
+                     fullscreen   = defaults[:fullscreen],
+                     monitor      = defaults[:monitor])
     GLFW.SwapInterval(0) # deactivating vsync seems to make everything quite a bit smoother
 
     background = defaults[:background]
@@ -115,7 +115,7 @@ waitevents(c::Canvas) = GLFW.WaitEvents()
 
 
 function free!(c::Canvas)
-	if is_current_context(c)
+	if GLA.is_current_context(c)
 		free!(c.fullscreenvao)
 		GLFW.DestroyWindow(c.native_window)
         clear_context!()

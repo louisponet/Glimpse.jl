@@ -5,18 +5,29 @@ import GLAbstraction: free!
 function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
 	renderpass = default_renderpass()
 	depth_peeling_pass = create_transparancy_pass((1260, 720), 5)
-    components = [GeometryComponent(1),
-  			      DefaultRenderComponent(2),
-  			      MaterialComponent(3),
-  			      ShapeComponent(4),
-		          SpatialComponent(5),
-		          PointLightComponent(6),
-		          CameraComponent3D(7),
-		          DepthPeelingRenderComponent(8),
-		          ]
 
-	dio = Diorama(name, Entity[], components, [renderpass, depth_peeling_pass, TimingData(time(),0.0, 0, 1/60)], System[], screen; kwargs...)
-	push!(dio.systems, timer_system(dio), default_uploader_system(dio), depth_peeling_uploader_system(dio), camera_system(dio), default_render_system(dio), depth_peeling_render_system(dio), sleeper_system(dio))
+	dio = Diorama(name, Entity[], AbstractComponent[], [renderpass, depth_peeling_pass, TimingData(time(),0.0, 0, 1/60)], System[], screen; kwargs...)
+    add_component!.((dio,),[Geometry,
+		                    Material,
+		                    Spatial,
+		                    Shape,
+		                    PointLight,
+		                    Camera3D,
+		                    Upload{DefaultPass},
+		                    Upload{DepthPeelingPass},
+		                    Vao{DefaultPass},
+		                    Vao{DepthPeelingPass}])
+    add_shared_component!.((dio,), [Geometry,
+    							   Vao{DefaultPass},
+    							   Vao{DepthPeelingPass}])
+	add_system!.((dio,),[timer_system(dio),
+			             default_uploader_system(dio),
+			             depth_peeling_uploader_system(dio),
+			             camera_system(dio),
+			             default_render_system(dio),
+			             depth_peeling_render_system(dio),
+			             sleeper_system(dio)])
+
 	return dio
 end
 
@@ -106,11 +117,24 @@ end
 
 #TODO: change such that there are no components until needed?
 component(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) <: T, dio.components)
-singleton(dio::Diorama, ::Type{T}) where {T <: Singleton}     = getfirst(x -> isa(x, T),      dio.singletons)
+
+components(dio::Diorama) = dio.components
+
+function components(dio::Diorama, ::Type{T}) where {T <: ComponentData}
+	compids = findall(x -> eltype(x) <: T, dio.components)
+	@assert compids != nothing "Component $T was not found, please add it first"
+	return dio.components[compids]
+end
+
+singleton(dio::Diorama, ::Type{T}) where {T <: Singleton} = getfirst(x -> isa(x, T), dio.singletons)
+
 ncomponents(dio::Diorama) = length(dio.components)
 
 add_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
 	push!(dio.components, Component(ncomponents(dio)+1, T))
+	
+add_shared_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
+	push!(dio.components, SharedComponent(ncomponents(dio)+1, T))
 
 add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
 
@@ -148,7 +172,6 @@ end
 
 
 ###########
-components(dio::Diorama) = dio.components
 # manipulations
 # set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.camera.rotation_speed = Float32(rotation_speed)
 
@@ -208,10 +231,6 @@ function has_components(e::Entity, components::Vector{<:Component})
 	return c == length(component_ids)
 end
 
-has_components(e::Entity, sys::System) = has_components(e, components(sys))
-
-get_valid_entities(dio::Diorama, ComponentTypes...) = filter(x -> has_components(x, get_components(dio::Diorama, ComponentTypes)), dio.entities)
-
 function haszeros(v)
 	for i in v
 		if iszero(i)
@@ -220,38 +239,6 @@ function haszeros(v)
 	end
 	return false
 end
-
-function generate_gapped_arrays(dio::Diorama, ComponentTypes::Type{<:ComponentData}...)
-	cids = component_ids(dio, ComponentTypes)
-	@assert !haszeros(cids) "Not all components required by the system were found"
-	
-	valid_ids = [Int[] for i = 1:length(cids)]
-	for entity in dio.entities
-		if !has_components(entity, cids)
-			continue
-		end
-		for (ic, cid) in enumerate(cids)
-			push!(valid_ids[ic], data_id(entity, cid))
-		end
-	end
-	#TODO SCARY WATCHOUT!!!!!!! should we do this?
-	sort!.(valid_ids)
-	gaps = [Gap[] for i=1:length(ComponentTypes)]
-	for (ic, vids) in enumerate(valid_ids)
-		for i = 1:2:length(vids)
-			gap = vids[i+1] - vids[i] 
-			if gap != 1
-				push!(gaps[ic], Gap(vids[i] + 1, gap))
-			end
-		end
-	end
-	components = get_components(dio, cids)
-	arrs = [GappedArray(component.data, gap) for (component, gap) in zip(components,gaps)]
-	return arrs
-end
-
-generate_gapped_arrays(dio::Diorama, sys::System{<:SystemKind})  =
-	generate_gapped_arrays(dio, component_types(sys)...)
 
 
 # function reupload(::Diorama)
