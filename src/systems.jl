@@ -4,7 +4,7 @@
 function System{kind}(dio::Diorama, comp_names, singleton_names) where {kind}
 	comps = AbstractComponent[]
 	for cn in comp_names
-		append!(comps, components(dio, cn))
+		append!(comps, all_components(dio, cn))
 	end
 	singletons = singleton.((dio,), singleton_names)
 	return System{kind}(comps, singletons)
@@ -152,7 +152,6 @@ function update(renderer::System{DefaultRenderer})
 
 	bind(program)
     for i in valid_entities(light)
-	    println(i)
 	    set_uniform(program, light[i])
     end
     for i in valid_entities(camera, spatial)
@@ -175,22 +174,22 @@ function update(renderer::System{DefaultRenderer})
 	end
 
 	svao = scomp(Vao{DefaultPass})
-	shared_entities = valid_entities(svao, spatial, material, shape)
-	for vertexarray in svao.shared
-		GLA.bind(vertexarray)
-		for e in shared_entities(svao, vertexarray)
+	# render all shared vaos
+	for vao in svao.shared
+		GLA.bind(vao.vertexarray)
+		for e in shared_entities(svao, vao)
 			ematerial = material[e]
 			espatial  = spatial[e]
 			eshape    = shape[e]
-			mat        = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
+			mat       = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
 			set_uniform(program, :specpow, ematerial.specpow)
 			set_uniform(program, :specint, ematerial.specint)
 			set_uniform(program, :modelmat, mat)
 
-			GLA.draw(evao.vertexarray)
+			GLA.draw(vao.vertexarray)
 		end
 	end
-	# GLA.unbind(render[end].vertexarray)
+	# GLA.unbind(vao[end].vertexarray)
 end
 
 struct DepthPeelingRenderer <: RenderSystem end
@@ -208,6 +207,10 @@ function update(renderer::System{DepthPeelingRenderer})
 	shape    = comp(Shape)
 	light    = comp(PointLight)
 	camera   = comp(Camera3D)
+	sysranges = valid_entities(vao, spatial, material, shape)
+	if isempty(sysranges)
+		return
+	end
 
 	rp = renderer.singletons[1]
     peeling_program           = main_program(rp)
@@ -240,7 +243,6 @@ function update(renderer::System{DepthPeelingRenderer})
     set_uniform(peeling_program, :canvas_width, canvas_width)
     set_uniform(peeling_program, :canvas_height, canvas_height)
 
-	sysranges = valid_entities(vao, spatial, material, shape)
 	function renderall()
 		for i in sysranges
 			evao   = vao[i]

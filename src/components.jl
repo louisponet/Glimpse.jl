@@ -1,5 +1,4 @@
 
-
 Component(id, ::Type{T}) where {T <: ComponentData}       = Component(id, GappedVector([T[]], Int[]))
 SharedComponent(id, ::Type{T}) where {T <: ComponentData} = SharedComponent(id, GappedVector([Int[]], Int[]), T[])
 
@@ -21,9 +20,9 @@ Base.getindex(c::SharedComponent, i) = c.shared[getindex(c.data, i)]
 Base.setindex!(c::Component, v, i)   = setindex!(c.data, v, i)
 
 function Base.setindex!(c::SharedComponent,v, i)
-	id = findfirst(v, c.shared)
+	id = findfirst(isequal(v), c.shared)
 	if id == nothing
-		id = length(c.shared)
+		id = length(c.shared) + 1
 		push!(c.shared, v)
 	end
 	c.data[i] = id

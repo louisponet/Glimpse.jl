@@ -116,19 +116,24 @@ function Base.empty!(dio::Diorama)
 end
 
 #TODO: change such that there are no components until needed?
-component(dio::Diorama, ::Type{T}) where {T <: ComponentData} = getfirst(x -> eltype(x) <: T, dio.components)
+component(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
+	getfirst(x -> eltype(x) <: T && isa(x, Component), dio.components)
 
-components(dio::Diorama) = dio.components
+shared_component(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
+	getfirst(x -> eltype(x) <: T && isa(x, SharedComponent), dio.components)
 
-function components(dio::Diorama, ::Type{T}) where {T <: ComponentData}
+all_components(dio::Diorama) = dio.components
+
+function all_components(dio::Diorama, ::Type{T}) where {T <: ComponentData}
 	compids = findall(x -> eltype(x) <: T, dio.components)
 	@assert compids != nothing "Component $T was not found, please add it first"
 	return dio.components[compids]
 end
 
+ncomponents(dio::Diorama) = length(dio.components)
+
 singleton(dio::Diorama, ::Type{T}) where {T <: Singleton} = getfirst(x -> isa(x, T), dio.singletons)
 
-ncomponents(dio::Diorama) = length(dio.components)
 
 add_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
 	push!(dio.components, Component(ncomponents(dio)+1, T))
@@ -142,7 +147,7 @@ add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
 #TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
 function add_to_components!(id, datas, components)
 	for (data, comp) in zip(datas, components)
-		comp.data[id] = data
+		comp[id] = data
 	end
 end
 
@@ -151,8 +156,23 @@ function new_entity!(dio::Diorama, data...)
 
 	names      = typeof.(data)
 	components = component.((dio, ), names)
-	@assert !any(components .== nothing) "Error, $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
+	@assert !any(components .== nothing) "One or more components in $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
     add_to_components!(entity_id, data, components)
+	
+	push!(dio.entities, Entity(entity_id))
+	return entity_id
+end
+
+function new_shared_entity!(dio::Diorama, separate_data, shared_data)
+	entity_id  = length(dio.entities) + 1
+
+	names      = typeof.(separate_data)
+	components = component.((dio, ), names)
+	shared_names      = typeof.(shared_data)
+	shared_components = shared_component.((dio, ), shared_names)
+	@assert !(any(components .== nothing) || any(shared_components .== nothing)) "One or more components in $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
+    add_to_components!(entity_id, separate_data, components)
+    add_to_components!(entity_id, shared_data, shared_components)
 	
 	push!(dio.entities, Entity(entity_id))
 	return entity_id
