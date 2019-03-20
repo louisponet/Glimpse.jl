@@ -86,7 +86,6 @@ function update(uploader::System{<: UploaderSystem})
 		instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
 		for e in valid_entities(upload, geometry)
 			eupload = upload[e]
-			# println(i)
 			egeom   = geometry[e]
 
 			if has_entity(vao, e)
@@ -134,6 +133,7 @@ function update(renderer::System{DefaultRenderer})
 	scomp(T) = shared_component(renderer, T)
 
 	vao        = comp(Vao{DefaultPass})
+	svao       = scomp(Vao{DefaultPass})
 	spatial    = comp(Spatial)
 	material   = comp(Material)
 	shape      = comp(Shape)
@@ -142,7 +142,11 @@ function update(renderer::System{DefaultRenderer})
 	camera     = comp(Camera3D)
 	renderpass = renderer.singletons[1]
 
-
+	es         = valid_entities(vao, spatial, material, shape)
+	ses        = valid_entities(svao, spatial, material, shape)
+	if isempty(es) && isempty(ses)
+		return
+	end
 	clear!(renderpass.targets[:context])
 
 	glEnable(GL_DEPTH_TEST)
@@ -159,7 +163,7 @@ function update(renderer::System{DefaultRenderer})
     end
 
 	# render all separate vaos
-	for e in valid_entities(vao, spatial, material, shape)
+	for e in es
 		evao   = vao[e]
 		ematerial = material[e]
 		espatial  = spatial[e]
@@ -173,7 +177,6 @@ function update(renderer::System{DefaultRenderer})
 		GLA.draw(evao.vertexarray)
 	end
 
-	svao = scomp(Vao{DefaultPass})
 	# render all shared vaos
 	for vao in svao.shared
 		GLA.bind(vao.vertexarray)
@@ -202,13 +205,15 @@ function update(renderer::System{DepthPeelingRenderer})
 	scomp(T) = shared_component(renderer, T)
 
 	vao      = comp(Vao{DepthPeelingPass})
+	svao     = scomp(Vao{DepthPeelingPass})
 	spatial  = comp(Spatial)
 	material = comp(Material)
 	shape    = comp(Shape)
 	light    = comp(PointLight)
 	camera   = comp(Camera3D)
-	sysranges = valid_entities(vao, spatial, material, shape)
-	if isempty(sysranges)
+	separate_entities  = valid_entities(vao, spatial, material, shape)
+	shared_es          = valid_entities(svao, spatial, material, shape)
+	if isempty(separate_entities) && isempty(shared_es)
 		return
 	end
 
@@ -243,19 +248,32 @@ function update(renderer::System{DepthPeelingRenderer})
     set_uniform(peeling_program, :canvas_width, canvas_width)
     set_uniform(peeling_program, :canvas_height, canvas_height)
 
-	function renderall()
-		for i in sysranges
-			evao   = vao[i]
-			ematerial = material[i]
-			espatial  = spatial[i]
-			eshape    = shape[i]
-			mat        = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
-			set_uniform(peeling_program, :specpow, ematerial.specpow)
-			set_uniform(peeling_program, :specint, ematerial.specint)
-			set_uniform(peeling_program, :modelmat, mat)
+	function set_entity_uniforms(i)
+		ematerial = material[i]
+		espatial  = spatial[i]
+		eshape    = shape[i]
+		mat        = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
+		set_uniform(peeling_program, :specpow, ematerial.specpow)
+		set_uniform(peeling_program, :specint, ematerial.specint)
+		set_uniform(peeling_program, :modelmat, mat)
+	end
 
-			GLA.bind(erender.vertexarray)
-			GLA.draw(erender.vertexarray)
+	function renderall()
+		#render all separate ones first
+		for i in separate_entities
+			evao   = vao[i]
+			set_entity_uniforms(i)
+			GLA.bind(evao.vertexarray)
+			GLA.draw(evao.vertexarray)
+		end
+
+		#render all separate ones first
+		for evao in svao.shared
+			GLA.bind(evao.vertexarray)
+			for e in shared_entities(svao, evao)
+				set_entity_uniforms(e)
+				GLA.draw(evao.vertexarray)
+			end
 		end
 		# GLA.unbind(vao[end].vertexarray)
 	end
