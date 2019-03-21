@@ -1,5 +1,5 @@
 #version 330 core
-in vec4 fragcolor;
+// in vec4 fragcolor;
 in vec3 fragnormal;
 in vec3 world_pos;
 in float specPow;
@@ -21,7 +21,7 @@ uniform float canvas_width;
 uniform float canvas_height;
 uniform bool first_pass;
 uniform sampler2D depth_texture;
-
+uniform vec4 fragcolor;
 uniform point_light plight;
 void main () {
 

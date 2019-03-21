@@ -1,3 +1,5 @@
+import Base.Iterators: Cycle
+
 
 Component(id, ::Type{T}) where {T <: ComponentData}       = Component(id, GappedVector([T[]], Int[]))
 SharedComponent(id, ::Type{T}) where {T <: ComponentData} = SharedComponent(id, GappedVector([Int[]], Int[]), T[])
@@ -21,6 +23,7 @@ Base.setindex!(c::Component, v, i)   = setindex!(c.data, v, i)
 
 function Base.setindex!(c::SharedComponent,v, i)
 	id = findfirst(isequal(v), c.shared)
+	@show id
 	if id == nothing
 		id = length(c.shared) + 1
 		push!(c.shared, v)
@@ -48,27 +51,15 @@ struct Spatial <: ComponentData
 	position::Vec3f0
 	velocity::Vec3f0
 end
-SpatialComponent(id) = Component(id, Spatial) 
-
-struct Geometry <: ComponentData
-	mesh
-end
-GeometryComponent(id)       = Component(id, Geometry)
-GeometrySharedComponent(id) = SharedComponent(id, Geometry)
 
 struct Vao{RP <: RenderPassKind} <: ComponentData
 	vertexarray::VertexArray
 end
-VaoComponent(id)       = Component(id, Vao)
-VaoSharedComponent(id) = SharedComponent(id, Vao)
 
 mutable struct Upload{RP <: RenderPassKind} <: ComponentData
 	is_instanced::Bool
 	is_visible  ::Bool
 end
-
-DefaultUploadComponent(id)      = Component(id, Upload{DefaultPass})
-DepthPeelingUploadComponent(id) = Component(id, Upload{DepthPeelingPass})
 
 is_instanced(data::Upload) = data.is_instanced
 kind(::Type{Upload{Kind}}) where Kind = Kind
@@ -79,13 +70,9 @@ struct Material <: ComponentData
 	color   ::RGBf0
 end
 
-MaterialComponent(id) = Component(id, Material)
-
 struct Shape <: ComponentData
 	scale::Float32
 end
-
-ShapeComponent(id) = Component(id, Shape)
 
 struct PointLight <: ComponentData
     position::Vec3f0
@@ -95,8 +82,6 @@ struct PointLight <: ComponentData
     color   ::RGBf0
 end
 
-PointLightComponent(id) = Component(id, PointLight)
-
 struct DirectionLight <: ComponentData
 	direction::Vec3f0
     diffuse  ::Float32
@@ -104,8 +89,6 @@ struct DirectionLight <: ComponentData
     ambient  ::Float32
     color    ::RGBf0	
 end
-
-DirectionLightComponent(id) = Component(id, PointLight)
 
 mutable struct Camera3D <: ComponentData
     lookat ::Vec3f0
@@ -124,6 +107,38 @@ mutable struct Camera3D <: ComponentData
     scroll_dy         ::Float32
 end
 
-CameraComponent3D(id) = Component(id, Camera3D)
+# Meshing and the like
+struct Mesh <: ComponentData
+	mesh
+end
 
+abstract type Color <: ComponentData end
 
+# one color, will be put as a uniform in the shader
+struct UniformColor <: Color 
+	color::RGBAf0
+end
+
+# color function, mesher uses it to throw in points and get out colors
+struct FuncColor{F} <: Color 
+	color::F
+end
+
+# Cycle, mesher uses it to iterate over together with points
+struct CycledColor <: Color
+	color::Cycle{Union{RGBAf0, Vector{RGBAf0}}}
+end
+
+abstract type Geometry <: ComponentData end
+
+struct PolygonGeometry <: Geometry #spheres and the like
+	geometry 
+end
+
+struct FuncGeometry{F} <: Geometry
+	geometry::F
+end
+
+struct VectorGeometry <: Geometry
+	geometry::Vector{Point3f0}
+end

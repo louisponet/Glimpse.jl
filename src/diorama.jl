@@ -7,20 +7,25 @@ function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
 	depth_peeling_pass = create_transparancy_pass((1260, 720), 5)
 
 	dio = Diorama(name, Entity[], AbstractComponent[], [renderpass, depth_peeling_pass, TimingData(time(),0.0, 0, 1/60)], System[], screen; kwargs...)
-    add_component!.((dio,),[Geometry,
+    add_component!.((dio,),[PolygonGeometry,
+    						Mesh,
 		                    Material,
 		                    Spatial,
 		                    Shape,
+		                    UniformColor,
 		                    PointLight,
 		                    Camera3D,
 		                    Upload{DefaultPass},
 		                    Upload{DepthPeelingPass},
 		                    Vao{DefaultPass},
 		                    Vao{DepthPeelingPass}])
-    add_shared_component!.((dio,), [Geometry,
-    							   Vao{DefaultPass},
-    							   Vao{DepthPeelingPass}])
+    add_shared_component!.((dio,), [PolygonGeometry,
+    							    Mesh,
+							        Vao{DefaultPass},
+    							    Vao{DepthPeelingPass}])
+
 	add_system!.((dio,),[timer_system(dio),
+                         mesher_system(dio),
 			             default_uploader_system(dio),
 			             depth_peeling_uploader_system(dio),
 			             camera_system(dio),

@@ -63,11 +63,12 @@ abstract type UploaderSystem <: SystemKind     end
 struct DefaultUploader       <: UploaderSystem end
 struct DepthPeelingUploader  <: UploaderSystem end
 
+
 # UPLOADER
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
-default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Geometry, Upload{DefaultPass}, Vao{DefaultPass}), (RenderPass{DefaultPass}))
+default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, UniformColor, Upload{DefaultPass}, Vao{DefaultPass}), (RenderPass{DefaultPass}))
 
-depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Geometry, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}),(RenderPass{DepthPeelingPass}))
+depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Mesh, UniformColor, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}),(RenderPass{DepthPeelingPass}))
 
 #TODO figure out a better way of vao <-> renderpass maybe really multiple entities with child and parent things
 #TODO decouple renderpass into some component, or at least the info needed to create the vaos
@@ -79,14 +80,15 @@ function update(uploader::System{<: UploaderSystem})
 
 	renderpass = singleton(uploader, RenderPass)
 	upload     = comp(Upload)
+	color      = comp(UniformColor)
 	for func in (comp, scomp) 
-		geometry = func(Geometry)
-		vao      = func(Vao)
+		mesh = func(Mesh)
+		vao  = func(Vao)
 
 		instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
-		for e in valid_entities(upload, geometry)
+		for e in valid_entities(upload, mesh)
 			eupload = upload[e]
-			egeom   = geometry[e]
+			egeom   = mesh[e]
 
 			if has_entity(vao, e)
 				continue
@@ -98,7 +100,11 @@ function update(uploader::System{<: UploaderSystem})
 					push!(instanced_renderables[egeom.mesh], entity)
 				end
 			else
-			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass)))
+				if has_entity(color, e)
+				    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass), color=color[e].color))
+			    else
+				    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass)))
+			    end
 			end
 		end
 	end
@@ -112,7 +118,7 @@ abstract type RenderSystem  <: SystemKind   end
 struct DefaultRenderer      <: RenderSystem end
 
 default_render_system(dio::Diorama) =
-	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DefaultPass},))
+	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, UniformColor, Shape, PointLight, Camera3D), (RenderPass{DefaultPass},))
 
 function set_uniform(program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
@@ -137,13 +143,14 @@ function update(renderer::System{DefaultRenderer})
 	spatial    = comp(Spatial)
 	material   = comp(Material)
 	shape      = comp(Shape)
+	color      = comp(UniformColor)
 
 	light      = comp(PointLight)
 	camera     = comp(Camera3D)
 	renderpass = renderer.singletons[1]
 
-	es         = valid_entities(vao, spatial, material, shape)
-	ses        = valid_entities(svao, spatial, material, shape)
+	es         = valid_entities(vao, spatial, material, shape, color)
+	ses        = valid_entities(svao, spatial, material, shape, color)
 	if isempty(es) && isempty(ses)
 		return
 	end
@@ -172,6 +179,7 @@ function update(renderer::System{DefaultRenderer})
 		set_uniform(program, :specpow, ematerial.specpow)
 		set_uniform(program, :specint, ematerial.specint)
 		set_uniform(program, :modelmat, mat)
+		set_uniform(program, :fragcolor, color[e].color)
 
 		GLA.bind(evao.vertexarray)
 		GLA.draw(evao.vertexarray)
@@ -188,6 +196,7 @@ function update(renderer::System{DefaultRenderer})
 			set_uniform(program, :specpow, ematerial.specpow)
 			set_uniform(program, :specint, ematerial.specint)
 			set_uniform(program, :modelmat, mat)
+			set_uniform(program, :fragcolor, color[e].color)
 
 			GLA.draw(vao.vertexarray)
 		end
@@ -198,7 +207,7 @@ end
 struct DepthPeelingRenderer <: RenderSystem end
 
 depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
+	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
 
 function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
@@ -209,8 +218,11 @@ function update(renderer::System{DepthPeelingRenderer})
 	spatial  = comp(Spatial)
 	material = comp(Material)
 	shape    = comp(Shape)
+	color    = comp(UniformColor)
+
 	light    = comp(PointLight)
 	camera   = comp(Camera3D)
+
 	separate_entities  = valid_entities(vao, spatial, material, shape)
 	shared_es          = valid_entities(svao, spatial, material, shape)
 	if isempty(separate_entities) && isempty(shared_es)
@@ -256,6 +268,7 @@ function update(renderer::System{DepthPeelingRenderer})
 		set_uniform(peeling_program, :specpow, ematerial.specpow)
 		set_uniform(peeling_program, :specint, ematerial.specint)
 		set_uniform(peeling_program, :modelmat, mat)
+		set_uniform(peeling_program, :fragcolor, color[i].color)
 	end
 
 	function renderall()
@@ -268,7 +281,7 @@ function update(renderer::System{DepthPeelingRenderer})
 		end
 
 		#render all separate ones first
-		for evao in svao.shared
+		@time for evao in svao.shared
 			GLA.bind(evao.vertexarray)
 			for e in shared_entities(svao, evao)
 				set_entity_uniforms(e)
@@ -334,3 +347,38 @@ function update(renderer::System{DepthPeelingRenderer})
     glFlush()
 
 end
+
+
+struct Mesher <: SystemKind end
+mesher_system(dio) = System{Mesher}(dio, (Geometry, Color, Mesh), ())
+
+function update(sys::System{Mesher})
+	comp(T)  = component(sys, T)
+	scomp(T) = shared_component(sys, T)
+	#setup separate meshes
+	polygon = comp(PolygonGeometry)
+	mesh    = comp(Mesh)
+
+	for e in valid_entities(polygon)
+		if has_entity(mesh, e)
+			continue
+		end
+		mesh[e] = Mesh(BasicMesh(polygon[e].geometry))
+	end
+
+	#setup shared meshes
+	spolygon = scomp(PolygonGeometry)
+	smesh    = scomp(Mesh)
+	for e in valid_entities(spolygon)
+		if has_entity(smesh, e)
+			continue
+		end
+		smesh[e] = Mesh(BasicMesh(spolygon[e].geometry))
+	end
+end
+		
+
+
+
+
+

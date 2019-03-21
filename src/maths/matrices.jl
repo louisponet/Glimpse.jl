@@ -46,7 +46,7 @@ function rotate(v1::Vec3{T}, v2::Vec3{T}) where T
 	if length(axis) > 0.0001
         return rotate(angle, axis)
     end
-    return Mat4(eye(T, 4))
+    return Mat4(Eye4f0(T, 4))
 end
 
 function rotmat_x(angle::T) where T

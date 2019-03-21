@@ -86,20 +86,20 @@ function update(updater::System{Camera})
 			    new_pos = Point3f0((mat_ * Vec4(new_pos..., 1.0f0))[1:3])
 
 	        elseif mouse_button[1] == Int(MOUSE_BUTTON_2) #panning
-				rt          = cam.right * dx * cam.translation_speed
-				ut          = -cam.up   * dy * cam.translation_speed
+				rt          = cam.right * dx *0.5* cam.translation_speed
+				ut          = -cam.up   * dy *0.5* cam.translation_speed
 				cam.lookat += rt + ut
 				new_pos    += rt + ut
 	        end
         end
 
 		#keyboard stuff
-	    if keyboard_button[3] == Int(PRESS)
+	    if keyboard_button[3] == Int(PRESS) || keyboard_button[3] == Int(GLFW.REPEAT)
 	        if keyboard_button[1] in WASD_KEYS
 	            new_pos = wasd_event(new_pos, cam, keyboard_button)
-	        elseif keyboard_button[1] == Int(KEY_Q)
-	            cam.fov -= 1
-	            cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 300f0)
+	        # elseif keyboard_button[1] == Int(KEY_Q)
+	            # cam.fov -= 1
+	            # cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 300f0)
 	        end
 	    end
 
@@ -128,24 +128,35 @@ calcup(position, cam::Camera3D)      = -normalize(cross(calcforward(position, ca
 #maybe it would be better to make the eyepos up etc vectors already vec4 but ok
 function wasd_event(position, cam::Camera3D, button)
     #ok this is a bit hacky but fine
-    origlen = norm(position)
+    # origlen = norm(position)
     if button[1] == Int(KEY_A)
+	    move        = cam.translation_speed * 5 * cam.right
+	    # println(move)
         #the world needs to move in the opposite direction
-        newpos = Vec3f0((translmat(cam.translation_speed * cam.right) * Vec4f0(position...,1.0))[1:3])
-        newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
+        position   -= move
+        cam.lookat -= move
+        # newpos     = origlen == 0 ? newpos : normalize(newpos) * origlen
+	end
+    if button[1] == Int(KEY_D)
+	    move        = cam.translation_speed * 5 * cam.right
+        position   += move
+        cam.lookat += move
+        # newpos     = origlen == 0 ? newpos : normalize(newpos) * origlen
+	end
+    if button[1] == Int(KEY_W)
+	    move = calcforward(position, cam) * 5 * cam.translation_speed
+        position   += move
+        cam.lookat += move
 
-    elseif button[1] == Int(KEY_D)
-        newpos = Vec3f0((translmat(cam.translation_speed * -cam.right) * Vec4f0(position...,1.0))[1:3])
-        newpos = origlen == 0 ? newpos : normalize(newpos) * origlen
+	end
+    if button[1] == Int(KEY_S)
 
-    elseif button[1] == Int(KEY_W)
-        newpos = Vec3f0((translmat(cam.translation_speed * calcforward(position, cam)) * Vec4f0(position...,1.0))[1:3])
-
-    elseif button[1] == Int(KEY_S)
-        newpos = Vec3f0((translmat(cam.translation_speed * -calcforward(position, cam)) * Vec4f0(position...,1.0))[1:3])
+	    move = calcforward(position, cam) * 5 * cam.translation_speed
+        position   -= move
+        cam.lookat -= move
 
     end
-    return newpos
+    return position
 end
 
 #----------------------------------DEFAULTS----------------------------#
@@ -158,7 +169,7 @@ perspective_defaults() = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
                                                :near   => 0.1f0,
                                                :far    => 300f0,
                                                :rotation_speed    => 0.001f0,
-                                               :translation_speed => 0.01f0)
+                                               :translation_speed => 0.1f0)
 orthographic_defaults() = perspective_defaults()
 pixel_defaults()        = merge(perspective_defaults(), Dict(
 								:fov  => 0f0,
