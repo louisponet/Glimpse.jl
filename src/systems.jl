@@ -281,7 +281,7 @@ function update(renderer::System{DepthPeelingRenderer})
 		end
 
 		#render all separate ones first
-		@time for evao in svao.shared
+		for evao in svao.shared
 			GLA.bind(evao.vertexarray)
 			for e in shared_entities(svao, evao)
 				set_entity_uniforms(e)
