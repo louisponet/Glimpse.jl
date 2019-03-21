@@ -22,7 +22,7 @@ Screen(name::Symbol, resolution::Tuple{Int, Int}, args...; kwargs...) = Screen(n
 isopen(screen::Screen)        = isopen(screen.canvas)
 close(screen::Screen)         = (close.(screen.children); close(screen.canvas))
 
-clearcanvas!(s::Screen)       = clear!(s.canvas)
+clear!(s::Screen)       = clear!(s.canvas)
 
 focus(s::Screen)              = make_current(s.canvas)
 GLAbstraction.bind(s::Screen) = GLAbstraction.bind(s.canvas)

@@ -35,7 +35,8 @@ function Base.getindex(A::GappedVector, i::Int)
 end
 
 function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
-	conv_v = convert(T, v)
+	# conv_v = convert(T, v)
+	conv_v = v
 
 	function add!()
 		push!(A.data, [conv_v])
@@ -59,7 +60,7 @@ function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
 				handled = true
 				break
 			elseif i == startid - 1 # grow left
-				prepend!(bvec, conv_v)
+				insert!(bvec, i, conv_v)
 				startid -= 1
 				handled = true
 				break
@@ -190,4 +191,11 @@ function find_overlaps(rangevecvec::Vector{Vector{UnitRange{Int}}})
 		rs = find_overlaps(rs, rs2)
 	end
 	return rs
+end
+
+
+function Base.show(io::IO, g::GappedVector{T}) where T
+	println(io, "GappedVector{$T}")
+	println(io, "\tlength: $(length(g))")
+	println(io, "\tstartids: $(g.start_ids)")
 end

@@ -1,31 +1,31 @@
 # COnstructors
 # System{kind}(components::Tuple) where {kind} = System{kind, (eltype.(components)...,)}(components)
 
-function System{kind}(dio::Diorama, comp_names, singleton_names) where {kind}
+function System{kind}(dio::Diorama, comp_names::NTuple, singleton_names) where {kind}
 	comps = AbstractComponent[]
 	for cn in comp_names
 		append!(comps, all_components(dio, cn))
 	end
 	singletons = singleton.((dio,), singleton_names)
-	return System{kind}(comps, singletons)
+	return System{kind}(comps, comp_names, Singleton[singletons...])
 end
 
 # Access
 function component(sys::System{Kind} where Kind, ::Type{T}) where {T <: ComponentData}
 	comp = getfirst(x -> eltype(x) <: T && isa(x, Component), sys.components)
-	@assert comp != nothing "Component $T not found in system's components"
+	# @assert comp != nothing "Component $T not found in system's components"
 	return comp
 end
 
 function shared_component(sys::System{Kind} where Kind, ::Type{T}) where {T <: ComponentData}
 	comp = getfirst(x -> eltype(x) <: T && isa(x, SharedComponent), sys.components)
-	@assert comp != nothing "SharedComponent $T not found in system's components"
+	# @assert comp != nothing "SharedComponent $T not found in system's components"
 	return comp
 end
 
 function Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: Singleton}
 	singleton = getfirst(x -> typeof(x) <: T, sys.singletons)
-	@assert singleton != nothing "Singleton $T not found in system's singletons"
+	# @assert singleton != nothing "Singleton $T not found in system's singletons"
 	return singleton
 end
 singleton(sys::System, ::Type{T}) where {T <: Singleton} = sys[T]
@@ -350,7 +350,7 @@ end
 
 
 struct Mesher <: SystemKind end
-mesher_system(dio) = System{Mesher}(dio, (Geometry, Color, Mesh), ())
+mesher_system(dio) = System{Mesher}(dio, (Geometry, Color, Mesh, Grid), ())
 
 function update(sys::System{Mesher})
 	comp(T)  = component(sys, T)
@@ -366,7 +366,7 @@ function update(sys::System{Mesher})
 		mesh[e] = Mesh(BasicMesh(polygon[e].geometry))
 	end
 
-	#setup shared meshes
+	#setup shared polygon meshes
 	spolygon = scomp(PolygonGeometry)
 	smesh    = scomp(Mesh)
 	for e in valid_entities(spolygon)
@@ -375,6 +375,31 @@ function update(sys::System{Mesher})
 		end
 		smesh[e] = Mesh(BasicMesh(spolygon[e].geometry))
 	end
+
+	funcgeometry  = comp(FuncGeometry)
+	if funcgeometry == nothing
+		return
+	end
+	grid          = scomp(Grid)
+	funccolor     = comp(FuncColor)
+	cycledcolor = comp(CycledColor)
+	for e in valid_entities(funcgeometry, grid)
+		if has_entity(mesh, e)
+			continue
+		end
+		values = funcgeometry[e].geometry.(grid[e].points)
+		vertices, ids = marching_cubes(values, grid[e].points, funcgeometry[e].iso_value)
+		faces = [Face{3, GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
+
+		if cycledcolor != nothing && has_entity(cycledcolor, e)
+			# mesh[e] = BasicMesh(
+		elseif funccolor != nothing && has_entity(funccolor, e)
+			#
+		else
+			mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
+		end
+	end
+
 end
 		
 

@@ -22,14 +22,15 @@ function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
     add_shared_component!.((dio,), [PolygonGeometry,
     							    Mesh,
 							        Vao{DefaultPass},
-    							    Vao{DepthPeelingPass}])
+    							    Vao{DepthPeelingPass},
+    							    Grid])
 
 	add_system!.((dio,),[timer_system(dio),
                          mesher_system(dio),
 			             default_uploader_system(dio),
+			             default_render_system(dio),
 			             depth_peeling_uploader_system(dio),
 			             camera_system(dio),
-			             default_render_system(dio),
 			             depth_peeling_render_system(dio),
 			             sleeper_system(dio)])
 
@@ -41,21 +42,28 @@ end
 darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
 lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
 
-function free!(dio::Diorama)
-    free!(dio.screen)
-    # free!.(dio.pipeline)
+function expose(dio::Diorama;  kwargs...)
+    if dio.loop == nothing
+        dio.screen = dio.screen == nothing ? Screen(dio.name; kwargs...) : raise(dio.screen)
+        register_callbacks(dio)
+        # dio.loop = @async renderloop(dio)
+        # dio.loop = renderloop(dio)
+    end
+    return dio
 end
 
 function renderloop(dio)
     screen = dio.screen
     dio    = dio
     while !should_close(dio.screen)
+	    clear!(dio.screen)
         for sys in dio.systems
 	        update(sys)
         end
         swapbuffers(dio.screen)
     end
-    close(dio.screen)
+    should_close!(dio.screen, false)
+    # close(dio.screen)
 	dio.loop = nothing
     # free!(dio)
 end
@@ -69,17 +77,12 @@ function reload(dio::Diorama)
     expose(dio)
 end
 
-function expose(dio::Diorama;  kwargs...)
-    if dio.loop == nothing
-        dio.screen = dio.screen == nothing ? Screen(dio.name; kwargs...) : raise(dio.screen)
-        register_callbacks(dio)
-        dio.loop = @async renderloop(dio)
-        # dio.loop = renderloop(dio)
-    end
-    return dio
-end
-
 close(dio::Diorama) = should_close!(dio.screen, true)
+
+function free!(dio::Diorama)
+    free!(dio.screen)
+    # free!.(dio.pipeline)
+end
 
 function register_callbacks(dio::Diorama)
     dio.singletons != nothing && register_callbacks.(filter(x -> isa(x, RenderPass), dio.singletons), (dio.screen.canvas, ))
@@ -139,12 +142,32 @@ ncomponents(dio::Diorama) = length(dio.components)
 
 singleton(dio::Diorama, ::Type{T}) where {T <: Singleton} = getfirst(x -> isa(x, T), dio.singletons)
 
+function add_component_to_systems(dio, comp::AbstractComponent{T}) where T
+	for sys in dio.systems
+		for rc in sys.requested_components
+			if T <: rc
+				push!(sys.components, comp)
+				return
+			end
+		end
+	end
+end
 
-add_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
-	push!(dio.components, Component(ncomponents(dio)+1, T))
+
+function add_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData}
+	comp = Component(ncomponents(dio)+1, T)
+	push!(dio.components, comp)
+	add_component_to_systems(dio, comp)
+end
 	
-add_shared_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
-	push!(dio.components, SharedComponent(ncomponents(dio)+1, T))
+function add_shared_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData}
+	comp = SharedComponent(ncomponents(dio)+1, T)
+	push!(dio.components, comp)
+	add_component_to_systems(dio, comp)
+end
+
+system(dio::Diorama, ::Type{T}) where {T <: SystemKind} =
+	getfirst(x -> eltype(x) <: T, dio.systems)
 
 add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
 
@@ -258,6 +281,9 @@ end
 
 function haszeros(v)
 	for i in v
+
+system(dio::Diorama, ::Type{T}) where {T <: SystemKind} =
+	getfirst(x -> eltype(x) <: T, dio.components)
 		if iszero(i)
 			return true
 		end

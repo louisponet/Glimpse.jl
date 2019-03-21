@@ -129,14 +129,19 @@ struct CycledColor <: Color
 	color::Cycle{Union{RGBAf0, Vector{RGBAf0}}}
 end
 
+struct Grid <: ComponentData
+	points::Array{Point3f0, 3}
+end
+
 abstract type Geometry <: ComponentData end
 
 struct PolygonGeometry <: Geometry #spheres and the like
 	geometry 
 end
 
-struct FuncGeometry{F} <: Geometry
-	geometry::F
+struct FuncGeometry <: Geometry
+	geometry::Function
+	iso_value::Float64
 end
 
 struct VectorGeometry <: Geometry

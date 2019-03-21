@@ -10,6 +10,7 @@ const RGBf0           = RGB{Float32}
 # Gapped Arrays are used in systems
 include("gapped_vector.jl")
 
+abstract type Singleton end
 abstract type ComponentData end
 abstract type AbstractComponent{T <: ComponentData} end
 Base.eltype(::AbstractComponent{T}) where {T <: ComponentData} = T
@@ -32,11 +33,16 @@ end
 
 abstract type SystemKind end
 
-struct System{Kind <: SystemKind} #DT has the components datatypes 
-	components
-	singletons
+struct System{Kind <: SystemKind} #DT has the components datatypes
+	components::Vector{AbstractComponent}
+	requested_components # so that new components can be added as well
+	singletons::Vector{Singleton}
+	function System{Kind}(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}) where Kind
+		return new{Kind}(c, req, singletons)
+	end
 end
 
+Base.eltype(sys::System{Kind}) where {Kind <: SystemKind} = Kind
 
 abstract type AbstractGlimpseMesh end
 
@@ -97,7 +103,6 @@ mutable struct Screen
     end
 end
 
-abstract type Singleton end
 
 abstract type RenderPassKind end
 

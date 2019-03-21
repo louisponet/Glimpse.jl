@@ -36,8 +36,9 @@ export default_shaders, default_instanced_shaders, transparency_shaders, peeling
 # include("diorama.jl")
 export windowsize, pixelsize, present
 include("geometries.jl")
-export sphere, cylinder, rectangle, cone, arrow
+include("marching_cubes.jl")
 #GLAbstraction exports
+
 
 #package exports, types & enums
 export Screen, Scene, MeshRenderable, InstancedMeshRenderable, Camera, Diorama, Area, PointLight, RenderPass, Pipeline
