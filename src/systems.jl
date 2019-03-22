@@ -4,10 +4,13 @@
 function System{kind}(dio::Diorama, comp_names::NTuple, singleton_names) where {kind}
 	comps = AbstractComponent[]
 	for cn in comp_names
-		append!(comps, all_components(dio, cn))
+		append!(comps, components(dio, cn))
 	end
-	singletons = singleton.((dio,), singleton_names)
-	return System{kind}(comps, comp_names, Singleton[singletons...])
+	singls = Singleton[]
+	for sn in singleton_names
+		append!(singls, singletons(dio, sn))
+	end
+	return System{kind}(comps, comp_names, singls)
 end
 
 # Access
@@ -28,7 +31,13 @@ function Base.getindex(sys::System{Kind} where Kind, ::Type{T}) where {T <: Sing
 	# @assert singleton != nothing "Singleton $T not found in system's singletons"
 	return singleton
 end
-singleton(sys::System, ::Type{T}) where {T <: Singleton} = sys[T]
+singleton(sys::System, ::Type{T}) where {T <: Singleton}  = sys[T]
+
+function singletons(sys::System, ::Type{T}) where {T <: Singleton}
+	singlids = findall(x -> typeof(x) <: T, sys.singletons)
+	@assert singlids != nothing "No Singletons of type $T were not found, please add it first"
+	return sys.singletons[singlids]
+end
 
 #DEFAULT SYSTEMS
 
@@ -58,6 +67,20 @@ function update(sleeper::System{Sleeper})
     end
 end
 
+struct Resizer <: SystemKind end
+resizer_system(dio::Diorama) = System{Resizer}(dio, (), (Canvas, RenderTarget{IOTarget}, RenderPass))
+
+using Debugger
+function update(sys::System{Resizer})
+	c   = singleton(sys, Canvas)
+	wh  = callback_value(c, :window_size)
+	fwh = callback_value(c, :framebuffer_size)
+	resize!(c, fwh)
+	resize!(singleton(sys, RenderTarget{IOTarget}).target, fwh)
+	for rp in singletons(sys, RenderPass)
+		resize_targets(rp, fwh)
+	end
+end
 
 abstract type UploaderSystem <: SystemKind     end
 struct DefaultUploader       <: UploaderSystem end
@@ -66,9 +89,9 @@ struct DepthPeelingUploader  <: UploaderSystem end
 
 # UPLOADER
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
-default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, UniformColor, Upload{DefaultPass}, Vao{DefaultPass}), (RenderPass{DefaultPass}))
+default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, UniformColor, Upload{DefaultPass}, Vao{DefaultPass}), (RenderPass{DefaultPass},))
 
-depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Mesh, UniformColor, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}),(RenderPass{DepthPeelingPass}))
+depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Mesh, UniformColor, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}),(RenderPass{DepthPeelingPass},))
 
 #TODO figure out a better way of vao <-> renderpass maybe really multiple entities with child and parent things
 #TODO decouple renderpass into some component, or at least the info needed to create the vaos
@@ -118,7 +141,7 @@ abstract type RenderSystem  <: SystemKind   end
 struct DefaultRenderer      <: RenderSystem end
 
 default_render_system(dio::Diorama) =
-	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, UniformColor, Shape, PointLight, Camera3D), (RenderPass{DefaultPass},))
+	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, UniformColor, Shape, PointLight, Camera3D), (RenderPass{DefaultPass}, RenderTarget{IOTarget}))
 
 function set_uniform(program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
@@ -204,10 +227,11 @@ function update(renderer::System{DefaultRenderer})
 	# GLA.unbind(vao[end].vertexarray)
 end
 
+rem1(x, y) = (x - 1) % y + 1
 struct DepthPeelingRenderer <: RenderSystem end
 
 depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass},))
+	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, Canvas))
 
 function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
@@ -232,15 +256,17 @@ function update(renderer::System{DepthPeelingRenderer})
 	rp = renderer.singletons[1]
     peeling_program           = main_program(rp)
     peeling_instanced_program = main_instanced_program(rp)
+
     blending_program    = rp.programs[:blending]
-    colorblender        = rp.targets[:colorblender]
-    peeling_targets     = [rp.targets[:peel1], rp.targets[:peel2]]
-    context_target      = rp.targets[:context]
+
+    colorblender        = rp.targets[:colorblender].target
+    peeling_targets     = [rp.targets[:peel1].target, rp.targets[:peel2].target]
+    canvas      = singleton(renderer, Canvas)
     compositing_program = rp.programs[:composite]
-    fullscreenvao       = context_target.fullscreenvao
+    fullscreenvao       = canvas.fullscreenvao
     bind(colorblender)
     draw(colorblender)
-    clear!(colorblender, context_target.background)
+    clear!(colorblender, canvas.background)
     # glClearBufferfv(GL_COLOR, 0, [0,0,0,1])
     glEnable(GL_DEPTH_TEST)
     canvas_width  = Float32(size(colorblender)[1])
@@ -335,8 +361,8 @@ function update(renderer::System{DepthPeelingRenderer})
         glDisable(GL_BLEND)
     end
     bind(compositing_program)
-    bind(rp.targets[:context])
-    clear!(rp.targets[:context])
+    bind(canvas)
+    clear!(canvas)
     glDrawBuffer(GL_BACK)
     glDisable(GL_DEPTH_TEST)
 

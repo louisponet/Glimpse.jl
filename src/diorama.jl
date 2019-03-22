@@ -2,11 +2,14 @@ import GLAbstraction: free!
 
 ########### Initialization
 #TODO, make it so args and kwargs get all passed around to pipelines and screens etc
-function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
-	renderpass = default_renderpass()
-	depth_peeling_pass = create_transparancy_pass((1260, 720), 5)
+function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
+	c = Canvas(name)
+	wh               = size(c)
+	io_fbo             = RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true))
+	renderpass         = default_renderpass()
+	depth_peeling_pass = create_transparancy_pass(wh, 5)
 
-	dio = Diorama(name, Entity[], AbstractComponent[], [renderpass, depth_peeling_pass, TimingData(time(),0.0, 0, 1/60)], System[], screen; kwargs...)
+	dio = Diorama(name, Entity[], AbstractComponent[], [renderpass, depth_peeling_pass, TimingData(time(),0.0, 0, 1/60), io_fbo, c], System[]; kwargs...)
     add_component!.((dio,),[PolygonGeometry,
     						Mesh,
 		                    Material,
@@ -26,6 +29,7 @@ function Diorama(name::Symbol, screen::Screen; kwargs...) #Defaults
     							    Grid])
 
 	add_system!.((dio,),[timer_system(dio),
+						 resizer_system(dio),
                          mesher_system(dio),
 			             default_uploader_system(dio),
 			             default_render_system(dio),
@@ -42,51 +46,55 @@ end
 darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
 lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
 
+function canvas_command(dio::Diorama, command::Function, catchcommand = x -> nothing)
+	canvas = singleton(dio, Canvas)
+	if canvas != nothing
+		command(canvas)
+	else
+		catchcommand(canvas)
+	end
+end
+
 function expose(dio::Diorama;  kwargs...)
     if dio.loop == nothing
-        dio.screen = dio.screen == nothing ? Screen(dio.name; kwargs...) : raise(dio.screen)
-        register_callbacks(dio)
-        # dio.loop = @async renderloop(dio)
-        # dio.loop = renderloop(dio)
+	    canvas_command(dio, make_current, x -> add_singleton!(dio, Canvas(dio.name; kwargs...))) 
     end
     return dio
 end
 
+#TODO move control over this to diorama itself
 function renderloop(dio)
-    screen = dio.screen
     dio    = dio
-    while !should_close(dio.screen)
-	    clear!(dio.screen)
-        for sys in dio.systems
-	        update(sys)
-        end
-        swapbuffers(dio.screen)
-    end
-    should_close!(dio.screen, false)
-    # close(dio.screen)
-	dio.loop = nothing
-    # free!(dio)
+    canvas_command(dio, canvas ->
+	    begin
+	    	while !should_close(canvas)
+			    clear!(canvas)
+		        for sys in dio.systems
+			        update(sys)
+		        end
+		        swapbuffers(canvas)
+		    end
+		    should_close!(canvas, false)
+			dio.loop = nothing
+		end
+	)
 end
 
 function reload(dio::Diorama)
 	close(dio)
-	while isopen(dio.screen) && dio.loop != nothing
-		sleep(0.01)
-	end
-	dio.reupload = true
-    expose(dio)
+	canvas_command(dio, canvas ->
+		begin
+			while isopen(canvas) && dio.loop != nothing
+				sleep(0.01)
+			end
+			dio.reupload = true
+		    expose(dio)
+	    end
+    )
 end
 
-close(dio::Diorama) = should_close!(dio.screen, true)
-
-function free!(dio::Diorama)
-    free!(dio.screen)
-    # free!.(dio.pipeline)
-end
-
-function register_callbacks(dio::Diorama)
-    dio.singletons != nothing && register_callbacks.(filter(x -> isa(x, RenderPass), dio.singletons), (dio.screen.canvas, ))
-end
+close(dio::Diorama) = canvas_command(dio, c -> should_close!(c, true))
+free!(dio::Diorama) = canvas_command(dio, c -> free!(c))
 
 isrendering(dio::Diorama) = dio.loop != nothing
 
@@ -98,12 +106,9 @@ function makecurrentdio(x)
     currentdio[] = x
 end
 
-windowsize(dio::Diorama) = windowsize(dio.screen)
-
+windowsize(dio::Diorama) = canvas_command(dio, c -> windowsize(c), x -> (0,0))
 pixelsize(dio::Diorama)  = (windowsize(dio)...,)
-
-set_background_color!(dio::Diorama, color) = set_background_color!(dio.screen, color)
-
+set_background_color!(dio::Diorama, color) = canvas_command(dio, c -> set_background_color!(c, color))
 
 
 # __/\\\\\\\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\\\___        
@@ -130,12 +135,18 @@ component(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
 shared_component(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
 	getfirst(x -> eltype(x) <: T && isa(x, SharedComponent), dio.components)
 
-all_components(dio::Diorama) = dio.components
+components(dio::Diorama) = dio.components
 
-function all_components(dio::Diorama, ::Type{T}) where {T <: ComponentData}
+function components(dio::Diorama, ::Type{T}) where {T <: ComponentData}
 	compids = findall(x -> eltype(x) <: T, dio.components)
 	@assert compids != nothing "Component $T was not found, please add it first"
 	return dio.components[compids]
+end
+
+function singletons(dio::Diorama, ::Type{T}) where {T <: Singleton}
+	singlids = findall(x -> typeof(x) <: T, dio.singletons)
+	@assert singlids != nothing "No singleton of type $T was not found, please add it first"
+	return dio.singletons[singlids]
 end
 
 ncomponents(dio::Diorama) = length(dio.components)

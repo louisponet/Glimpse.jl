@@ -59,52 +59,40 @@ struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
     basic      ::BM
 end
 
-mutable struct Canvas <: GLA.AbstractContext
+struct CanvasContext <: GLA.AbstractContext
+	id::Int
+end
+
+mutable struct Canvas <: Singleton
     name          ::Symbol
     id            ::Int
     area          ::Area
     native_window ::GLFW.Window
     background    ::Colorant{Float32, 4}
     callbacks     ::Dict{Symbol, Any}
+	context       ::CanvasContext
 	fullscreenvao ::VertexArray
 	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
-		obj = new(name, id, area, nw, background, callback_dict)
+		obj = new(name, id, area, nw, background, callback_dict, CanvasContext(id), fullscreen_vertexarray())
 		finalizer(free!, obj)
 		return obj
 	end
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 
-const RenderTarget     = Union{FrameBuffer, Canvas}
-const RenderTargetDict = Dict{Symbol, RenderTarget}
-const ProgramDict      = Dict{Symbol, Program}
+const ProgramDict = Dict{Symbol, Program}
 
-mutable struct Screen
-    name      ::Symbol
-    id        ::Int
-    area      ::Area
-    canvas    ::Union{Canvas, Nothing}
-    background::Colorant
-    parent    ::Union{Screen, Nothing}
-    children  ::Vector{Screen}
-    hidden    ::Bool # if window is hidden. Will not render
-    function Screen(name      ::Symbol,
-                    area      ::Area,
-                    canvas    ::Canvas,
-                    background::Colorant,
-                    parent    ::Union{Screen, Nothing},
-                    children  ::Vector{Screen},
-                    hidden    ::Bool)
-        id = new_screen_id()
-        canvas.id = id
-        obj = new(name, id, area, canvas,background, parent, children, hidden)
-        finalizer(free!, obj)
-        return obj
-    end
+abstract type RenderTargetKind end
+
+struct IOTarget <: RenderTargetKind end
+
+struct RenderTarget{R <: RenderTargetKind} <: Singleton
+	target::Union{FrameBuffer, Canvas}
 end
 
-
 abstract type RenderPassKind end
+
+const RenderTargetDict = Dict{Symbol, RenderTarget}
 
 mutable struct RenderPass{RenderPassKind, NT <: NamedTuple} <: Singleton
     programs::ProgramDict
@@ -135,11 +123,10 @@ mutable struct Diorama
 	singletons::Vector{Singleton}
     systems   ::Vector{System}
     
-    screen     ::Union{Screen, Nothing}
     loop       ::Union{Task, Nothing}
     reupload   ::Bool
-    function Diorama(name, entities, components,  singletons, systems, screen; interactive=false, kwargs...)
-        dio = new(name, entities, components, singletons, systems, screen, nothing, true)
+    function Diorama(name, entities, components,  singletons, systems; interactive=false, kwargs...)
+        dio = new(name, entities, components, singletons, systems, nothing, true)
 
         makecurrentdio(dio)
         expose(dio; kwargs...)
@@ -149,14 +136,10 @@ mutable struct Diorama
 end
 
 
-
-
 include("components.jl")
+include("singletons.jl")
 include("meshes.jl")
 include("camera.jl")
-include("canvas.jl")
-include("screen.jl")
-include("renderpass.jl")
 include("diorama.jl")
 
 

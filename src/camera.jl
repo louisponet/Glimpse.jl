@@ -49,7 +49,7 @@ end
 abstract type InteractiveSystem <: SystemKind end
 struct Camera <: InteractiveSystem end
 
-camera_system(dio::Diorama) = System{Camera}(dio, (Spatial, Camera3D,), ())
+camera_system(dio::Diorama) = System{Camera}(dio, (Spatial, Camera3D,), (Canvas,))
 
 function update(updater::System{Camera})
 	camera  = component(updater, Camera3D)
@@ -58,7 +58,7 @@ function update(updater::System{Camera})
 		return
 	end
 
-	context = current_context()
+	context = singleton(updater, Canvas)
 	pollevents(context)
 
 	x, y                 = Float32.(callback_value(context, :cursor_position))
