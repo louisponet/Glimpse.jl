@@ -1,63 +1,28 @@
-import GLAbstraction: Program, Shader, FrameBuffer, Float24
-import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id, current_context
-#Do we really need the context if it is already in frambuffer and program?
-
-struct DefaultPass      <: RenderPassKind end
-struct DepthPeelingPass <: RenderPassKind end
-
-RenderPass{name}(programs::ProgramDict, targets::RenderTargetDict; options...) where name =
-    RenderPass{name}(programs, targets, options.data)
-
-RenderPass{name}(shaderdict::Dict{Symbol, Vector{Shader}}, targets::RenderTargetDict; options...) where name =
-    RenderPass{name}(Dict([sym => Program(shaders) for (sym, shaders) in shaderdict]), targets; options...)
-
-RenderPass(name::RenderPassKind, args...; options...) =
-    RenderPass{name}(args...; options...)
-
-valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
-
-default_renderpass() = context_renderpass(DefaultPass, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
-context_renderpass(::Type{Kind}, shaderdict::Dict{Symbol, Vector{Shader}}) where {Kind <: RenderPassKind} =
-    RenderPass{Kind}(shaderdict, RenderTargetDict())
-
-name(::RenderPass{n}) where n = n
-main_program(rp::RenderPass) = rp.programs[:main]
-main_instanced_program(rp::RenderPass) = rp.programs[:main_instanced]
-
-function free!(rp::RenderPass)
-    free!.(values(rp.programs))
-    free!.(filter(t-> t != current_context(), collect(values(rp.targets))))
-end
-
-function register_callbacks(rp::RenderPass, context=current_context())
-    on(wh -> resize_targets(rp, Tuple(wh)),
-        callback(context, :framebuffer_size))
-end
-
-resize_targets(rp::RenderPass, wh) =
-    resize!.(getfield.(values(rp.targets), :target), (wh,))
-
-struct ColorBlendTarget <: RenderTargetKind end
-struct PeelTarget       <: RenderTargetKind end
-
-function create_transparancy_pass(wh, npasses)
-    peel_prog              = Program(peeling_shaders())
-    peel_instanced_prog    = Program(peeling_instanced_shaders())
-    comp_prog              = Program(compositing_shaders())
-    blend_prog             = Program(blending_shaders())
-
-    color_blender, peel1, peel2 =
-        [FrameBuffer(wh, (RGBA{Float32}, Depth{Float32}), true) for i= 1:3]
-    context_fbo  = current_context()
-    targets = RenderTargetDict(:colorblender => RenderTarget{ColorBlendTarget}(color_blender),
-                               :peel1        => RenderTarget{PeelTarget}(peel1),
-                               :peel2        => RenderTarget{PeelTarget}(peel2))
-    return RenderPass{DepthPeelingPass}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog),  targets, num_passes=npasses)
-end
-
 import GLAbstraction: Depth, DepthStencil, DepthFormat, FrameBuffer, AbstractContext
 import GLAbstraction: bind, swapbuffers, clear!, free!, draw, exists_context, clear_context!, set_context!, GLOBAL_CONTEXT
 import GLFW: standard_window_hints, SAMPLES, DEPTH_BITS, ALPHA_BITS, RED_BITS, GREEN_BITS, BLUE_BITS, STENCIL_BITS, AUX_BUFFERS, GetWindowSize
+
+struct CanvasContext <: GLA.AbstractContext
+	id::Int
+end
+
+mutable struct Canvas <: Singleton
+    name          ::Symbol
+    id            ::Int
+    area          ::Area
+    native_window ::GLFW.Window
+    background    ::Colorant{Float32, 4}
+    callbacks     ::Dict{Symbol, Any}
+	context       ::CanvasContext
+	fullscreenvao ::VertexArray
+	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
+		obj = new(name, id, area, nw, background, callback_dict, CanvasContext(id), fullscreen_vertexarray())
+		finalizer(free!, obj)
+		return obj
+	end
+    # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
+end
+
 
 const canvas_id_counter = Base.RefValue(0)
 new_canvas_id() = (canvas_id_counter[] = mod1(canvas_id_counter[] + 1, 255); canvas_id_counter[])[]
@@ -183,8 +148,8 @@ function free!(c::Canvas)
         clear_context!()
     end
 end
-bind(c::Canvas)       = glBindFramebuffer(GL_FRAMEBUFFER, 0)
-draw(c::Canvas)       = nothing
+bind(c::Canvas)         = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+draw(c::Canvas)         = nothing
 nativewindow(c::Canvas) = c.native_window
 
 Base.size(canvas::Canvas)  = size(canvas.area)
@@ -254,3 +219,96 @@ canvas_defaults() = SymAnyDict(:area       => Area(0, 0, standard_screen_resolut
                            	   :focus      => false,
                            	   :fullscreen => false,
                            	   :monitor    => nothing)
+
+import GLAbstraction: Program, Shader, FrameBuffer, Float24
+import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id, current_context
+#Do we really need the context if it is already in frambuffer and program?
+
+const ProgramDict = Dict{Symbol, Program}
+
+
+struct IOTarget         <: RenderTargetKind end
+struct ColorBlendTarget <: RenderTargetKind end
+struct PeelTarget       <: RenderTargetKind end
+
+struct RenderTarget{R <: RenderTargetKind} <: Singleton
+	target::Union{FrameBuffer, Canvas}
+end
+
+
+const RenderTargetDict = Dict{Symbol, RenderTarget}
+
+mutable struct RenderPass{RenderPassKind, NT <: NamedTuple} <: Singleton
+    programs::ProgramDict
+    targets ::RenderTargetDict
+    options ::NT
+    function RenderPass{name}(programs::ProgramDict, fbs::RenderTargetDict, options::NT) where {name, NT <: NamedTuple}
+        obj = new{name, NT}(programs, fbs, options)
+        finalizer(free!, obj)
+        return obj
+    end
+end
+
+kind(::Type{RenderPass{Kind}}) where Kind = Kind
+kind(::RenderPass{Kind}) where Kind = Kind
+
+struct DefaultPass      <: RenderPassKind end
+struct DepthPeelingPass <: RenderPassKind end
+
+RenderPass{name}(programs::ProgramDict, targets::RenderTargetDict; options...) where name =
+    RenderPass{name}(programs, targets, options.data)
+
+RenderPass{name}(shaderdict::Dict{Symbol, Vector{Shader}}, targets::RenderTargetDict; options...) where name =
+    RenderPass{name}(Dict([sym => Program(shaders) for (sym, shaders) in shaderdict]), targets; options...)
+
+RenderPass(name::RenderPassKind, args...; options...) =
+    RenderPass{name}(args...; options...)
+
+valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
+
+default_renderpass() = context_renderpass(DefaultPass, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
+context_renderpass(::Type{Kind}, shaderdict::Dict{Symbol, Vector{Shader}}) where {Kind <: RenderPassKind} =
+    RenderPass{Kind}(shaderdict, RenderTargetDict())
+
+name(::RenderPass{n}) where n = n
+main_program(rp::RenderPass) = rp.programs[:main]
+main_instanced_program(rp::RenderPass) = rp.programs[:main_instanced]
+
+function free!(rp::RenderPass)
+    free!.(values(rp.programs))
+    free!.(filter(t-> t != current_context(), collect(values(rp.targets))))
+end
+
+function register_callbacks(rp::RenderPass, context=current_context())
+    on(wh -> resize_targets(rp, Tuple(wh)),
+        callback(context, :framebuffer_size))
+end
+
+resize_targets(rp::RenderPass, wh) =
+    resize!.(getfield.(values(rp.targets), :target), (wh,))
+
+
+function create_transparancy_pass(wh, npasses)
+    peel_prog              = Program(peeling_shaders())
+    peel_instanced_prog    = Program(peeling_instanced_shaders())
+    comp_prog              = Program(compositing_shaders())
+    blend_prog             = Program(blending_shaders())
+
+    color_blender, peel1, peel2 =
+        [FrameBuffer(wh, (RGBA{Float32}, Depth{Float32}), true) for i= 1:3]
+    context_fbo  = current_context()
+    targets = RenderTargetDict(:colorblender => RenderTarget{ColorBlendTarget}(color_blender),
+                               :peel1        => RenderTarget{PeelTarget}(peel1),
+                               :peel2        => RenderTarget{PeelTarget}(peel2))
+    return RenderPass{DepthPeelingPass}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog),  targets, num_passes=npasses)
+end
+
+
+
+mutable struct TimingData <: Singleton
+	time  ::Float64
+	dtime ::Float64
+	frames::Int
+	preferred_fps::Float64
+	reversed ::Bool
+end

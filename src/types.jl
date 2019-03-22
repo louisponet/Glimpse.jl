@@ -11,6 +11,10 @@ const RGBf0           = RGB{Float32}
 include("gapped_vector.jl")
 
 abstract type Singleton end
+
+abstract type RenderPassKind end
+abstract type RenderTargetKind end
+
 abstract type ComponentData end
 abstract type AbstractComponent{T <: ComponentData} end
 Base.eltype(::AbstractComponent{T}) where {T <: ComponentData} = T
@@ -59,61 +63,6 @@ struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
     basic      ::BM
 end
 
-struct CanvasContext <: GLA.AbstractContext
-	id::Int
-end
-
-mutable struct Canvas <: Singleton
-    name          ::Symbol
-    id            ::Int
-    area          ::Area
-    native_window ::GLFW.Window
-    background    ::Colorant{Float32, 4}
-    callbacks     ::Dict{Symbol, Any}
-	context       ::CanvasContext
-	fullscreenvao ::VertexArray
-	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
-		obj = new(name, id, area, nw, background, callback_dict, CanvasContext(id), fullscreen_vertexarray())
-		finalizer(free!, obj)
-		return obj
-	end
-    # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
-end
-
-const ProgramDict = Dict{Symbol, Program}
-
-abstract type RenderTargetKind end
-
-struct IOTarget <: RenderTargetKind end
-
-struct RenderTarget{R <: RenderTargetKind} <: Singleton
-	target::Union{FrameBuffer, Canvas}
-end
-
-abstract type RenderPassKind end
-
-const RenderTargetDict = Dict{Symbol, RenderTarget}
-
-mutable struct RenderPass{RenderPassKind, NT <: NamedTuple} <: Singleton
-    programs::ProgramDict
-    targets ::RenderTargetDict
-    options ::NT
-    function RenderPass{name}(programs::ProgramDict, fbs::RenderTargetDict, options::NT) where {name, NT <: NamedTuple}
-        obj = new{name, NT}(programs, fbs, options)
-        finalizer(free!, obj)
-        return obj
-    end
-end
-
-kind(::Type{RenderPass{Kind}}) where Kind = Kind
-kind(::RenderPass{Kind}) where Kind = Kind
-
-mutable struct TimingData <: Singleton
-	time  ::Float64
-	dtime ::Float64
-	frames::Int
-	preferred_fps::Float64
-end
 
 mutable struct Diorama
     name       ::Symbol

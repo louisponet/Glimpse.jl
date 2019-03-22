@@ -167,7 +167,7 @@ perspective_defaults() = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
                                                :area   => Area(0,0,  standard_screen_resolution()...),
                                                :fov    => 42f0,
                                                :near   => 0.1f0,
-                                               :far    => 300f0,
+                                               :far    => 30000f0,
                                                :rotation_speed    => 0.001f0,
                                                :translation_speed => 0.1f0)
 orthographic_defaults() = perspective_defaults()

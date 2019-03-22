@@ -49,7 +49,7 @@ timer_system(dio::Diorama) = System{Timer}(dio, (), (TimingData,))
 function update(timer::System{Timer})
 	sd = timer.singletons[1]
 	nt         = time()
-	sd.dtime   = nt - sd.time
+	sd.dtime   = sd.reversed ? - nt + sd.time : nt - sd.time
 	sd.time    = nt
 	sd.frames += 1
 end
@@ -70,7 +70,6 @@ end
 struct Resizer <: SystemKind end
 resizer_system(dio::Diorama) = System{Resizer}(dio, (), (Canvas, RenderTarget{IOTarget}, RenderPass))
 
-using Debugger
 function update(sys::System{Resizer})
 	c   = singleton(sys, Canvas)
 	wh  = callback_value(c, :window_size)

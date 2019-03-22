@@ -8,8 +8,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	io_fbo             = RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true))
 	renderpass         = default_renderpass()
 	depth_peeling_pass = create_transparancy_pass(wh, 5)
-
-	dio = Diorama(name, Entity[], AbstractComponent[], [renderpass, depth_peeling_pass, TimingData(time(),0.0, 0, 1/60), io_fbo, c], System[]; kwargs...)
+	timing = TimingData(time(),0.0, 0, 1/60, false)
+	dio = Diorama(name, Entity[], AbstractComponent[], [renderpass, depth_peeling_pass, timing, io_fbo, c], System[]; kwargs...)
     add_component!.((dio,),[PolygonGeometry,
     						Mesh,
 		                    Material,
