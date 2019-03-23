@@ -72,7 +72,6 @@ resizer_system(dio::Diorama) = System{Resizer}(dio, (), (Canvas, RenderTarget{IO
 
 function update(sys::System{Resizer})
 	c   = singleton(sys, Canvas)
-	wh  = callback_value(c, :window_size)
 	fwh = callback_value(c, :framebuffer_size)
 	resize!(c, fwh)
 	resize!(singleton(sys, RenderTarget{IOTarget}).target, fwh)
@@ -176,7 +175,10 @@ function update(renderer::System{DefaultRenderer})
 	if isempty(es) && isempty(ses)
 		return
 	end
-	clear!(renderpass.targets[:context])
+
+	fbo = singleton(renderer, RenderTarget{IOTarget})
+	bind(fbo)
+	draw(fbo)
 
 	glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
@@ -230,7 +232,7 @@ rem1(x, y) = (x - 1) % y + 1
 struct DepthPeelingRenderer <: RenderSystem end
 
 depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, Canvas))
+	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
 
 function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
@@ -248,24 +250,25 @@ function update(renderer::System{DepthPeelingRenderer})
 
 	separate_entities  = valid_entities(vao, spatial, material, shape)
 	shared_es          = valid_entities(svao, spatial, material, shape)
-	if isempty(separate_entities) && isempty(shared_es)
-		return
-	end
+	# if isempty(separate_entities) && isempty(shared_es)
+	# 	return
+	# end
 
 	rp = renderer.singletons[1]
     peeling_program           = main_program(rp)
     peeling_instanced_program = main_instanced_program(rp)
 
     blending_program    = rp.programs[:blending]
-
-    colorblender        = rp.targets[:colorblender].target
-    peeling_targets     = [rp.targets[:peel1].target, rp.targets[:peel2].target]
-    canvas      = singleton(renderer, Canvas)
     compositing_program = rp.programs[:composite]
-    fullscreenvao       = canvas.fullscreenvao
+
+    colorblender        = rp.targets[:colorblender]
+    peeling_targets     = [rp.targets[:peel1], rp.targets[:peel2]]
+    iofbo               = singleton(renderer, RenderTarget{IOTarget})
+    fullscreenvao       = singleton(renderer, FullscreenVao)
+
     bind(colorblender)
     draw(colorblender)
-    clear!(colorblender, canvas.background)
+    clear!(colorblender)
     # glClearBufferfv(GL_COLOR, 0, [0,0,0,1])
     glEnable(GL_DEPTH_TEST)
     canvas_width  = Float32(size(colorblender)[1])
@@ -319,7 +322,6 @@ function update(renderer::System{DepthPeelingRenderer})
 
     set_uniform(peeling_program, :first_pass, false)
     # end
-
     # first_pass(rp.renderables, peeling_program)
     # first_pass(instanced_renderables(rp), peeling_instanced_program)
 
@@ -360,17 +362,37 @@ function update(renderer::System{DepthPeelingRenderer})
         glDisable(GL_BLEND)
     end
     bind(compositing_program)
-    bind(canvas)
-    clear!(canvas)
+
+    bind(iofbo)
+    draw(iofbo)
+    # clear!()
     glDrawBuffer(GL_BACK)
     glDisable(GL_DEPTH_TEST)
 
     set_uniform(compositing_program, :color_texture, (0, color_attachment(colorblender, 1)))
-    # set_uniform(compositing_program, :color_texture, (0, color_attachment(peeling_targets[1], 1)))
     bind(fullscreenvao)
     draw(fullscreenvao)
     glFlush()
 
+end
+
+struct FinalRenderer <: RenderSystem end
+final_render_system(dio) = System{FinalRenderer}(dio, (), (RenderPass{FinalPass}, Canvas, RenderTarget{IOTarget}, FullscreenVao))
+
+function update(sys::System{FinalRenderer})
+    rp                  = singleton(sys, RenderPass{FinalPass})
+    compositing_program = main_program(rp)
+    canvas              = singleton(sys, Canvas)
+    vao                 = singleton(sys, FullscreenVao)
+    iofbo               = singleton(sys, RenderTarget{IOTarget})
+    bind(canvas)
+    draw(canvas)
+    # clear!(canvas)
+    bind(compositing_program)
+    set_uniform(compositing_program, :color_texture, (0, color_attachment(iofbo.target, 1)))
+    bind(vao)
+    draw(vao)
+    # clear!(iofbo.target)
 end
 
 
@@ -407,7 +429,7 @@ function update(sys::System{Mesher})
 	end
 	grid          = scomp(Grid)
 	funccolor     = comp(FuncColor)
-	cycledcolor = comp(CycledColor)
+	cycledcolor   = comp(CycledColor)
 	for e in valid_entities(funcgeometry, grid)
 		if has_entity(mesh, e)
 			continue

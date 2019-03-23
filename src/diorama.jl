@@ -4,12 +4,16 @@ import GLAbstraction: free!
 #TODO, make it so args and kwargs get all passed around to pipelines and screens etc
 function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	c = Canvas(name)
-	wh               = size(c)
-	io_fbo             = RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true))
-	renderpass         = default_renderpass()
-	depth_peeling_pass = create_transparancy_pass(wh, 5)
+	wh                 = size(c)
+	io_fbo             = RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
+	default_pass       = default_renderpass()
+	# depth_peeling_pass = create_transparancy_pass(wh, RGBAf0(RGB(c.background),0.0f0), 5)
+	depth_peeling_pass = create_transparancy_pass(wh, c.background, 5)
+	fp                 = final_pass()
+	fullscreenvao      = FullscreenVao()
+
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [renderpass, depth_peeling_pass, timing, io_fbo, c], System[]; kwargs...)
+	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao], System[]; kwargs...)
     add_component!.((dio,),[PolygonGeometry,
     						Mesh,
 		                    Material,
@@ -32,10 +36,11 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 						 resizer_system(dio),
                          mesher_system(dio),
 			             default_uploader_system(dio),
-			             default_render_system(dio),
 			             depth_peeling_uploader_system(dio),
 			             camera_system(dio),
+			             default_render_system(dio),
 			             depth_peeling_render_system(dio),
+			             final_render_system(dio),
 			             sleeper_system(dio)])
 
 	return dio
@@ -69,6 +74,10 @@ function renderloop(dio)
 	    begin
 	    	while !should_close(canvas)
 			    clear!(canvas)
+			    iofbo = singleton(dio, RenderTarget{IOTarget})
+			    bind(iofbo)
+			    draw(iofbo)
+			    clear!(iofbo)
 		        for sys in dio.systems
 			        update(sys)
 		        end
@@ -181,6 +190,11 @@ system(dio::Diorama, ::Type{T}) where {T <: SystemKind} =
 	getfirst(x -> eltype(x) <: T, dio.systems)
 
 add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
+function remove_system!(dio::Diorama, ::Type{T}) where {T <: SystemKind}
+	sysids = findall(x -> eltype(x) <: T, dio.systems)
+	deleteat!(dio.systems, sysids)
+end
+	
 
 #TODO handle freeing and reusing stuff
 #TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
@@ -290,17 +304,6 @@ function has_components(e::Entity, components::Vector{<:Component})
 	return c == length(component_ids)
 end
 
-function haszeros(v)
-	for i in v
-
-system(dio::Diorama, ::Type{T}) where {T <: SystemKind} =
-	getfirst(x -> eltype(x) <: T, dio.components)
-		if iszero(i)
-			return true
-		end
-	end
-	return false
-end
 
 
 # function reupload(::Diorama)

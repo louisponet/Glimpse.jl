@@ -42,5 +42,5 @@ void main () {
 
     // out_color = vec4(plight.color, 1.0f);
     // out_color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    out_color = fragcolor * ( ambient_color+ diffuse_color + specular_color);
+    out_color = vec4((fragcolor * ( ambient_color+ diffuse_color + specular_color)).rgb, 1);
 }
