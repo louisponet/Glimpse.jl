@@ -1,5 +1,6 @@
 import Base.Iterators: Cycle
 
+import Base: ==
 
 Component(id, ::Type{T}) where {T <: ComponentData}       = Component(id, GappedVector([T[]], Int[]))
 SharedComponent(id, ::Type{T}) where {T <: ComponentData} = SharedComponent(id, GappedVector([Int[]], Int[]), T[])
@@ -23,7 +24,6 @@ Base.setindex!(c::Component, v, i)   = setindex!(c.data, v, i)
 
 function Base.setindex!(c::SharedComponent,v, i)
 	id = findfirst(isequal(v), c.shared)
-	@show id
 	if id == nothing
 		id = length(c.shared) + 1
 		push!(c.shared, v)
@@ -38,14 +38,15 @@ has_entity(c::AbstractComponent, entity) = has_index(c.data, entity)
 function shared_entities(c::SharedComponent{T}, dat::T) where T
 	ids = Int[]
 	id = findfirst(x -> x == dat, c.shared)
-	for i in c.data
-		if i == id
+	for i in eachindex(c.data)
+		if c.data[i] == id
 			push!(ids, i)
 		end
 	end
 	return ids
 end
 
+==(c1::T, c2::T) where {T <: ComponentData} = all(getfield.((c1,), fieldnames(T)) .== getfield.((c2,), fieldnames(T)))
 # DEFAULT COMPONENTS
 struct Spatial <: ComponentData
 	position::Vec3f0
@@ -54,6 +55,7 @@ end
 
 struct Vao{RP <: RenderPassKind} <: ComponentData
 	vertexarray::VertexArray
+	meshID     ::Int
 end
 
 mutable struct Upload{RP <: RenderPassKind} <: ComponentData

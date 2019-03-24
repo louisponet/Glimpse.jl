@@ -87,14 +87,6 @@ function marching_cubes(values::Array{T,3}, points::Array{Point3{T},3},iso,cube_
     return vertices,indices
 end
 
-#     grid_neg     = T[real(x.w) <0 ? abs(real(x.w)) :  0.000001 for x in wfc.points]
-#     grid_pos     = T[real(x.w) >0 ? real(x.w) :  0.000001 for x in wfc.points]
-#     points       = [p.p for p in wfc.points]
-#     @time vertices_neg = marching_cubes(grid_neg,points,iso,cube_size)[1]
-#     vertices_pos = marching_cubes(grid_pos,points,iso,cube_size)[1]
-#     return vertices_pos,vertices_neg
-# end
-
 function get_edge_tri_table()
     edge_table = UInt16[0x0, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
     0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,

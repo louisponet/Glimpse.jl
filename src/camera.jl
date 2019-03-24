@@ -131,17 +131,14 @@ function wasd_event(position, cam::Camera3D, button)
     # origlen = norm(position)
     if button[1] == Int(KEY_A)
 	    move        = cam.translation_speed * 5 * cam.right
-	    # println(move)
         #the world needs to move in the opposite direction
         position   -= move
         cam.lookat -= move
-        # newpos     = origlen == 0 ? newpos : normalize(newpos) * origlen
 	end
     if button[1] == Int(KEY_D)
 	    move        = cam.translation_speed * 5 * cam.right
         position   += move
         cam.lookat += move
-        # newpos     = origlen == 0 ? newpos : normalize(newpos) * origlen
 	end
     if button[1] == Int(KEY_W)
 	    move = calcforward(position, cam) * 5 * cam.translation_speed

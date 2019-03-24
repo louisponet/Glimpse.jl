@@ -61,12 +61,10 @@ function generate_buffers(mesh::BasicMesh, program::Program; extra_attributes...
     for (name, val) in pairs(extra_attributes)
         loc = attribute_location(program, name)
         if loc != INVALID_ATTRIBUTE
-	        println(name)
 	        buflen = length(mesh)
             vallen = length(val)
             if vallen == buflen
                 push!(buffers, BufferAttachmentInfo(loc, Buffer(val), GEOMETRY_DIVISOR))
-	            println(name)
             elseif !isa(val, Vector)
                 push!(buffers, BufferAttachmentInfo(loc, Buffer(fill(val, buflen)), GEOMETRY_DIVISOR))
             end

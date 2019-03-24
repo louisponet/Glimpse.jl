@@ -158,12 +158,12 @@ end
 
 
 function Base.eachindex(A::GappedVector)
+	t_r = Int[]
 	if isempty(A)
-		return Int[]
+		return t_r
 	else
-		t_r = collect(A.start_ids[1]:length(A.data[1]))
 		for (sid, vec) in zip(A.start_ids, A.data)
-			append!(t_r, collect(sid:length(vec)))
+			append!(t_r, collect(sid : (sid+length(vec)-1)))
 		end
 		return t_r
 	end

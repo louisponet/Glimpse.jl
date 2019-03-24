@@ -102,33 +102,53 @@ function update(uploader::System{<: UploaderSystem})
 	renderpass = singleton(uploader, RenderPass)
 	upload     = comp(Upload)
 	color      = comp(UniformColor)
-	for func in (comp, scomp) 
-		mesh = func(Mesh)
-		vao  = func(Vao)
+	mesh = comp(Mesh)
+	vao  = comp(Vao)
 
-		instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
-		for e in valid_entities(upload, mesh)
-			eupload = upload[e]
-			egeom   = mesh[e]
+	instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
+	for e in valid_entities(upload, mesh)
+		eupload = upload[e]
+		egeom   = mesh[e]
 
-			if has_entity(vao, e)
+		if has_entity(vao, e)
+			continue
+		end
+		if is_instanced(eupload) # creation of vao needs to be deferred until we have all of them
+			if !haskey(instanced_renderables, egeom.mesh)
+				instanced_renderables[egeom.mesh] = [entity]
+			else
+				push!(instanced_renderables[egeom.mesh], entity)
+			end
+		else
+			if has_entity(color, e)
+			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass), color=color[e].color), e)
+		    else
+			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass)), e)
+		    end
+		end
+	end
+
+	smesh = scomp(Mesh)
+	svao  = scomp(Vao)
+	for (im, m) in enumerate(smesh.shared)
+		for e in shared_entities(smesh, m)
+			if !has_entity(upload, e) || has_entity(svao, e)
 				continue
 			end
-			if is_instanced(eupload) # creation of vao needs to be deferred until we have all of them
-				if !haskey(instanced_renderables, egeom.mesh)
-					instanced_renderables[egeom.mesh] = [entity]
-				else
-					push!(instanced_renderables[egeom.mesh], entity)
+			found = false
+			for (iv, vao) in enumerate(svao.shared)
+				if vao.meshID == im
+					found = true
+					svao.data[e] = iv
 				end
-			else
-				if has_entity(color, e)
-				    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass), color=color[e].color))
-			    else
-				    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass)))
-			    end
+			end
+			if !found
+				push!(svao.shared, Vao{kind(renderpass)}(VertexArray(m.mesh, main_program(renderpass)), im))
+				svao.data[e] = length(svao.shared)
 			end
 		end
 	end
+	clean!(svao.data)
 
 	#TODO handle instanced_renderables, and uniforms 
 	# for (mesh, entities) in instanced_renderables 
@@ -251,9 +271,9 @@ function update(renderer::System{DepthPeelingRenderer})
 
 	separate_entities  = valid_entities(vao, spatial, material, shape)
 	shared_es          = valid_entities(svao, spatial, material, shape)
-	# if isempty(separate_entities) && isempty(shared_es)
-	# 	return
-	# end
+	if isempty(separate_entities) && isempty(shared_es)
+		return
+	end
 
 	rp = renderer.singletons[1]
     peeling_program           = main_program(rp)
@@ -424,13 +444,12 @@ function update(sys::System{Mesher})
 	smesh    = scomp(Mesh)
 
 	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file), (spolygon, sfile)))
-		for comp in geomcomps
-			for e in valid_entities(comp)
-				println(e)
+		for com in geomcomps
+			for e in valid_entities(com)
 				if has_entity(meshcomp, e)
 					continue
 				end
-				meshcomp[e] = Mesh(BasicMesh(comp[e].geometry))
+				meshcomp[e] = Mesh(BasicMesh(com[e].geometry))
 			end
 		end
 	end
