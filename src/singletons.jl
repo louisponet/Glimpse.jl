@@ -130,8 +130,8 @@ end
 should_close!(c::Canvas, b) = GLFW.SetWindowShouldClose(c.native_window, b)
 should_close(c::Canvas) = GLFW.WindowShouldClose(c.native_window)
 
-function clear!(c::Canvas)
-    glClearColor(c.background.r, c.background.b, c.background.g, c.background.alpha)
+function clear!(c::Canvas, color=c.background)
+    glClearColor(color.r, color.g, color.b, color.alpha)
     # glClearColor(1,1,1,1)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 end
@@ -242,7 +242,7 @@ struct RenderTarget{R <: RenderTargetKind} <: Singleton
 end
 bind(r::RenderTarget, args...)   = bind(r.target, args...)
 draw(r::RenderTarget)   = draw(r.target)
-clear!(r::RenderTarget) = clear!(r.target, r.background)
+clear!(r::RenderTarget, c=r.background) = clear!(r.target, c)
 Base.size(r::RenderTarget)   = size(r.target)
 depth_attachment(r::RenderTarget, args...) = depth_attachment(r.target, args...)
 color_attachment(r::RenderTarget, args...) = color_attachment(r.target, args...)
@@ -302,6 +302,7 @@ resize_targets(rp::RenderPass, wh) =
 
 function create_transparancy_pass(wh, background, npasses)
     peel_prog           = Program(peeling_shaders())
+    peel_comp_prog      = Program(peeling_compositing_shaders())
     peel_instanced_prog = Program(peeling_instanced_shaders())
     comp_prog           = Program(compositing_shaders())
     blend_prog          = Program(blending_shaders())
@@ -311,7 +312,7 @@ function create_transparancy_pass(wh, background, npasses)
     targets = RenderTargetDict(:colorblender => RenderTarget{ColorBlendTarget}(color_blender, background),
                                :peel1        => RenderTarget{PeelTarget}(peel1, background),
                                :peel2        => RenderTarget{PeelTarget}(peel2, background))
-    return RenderPass{DepthPeelingPass}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog),  targets, num_passes=npasses)
+    return RenderPass{DepthPeelingPass}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog, :peel_comp => peel_comp_prog),  targets, num_passes=npasses)
 end
 
 function final_pass()

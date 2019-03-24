@@ -1,4 +1,4 @@
-#version 410
+#version 420
 in vec3 fragnormal;
 in vec3 world_pos;
 out vec4 out_color;
@@ -43,4 +43,5 @@ void main () {
     // out_color = vec4(plight.color, 1.0f);
     // out_color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
     out_color = vec4((fragcolor * ( ambient_color+ diffuse_color + specular_color)).rgb, 1);
+    // out_color = vec4(0.0,1,0.0, 1);
 }

@@ -3,7 +3,7 @@ import GLAbstraction: free!
 ########### Initialization
 #TODO, make it so args and kwargs get all passed around to pipelines and screens etc
 function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
-	c = Canvas(name)
+	c                  = Canvas(name; kwargs...)
 	wh                 = size(c)
 	io_fbo             = RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
 	default_pass       = default_renderpass()
@@ -13,7 +13,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	fullscreenvao      = FullscreenVao()
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao], System[]; kwargs...)
+	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao], System[])
     add_component!.((dio,),[PolygonGeometry,
     						Mesh,
 		                    Material,

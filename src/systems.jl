@@ -172,14 +172,15 @@ function update(renderer::System{DefaultRenderer})
 
 	es         = valid_entities(vao, spatial, material, shape, color)
 	ses        = valid_entities(svao, spatial, material, shape, color)
-	if isempty(es) && isempty(ses)
-		return
-	end
+	# if isempty(es) && isempty(ses)
+	# 	return
+	# end
 
 	fbo = singleton(renderer, RenderTarget{IOTarget})
 	bind(fbo)
 	draw(fbo)
-
+	# glClearDepth(1)
+	# glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
 
@@ -234,6 +235,10 @@ struct DepthPeelingRenderer <: RenderSystem end
 depth_peeling_render_system(dio::Diorama) =
 	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
 
+const BLUE = RGBAf0(0.0, 0.0, 1.0, 1.0)
+const GREEN = RGBAf0(0.0, 1.0, 0.0, 1.0)
+const RED = RGBAf0(1.0, 0.0, 0.0, 1.0)
+
 function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
 	scomp(T) = shared_component(renderer, T)
@@ -257,7 +262,7 @@ function update(renderer::System{DepthPeelingRenderer})
 	rp = renderer.singletons[1]
     peeling_program           = main_program(rp)
     peeling_instanced_program = main_instanced_program(rp)
-
+    peel_comp_program         = rp.programs[:peel_comp]
     blending_program    = rp.programs[:blending]
     compositing_program = rp.programs[:composite]
 
@@ -269,24 +274,8 @@ function update(renderer::System{DepthPeelingRenderer})
     bind(colorblender)
     draw(colorblender)
     clear!(colorblender)
-    # glClearBufferfv(GL_COLOR, 0, [0,0,0,1])
-    glEnable(GL_DEPTH_TEST)
     canvas_width  = Float32(size(colorblender)[1])
     canvas_height = Float32(size(colorblender)[2])
-
-    # function first_pass(renderables, program)
-    bind(peeling_program)
-    set_uniform(peeling_program, :first_pass, true)
-
-    for i in valid_entities(light)
-	    set_uniform(peeling_program, light[i])
-    end
-    for i in valid_entities(camera, spatial)
-	    set_uniform(peeling_program, spatial[i], camera[i])
-    end
-
-    set_uniform(peeling_program, :canvas_width, canvas_width)
-    set_uniform(peeling_program, :canvas_height, canvas_height)
 
 	function set_entity_uniforms(i)
 		ematerial = material[i]
@@ -318,33 +307,66 @@ function update(renderer::System{DepthPeelingRenderer})
 		end
 		# GLA.unbind(vao[end].vertexarray)
 	end
+
+	# first pass: Render the previous opaque stuff first
+    glEnable(GL_DEPTH_TEST)
+    glDepthFunc(GL_LEQUAL)
+    glDisable(GL_BLEND)
+
+	bind(peel_comp_program)
+	set_uniform(peel_comp_program, :first_pass, true)
+	set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
+	set_uniform(peel_comp_program, :depth_texture, (1, depth_attachment(iofbo)))
+    bind(fullscreenvao)
+    draw(fullscreenvao)
+	set_uniform(peel_comp_program, :first_pass, false)
+
+	# first pass: Render all the transparent stuff
+    bind(peeling_program)
+    for i in valid_entities(light)
+	    set_uniform(peeling_program, light[i])
+    end
+    for i in valid_entities(camera, spatial)
+	    set_uniform(peeling_program, spatial[i], camera[i])
+    end
+
+    set_uniform(peeling_program, :first_pass, true)
+    set_uniform(peeling_program, :canvas_width, canvas_width)
+    set_uniform(peeling_program, :canvas_height, canvas_height)
 	renderall()
-
     set_uniform(peeling_program, :first_pass, false)
-    # end
-    # first_pass(rp.renderables, peeling_program)
-    # first_pass(instanced_renderables(rp), peeling_instanced_program)
 
+	#start peeling passes
     for layer=1:rp.options.num_passes
         currid  = rem1(layer, 2)
         currfbo = peeling_targets[currid]
         previd  =  3 - currid
-        prevfbo = layer==1 ? colorblender : peeling_targets[previd]
-        glEnable(GL_DEPTH_TEST)
+        prevfbo = layer == 1 ? colorblender : peeling_targets[previd]
         bind(currfbo)
         draw(currfbo)
-        # clear!(currfbo)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glDisable(GL_BLEND)
         glEnable(GL_DEPTH_TEST)
+        glDisable(GL_BLEND)
 
+		# peel: Render all opaque stuff
+		bind(peel_comp_program)
+		set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
+		set_uniform(peel_comp_program, :depth_texture, (1, depth_attachment(iofbo)))
+		set_uniform(peel_comp_program, :prev_depth,    (2, depth_attachment(prevfbo)))
+	    bind(fullscreenvao)
+	    draw(fullscreenvao)
+
+		# peel: Render all the transparent stuff
         bind(peeling_program)
         set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
 		renderall()
 
+
         # bind(peeling_instanced_program)
         # set_uniform(peeling_instanced_program, :depth_texture, (0, depth_attachment(prevfbo)))
         # render(instanced_renderables(rp), peeling_instanced_program)
+        
+        # blend: push the new peel to the colorblender using correct alphas
         bind(colorblender)
         draw(colorblender)
 
@@ -358,17 +380,13 @@ function update(renderer::System{DepthPeelingRenderer})
 
         bind(fullscreenvao)
         draw(fullscreenvao)
-
-        glDisable(GL_BLEND)
     end
-    bind(compositing_program)
 
     bind(iofbo)
     draw(iofbo)
-    # clear!()
-    glDrawBuffer(GL_BACK)
-    glDisable(GL_DEPTH_TEST)
+	glDisable(GL_BLEND)
 
+    bind(compositing_program)
     set_uniform(compositing_program, :color_texture, (0, color_attachment(colorblender, 1)))
     bind(fullscreenvao)
     draw(fullscreenvao)
@@ -387,12 +405,11 @@ function update(sys::System{FinalRenderer})
     iofbo               = singleton(sys, RenderTarget{IOTarget})
     bind(canvas)
     draw(canvas)
-    # clear!(canvas)
+    clear!(canvas)
     bind(compositing_program)
     set_uniform(compositing_program, :color_texture, (0, color_attachment(iofbo.target, 1)))
     bind(vao)
     draw(vao)
-    # clear!(iofbo.target)
 end
 
 
