@@ -1,4 +1,4 @@
-#version 410
+#version 420
 // in vec4 fragcolor;
 in vec3 fragnormal;
 in vec3 world_pos;

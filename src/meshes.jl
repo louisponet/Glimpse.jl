@@ -7,9 +7,9 @@ BasicMesh(geometry::T, ft=Face{3, GLint}) where T =
     error("Please implement a `BasicMesh` constructor for type $T.")
 
 function BasicMesh(geometry::AbstractGeometry{D, T}, ft=Face{3, GLint}) where {D, T}
-    vertices = decompose(Point{D, T}, geometry)
-    faces    = decompose(ft, geometry)
-    norms    = normals(vertices, faces)
+    vertices = collect(decompose(Point{D, T}, geometry))
+    faces    = collect(decompose(ft, geometry))
+    norms    = collect(normals(vertices, faces))
     return BasicMesh(vertices, faces, norms)
 end
 
@@ -17,6 +17,12 @@ function BasicMesh(geometry::HyperSphere, complexity=2)
     vertices, normals, faces = generate_sphere(complexity)
     return BasicMesh(vertices, faces, normals)
 end
+
+function BasicMesh(geometry::String)
+	faces, vertices, normals = getfield.((load(geometry),), [:faces, :vertices, :normals])
+    return BasicMesh(vertices, faces, Point3f0.(normals))
+end
+
 Base.eltype(::Type{BasicMesh{D, T, FD, FT}}) where {D, T, FD, FT} = (D, T, FD, FT)
 Base.eltype(mesh::BM) where {BM <: BasicMesh} = eltype(BM)
 

@@ -139,6 +139,10 @@ struct PolygonGeometry <: Geometry #spheres and the like
 	geometry 
 end
 
+struct FileGeometry <: Geometry #.obj files
+	geometry::String 
+end
+
 struct FuncGeometry <: Geometry
 	geometry::Function
 	iso_value::Float64

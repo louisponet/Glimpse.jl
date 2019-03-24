@@ -14,7 +14,6 @@ using GLFW
 using Observables
 include("extensions.jl")
 include("types.jl")
-# include("components.jl")
 include("entities.jl")
 include("systems.jl")
 include("utils.jl")
@@ -22,18 +21,9 @@ include("maths/matrices.jl")
 include("maths/vecmath.jl")
 include("color_utils.jl")
 include("callbacks.jl")
-# include("canvas.jl")
-# include("screen.jl")
 include("shader.jl")
 export default_shaders, default_instanced_shaders, transparency_shaders, peeling_shaders, compositing_shaders,
        peeling_instanced_shaders
-# include("camera.jl")
-# include("light.jl")
-# include("meshes.jl")
-# include("renderable.jl")
-# include("scene.jl")
-# include("renderpass.jl")
-# include("diorama.jl")
 export windowsize, pixelsize, present
 include("geometries.jl")
 include("marching_cubes.jl")

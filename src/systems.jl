@@ -235,10 +235,6 @@ struct DepthPeelingRenderer <: RenderSystem end
 depth_peeling_render_system(dio::Diorama) =
 	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
 
-const BLUE = RGBAf0(0.0, 0.0, 1.0, 1.0)
-const GREEN = RGBAf0(0.0, 1.0, 0.0, 1.0)
-const RED = RGBAf0(1.0, 0.0, 0.0, 1.0)
-
 function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
 	scomp(T) = shared_component(renderer, T)
@@ -421,24 +417,24 @@ function update(sys::System{Mesher})
 	scomp(T) = shared_component(sys, T)
 	#setup separate meshes
 	polygon = comp(PolygonGeometry)
+	file    = comp(FileGeometry)
 	mesh    = comp(Mesh)
-
-	for e in valid_entities(polygon)
-		if has_entity(mesh, e)
-			continue
-		end
-		mesh[e] = Mesh(BasicMesh(polygon[e].geometry))
-	end
-
-	#setup shared polygon meshes
 	spolygon = scomp(PolygonGeometry)
+	sfile    = scomp(FileGeometry)
 	smesh    = scomp(Mesh)
-	for e in valid_entities(spolygon)
-		if has_entity(smesh, e)
-			continue
+
+	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file), (spolygon, sfile)))
+		for comp in geomcomps
+			for e in valid_entities(comp)
+				println(e)
+				if has_entity(meshcomp, e)
+					continue
+				end
+				meshcomp[e] = Mesh(BasicMesh(comp[e].geometry))
+			end
 		end
-		smesh[e] = Mesh(BasicMesh(spolygon[e].geometry))
 	end
+
 
 	funcgeometry  = comp(FuncGeometry)
 	if funcgeometry == nothing

@@ -15,6 +15,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	timing = TimingData(time(),0.0, 0, 1/60, false)
 	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao], System[])
     add_component!.((dio,),[PolygonGeometry,
+    						FileGeometry,
     						Mesh,
 		                    Material,
 		                    Spatial,
@@ -27,6 +28,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    Vao{DefaultPass},
 		                    Vao{DepthPeelingPass}])
     add_shared_component!.((dio,), [PolygonGeometry,
+    								FileGeometry,
     							    Mesh,
 							        Vao{DefaultPass},
     							    Vao{DepthPeelingPass},
@@ -47,9 +49,9 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 end
 
 
-"Darken all the lights in the dio by a certain amount"
-darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
-lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
+# "Darken all the lights in the dio by a certain amount"
+# darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
+# lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
 
 function canvas_command(dio::Diorama, command::Function, catchcommand = x -> nothing)
 	canvas = singleton(dio, Canvas)
