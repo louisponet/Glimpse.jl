@@ -87,9 +87,9 @@ struct DepthPeelingUploader  <: UploaderSystem end
 
 # UPLOADER
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
-default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, UniformColor, Upload{DefaultPass}, Vao{DefaultPass}), (RenderPass{DefaultPass},))
+default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, UniformColor, Upload{DefaultPass}, Vao{DefaultPass}, Prog{DefaultPass}), (RenderPass{DefaultPass},))
 
-depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Mesh, UniformColor, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}),(RenderPass{DepthPeelingPass},))
+depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Mesh, UniformColor, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}, Prog{DepthPeelingPass}),(RenderPass{DepthPeelingPass},))
 
 #TODO figure out a better way of vao <-> renderpass maybe really multiple entities with child and parent things
 #TODO decouple renderpass into some component, or at least the info needed to create the vaos
@@ -104,11 +104,13 @@ function update(uploader::System{<: UploaderSystem})
 	color      = comp(UniformColor)
 	mesh = comp(Mesh)
 	vao  = comp(Vao)
+	prog = scomp(Prog)
 
 	instanced_renderables = Dict{AbstractGlimpseMesh, Vector{Entity}}() #meshid => instanced renderables
-	for e in valid_entities(upload, mesh)
+	for e in valid_entities(upload, mesh, prog)
 		eupload = upload[e]
 		egeom   = mesh[e]
+		eprog   = prog[e]
 
 		if has_entity(vao, e)
 			continue
@@ -121,18 +123,19 @@ function update(uploader::System{<: UploaderSystem})
 			end
 		else
 			if has_entity(color, e)
-			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass), color=color[e].color), e)
+			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, eprog.program, color=color[e].color), e)
 		    else
-			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, main_program(renderpass)), e)
+			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, eprog.program), e)
 		    end
 		end
 	end
 
 	smesh = scomp(Mesh)
 	svao  = scomp(Vao)
+
 	for (im, m) in enumerate(smesh.shared)
 		for e in shared_entities(smesh, m)
-			if !has_entity(upload, e) || has_entity(svao, e)
+			if !has_entity(upload, e) || has_entity(svao, e) || !has_entity(prog, e)
 				continue
 			end
 			found = false
@@ -143,7 +146,7 @@ function update(uploader::System{<: UploaderSystem})
 				end
 			end
 			if !found
-				push!(svao.shared, Vao{kind(renderpass)}(VertexArray(m.mesh, main_program(renderpass)), im))
+				push!(svao.shared, Vao{kind(renderpass)}(VertexArray(m.mesh, prog[e].program), im))
 				svao.data[e] = length(svao.shared)
 			end
 		end
@@ -159,15 +162,15 @@ abstract type RenderSystem  <: SystemKind   end
 struct DefaultRenderer      <: RenderSystem end
 
 default_render_system(dio::Diorama) =
-	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, UniformColor, Shape, PointLight, Camera3D), (RenderPass{DefaultPass}, RenderTarget{IOTarget}))
+	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, UniformColor, Shape, PointLight, Camera3D, Prog{DefaultPass}), (RenderPass{DefaultPass}, RenderTarget{IOTarget}))
 
-function set_uniform(program, spatial, camera::Camera3D)
+function set_uniform(program::GLA.Program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
     set_uniform(program, :campos,   spatial.position)
 end
 
-function set_uniform(program, pointlight::PointLight)
-    set_uniform(program, Symbol("plight.color"),              pointlight.color)
+function set_uniform(program::GLA.Program, pointlight::PointLight, color::UniformColor)
+    set_uniform(program, Symbol("plight.color"),              RGB(color.color))
     set_uniform(program, Symbol("plight.position"),           pointlight.position)
     set_uniform(program, Symbol("plight.amb_intensity"),      pointlight.ambient)
     set_uniform(program, Symbol("plight.specular_intensity"), pointlight.specular)
@@ -185,65 +188,66 @@ function update(renderer::System{DefaultRenderer})
 	material   = comp(Material)
 	shape      = comp(Shape)
 	color      = comp(UniformColor)
+	sprog      = scomp(Prog)
 
 	light      = comp(PointLight)
 	camera     = comp(Camera3D)
 	renderpass = renderer.singletons[1]
 
-	es         = valid_entities(vao, spatial, material, shape, color)
-	ses        = valid_entities(svao, spatial, material, shape, color)
-	# if isempty(es) && isempty(ses)
-	# 	return
-	# end
 
 	fbo = singleton(renderer, RenderTarget{IOTarget})
 	bind(fbo)
 	draw(fbo)
-	# glClearDepth(1)
-	# glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
 
-	program = main_program(renderpass)
+	for program in sprog.shared
+		bind(program)
+		#TODO handle this
+		prog_ids   = shared_entities(sprog, program)
+		es         = intersect(valid_entities(vao, spatial, material, shape, color), prog_ids)
+		ses        = intersect(valid_entities(svao, spatial, material, shape, color), prog_ids)
+		if isempty(es) && isempty(ses)
+			continue
+		end
+	    for i in valid_entities(light, color) #TODO assign program to lights
+		    set_uniform(program, light[i], color[i])
+	    end
+	    for i in valid_entities(camera, spatial)
+		    set_uniform(program, spatial[i], camera[i])
+	    end
 
-	bind(program)
-    for i in valid_entities(light)
-	    set_uniform(program, light[i])
-    end
-    for i in valid_entities(camera, spatial)
-	    set_uniform(program, spatial[i], camera[i])
-    end
-
-	# render all separate vaos
-	for e in es
-		evao   = vao[e]
-		ematerial = material[e]
-		espatial  = spatial[e]
-		eshape    = shape[e]
-		mat        = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
-		set_uniform(program, :specpow, ematerial.specpow)
-		set_uniform(program, :specint, ematerial.specint)
-		set_uniform(program, :modelmat, mat)
-		set_uniform(program, :fragcolor, color[e].color)
-
-		GLA.bind(evao.vertexarray)
-		GLA.draw(evao.vertexarray)
-	end
-
-	# render all shared vaos
-	for vao in svao.shared
-		GLA.bind(vao.vertexarray)
-		for e in shared_entities(svao, vao)
+		# render all separate vaos
+		for e in es
+			evao   = vao[e]
 			ematerial = material[e]
 			espatial  = spatial[e]
 			eshape    = shape[e]
-			mat       = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
+			mat        = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
 			set_uniform(program, :specpow, ematerial.specpow)
 			set_uniform(program, :specint, ematerial.specint)
 			set_uniform(program, :modelmat, mat)
 			set_uniform(program, :fragcolor, color[e].color)
 
-			GLA.draw(vao.vertexarray)
+			GLA.bind(evao.vertexarray)
+			GLA.draw(evao.vertexarray)
+		end
+
+		# render all shared vaos
+		for vao in svao.shared
+			GLA.bind(vao.vertexarray)
+			for e in shared_entities(svao, vao)
+				ematerial = material[e]
+				espatial  = spatial[e]
+				eshape    = shape[e]
+				mat       = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
+				set_uniform(program, :specpow, ematerial.specpow)
+				set_uniform(program, :specint, ematerial.specint)
+				set_uniform(program, :modelmat, mat)
+				set_uniform(program, :fragcolor, color[e].color)
+
+				GLA.draw(vao.vertexarray)
+			end
 		end
 	end
 	# GLA.unbind(vao[end].vertexarray)
@@ -253,7 +257,7 @@ rem1(x, y) = (x - 1) % y + 1
 struct DepthPeelingRenderer <: RenderSystem end
 
 depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
+	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D, Prog{DepthPeelingPass}), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
 
 function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
@@ -265,20 +269,13 @@ function update(renderer::System{DepthPeelingRenderer})
 	material = comp(Material)
 	shape    = comp(Shape)
 	color    = comp(UniformColor)
+	prog     = scomp(Prog)
 
 	light    = comp(PointLight)
 	camera   = comp(Camera3D)
-
-	separate_entities  = valid_entities(vao, spatial, material, shape)
-	shared_es          = valid_entities(svao, spatial, material, shape)
-	if isempty(separate_entities) && isempty(shared_es)
-		return
-	end
-
 	rp = renderer.singletons[1]
-    peeling_program           = main_program(rp)
-    peeling_instanced_program = main_instanced_program(rp)
-    peel_comp_program         = rp.programs[:peel_comp]
+
+	peel_comp_program   = rp.programs[:peel_comp]
     blending_program    = rp.programs[:blending]
     compositing_program = rp.programs[:composite]
 
@@ -291,44 +288,13 @@ function update(renderer::System{DepthPeelingRenderer})
     draw(colorblender)
     clear!(colorblender)
     canvas_width  = Float32(size(colorblender)[1])
-    canvas_height = Float32(size(colorblender)[2])
+	canvas_height = Float32(size(colorblender)[2])
 
-	function set_entity_uniforms(i)
-		ematerial = material[i]
-		espatial  = spatial[i]
-		eshape    = shape[i]
-		mat        = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
-		set_uniform(peeling_program, :specpow, ematerial.specpow)
-		set_uniform(peeling_program, :specint, ematerial.specint)
-		set_uniform(peeling_program, :modelmat, mat)
-		set_uniform(peeling_program, :fragcolor, color[i].color)
-	end
-
-	function renderall()
-		#render all separate ones first
-		for i in separate_entities
-			evao   = vao[i]
-			set_entity_uniforms(i)
-			GLA.bind(evao.vertexarray)
-			GLA.draw(evao.vertexarray)
-		end
-
-		#render all separate ones first
-		for evao in svao.shared
-			GLA.bind(evao.vertexarray)
-			for e in shared_entities(svao, evao)
-				set_entity_uniforms(e)
-				GLA.draw(evao.vertexarray)
-			end
-		end
-		# GLA.unbind(vao[end].vertexarray)
-	end
-
-	# first pass: Render the previous opaque stuff first
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
     glDisable(GL_BLEND)
 
+	# first pass: Render the previous opaque stuff first
 	bind(peel_comp_program)
 	set_uniform(peel_comp_program, :first_pass, true)
 	set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
@@ -337,67 +303,108 @@ function update(renderer::System{DepthPeelingRenderer})
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
 
-	# first pass: Render all the transparent stuff
-    bind(peeling_program)
-    for i in valid_entities(light)
-	    set_uniform(peeling_program, light[i])
-    end
-    for i in valid_entities(camera, spatial)
-	    set_uniform(peeling_program, spatial[i], camera[i])
-    end
+	for peeling_program in prog.shared
+		prog_ids           = shared_entities(prog, peeling_program)
+		separate_entities  = intersect(valid_entities(vao, spatial, material, shape), prog_ids)
+		shared_es          = intersect(valid_entities(svao, spatial, material, shape), prog_ids)
+		if isempty(separate_entities) && isempty(shared_es)
+			continue
+		end
 
-    set_uniform(peeling_program, :first_pass, true)
-    set_uniform(peeling_program, :canvas_width, canvas_width)
-    set_uniform(peeling_program, :canvas_height, canvas_height)
-	renderall()
-    set_uniform(peeling_program, :first_pass, false)
+		function set_entity_uniforms(i)
+			ematerial = material[i]
+			espatial  = spatial[i]
+			eshape    = shape[i]
+			mat       = translmat(espatial.position) * scalemat(Vec3f0(eshape.scale))
+			set_uniform(peeling_program, :specpow, ematerial.specpow)
+			set_uniform(peeling_program, :specint, ematerial.specint)
+			set_uniform(peeling_program, :modelmat, mat)
+			set_uniform(peeling_program, :fragcolor, color[i].color)
+		end
 
-	#start peeling passes
-    for layer=1:rp.options.num_passes
-        currid  = rem1(layer, 2)
-        currfbo = peeling_targets[currid]
-        previd  =  3 - currid
-        prevfbo = layer == 1 ? colorblender : peeling_targets[previd]
-        bind(currfbo)
-        draw(currfbo)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glEnable(GL_DEPTH_TEST)
-        glDisable(GL_BLEND)
+		function renderall()
+			#render all separate ones first
+			for i in separate_entities
+				evao   = vao[i]
+				set_entity_uniforms(i)
+				GLA.bind(evao.vertexarray)
+				GLA.draw(evao.vertexarray)
+			end
 
-		# peel: Render all opaque stuff
-		bind(peel_comp_program)
-		set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
-		set_uniform(peel_comp_program, :depth_texture, (1, depth_attachment(iofbo)))
-		set_uniform(peel_comp_program, :prev_depth,    (2, depth_attachment(prevfbo)))
-	    bind(fullscreenvao)
-	    draw(fullscreenvao)
+			#render all separate ones first
+			for evao in svao.shared
+				GLA.bind(evao.vertexarray)
+				for e in shared_entities(svao, evao)
+					set_entity_uniforms(e)
+					GLA.draw(evao.vertexarray)
+				end
+			end
+			# GLA.unbind(vao[end].vertexarray)
+		end
 
-		# peel: Render all the transparent stuff
-        bind(peeling_program)
-        set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
+
+		# first pass: Render all the transparent stuff
+	    bind(peeling_program)
+	    for i in valid_entities(light, color)
+		    set_uniform(peeling_program, light[i], color[i])
+	    end
+	    for i in valid_entities(camera, spatial)
+		    set_uniform(peeling_program, spatial[i], camera[i])
+	    end
+
+	    set_uniform(peeling_program, :first_pass, true)
+	    set_uniform(peeling_program, :canvas_width, canvas_width)
+	    set_uniform(peeling_program, :canvas_height, canvas_height)
 		renderall()
+	    set_uniform(peeling_program, :first_pass, false)
+
+		#start peeling passes
+	    for layer=1:rp.options.num_passes
+	        currid  = rem1(layer, 2)
+	        currfbo = peeling_targets[currid]
+	        previd  =  3 - currid
+	        prevfbo = layer == 1 ? colorblender : peeling_targets[previd]
+	        bind(currfbo)
+	        draw(currfbo)
+	        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+	        glEnable(GL_DEPTH_TEST)
+	        glDisable(GL_BLEND)
+
+			# peel: Render all opaque stuff
+			bind(peel_comp_program)
+			set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
+			set_uniform(peel_comp_program, :depth_texture, (1, depth_attachment(iofbo)))
+			set_uniform(peel_comp_program, :prev_depth,    (2, depth_attachment(prevfbo)))
+		    bind(fullscreenvao)
+		    draw(fullscreenvao)
+
+			# peel: Render all the transparent stuff
+	        bind(peeling_program)
+	        set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
+			renderall()
 
 
-        # bind(peeling_instanced_program)
-        # set_uniform(peeling_instanced_program, :depth_texture, (0, depth_attachment(prevfbo)))
-        # render(instanced_renderables(rp), peeling_instanced_program)
-        
-        # blend: push the new peel to the colorblender using correct alphas
-        bind(colorblender)
-        draw(colorblender)
+	        # bind(peeling_instanced_program)
+	        # set_uniform(peeling_instanced_program, :depth_texture, (0, depth_attachment(prevfbo)))
+	        # render(instanced_renderables(rp), peeling_instanced_program)
+	        
+	        # blend: push the new peel to the colorblender using correct alphas
+	        bind(colorblender)
+	        draw(colorblender)
 
-        glDisable(GL_DEPTH_TEST)
-        glEnable(GL_BLEND)
-        glBlendEquation(GL_FUNC_ADD)
-        glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA)
+	        glDisable(GL_DEPTH_TEST)
+	        glEnable(GL_BLEND)
+	        glBlendEquation(GL_FUNC_ADD)
+	        glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA)
 
-        bind(blending_program)
-        set_uniform(blending_program, :color_texture, (0, color_attachment(currfbo, 1)))
+	        bind(blending_program)
+	        set_uniform(blending_program, :color_texture, (0, color_attachment(currfbo, 1)))
 
-        bind(fullscreenvao)
-        draw(fullscreenvao)
+	        bind(fullscreenvao)
+	        draw(fullscreenvao)
+	    end
+
     end
-
     bind(iofbo)
     draw(iofbo)
 	glDisable(GL_BLEND)

@@ -58,7 +58,14 @@ struct Vao{RP <: RenderPassKind} <: ComponentData
 	meshID     ::Int
 end
 
-mutable struct Upload{RP <: RenderPassKind} <: ComponentData
+struct Prog{RP <: RenderPassKind} <: ComponentData
+	name   ::Symbol
+	program::Program
+end
+GLA.bind(p::Prog) = bind(p.program)
+GLA.set_uniform(p::Prog, args...) = set_uniform(p.program, args...)
+
+struct Upload{RP <: RenderPassKind} <: ComponentData
 	is_instanced::Bool
 	is_visible  ::Bool
 end
@@ -69,7 +76,6 @@ kind(::Type{Upload{Kind}}) where Kind = Kind
 struct Material <: ComponentData
 	specpow ::Float32
 	specint ::Float32
-	color   ::RGBf0
 end
 
 struct Shape <: ComponentData
@@ -81,7 +87,6 @@ struct PointLight <: ComponentData
     diffuse ::Float32
     specular::Float32
     ambient ::Float32
-    color   ::RGBf0
 end
 
 struct DirectionLight <: ComponentData
@@ -89,7 +94,6 @@ struct DirectionLight <: ComponentData
     diffuse  ::Float32
     specular ::Float32
     ambient  ::Float32
-    color    ::RGBf0	
 end
 
 mutable struct Camera3D <: ComponentData

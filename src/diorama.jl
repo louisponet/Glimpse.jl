@@ -32,6 +32,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     							    Mesh,
 							        Vao{DefaultPass},
     							    Vao{DepthPeelingPass},
+    							    Prog{DefaultPass},
+    							    Prog{DepthPeelingPass},
     							    Grid])
 
 	add_system!.((dio,),[timer_system(dio),

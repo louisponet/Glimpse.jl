@@ -278,7 +278,8 @@ RenderPass(name::RenderPassKind, args...; options...) =
 
 valid_uniforms(rp::RenderPass) = [uniform_names(p) for p in values(rp.programs)]
 
-default_renderpass() = context_renderpass(DefaultPass, Dict(:main => default_shaders(), :main_instanced => default_instanced_shaders()))
+default_renderpass() = context_renderpass(DefaultPass, Dict{Symbol, Vector{Shader}}())
+
 context_renderpass(::Type{Kind}, shaderdict::Dict{Symbol, Vector{Shader}}) where {Kind <: RenderPassKind} =
     RenderPass{Kind}(shaderdict, RenderTargetDict())
 
@@ -301,9 +302,7 @@ resize_targets(rp::RenderPass, wh) =
 
 
 function create_transparancy_pass(wh, background, npasses)
-    peel_prog           = Program(peeling_shaders())
     peel_comp_prog      = Program(peeling_compositing_shaders())
-    peel_instanced_prog = Program(peeling_instanced_shaders())
     comp_prog           = Program(compositing_shaders())
     blend_prog          = Program(blending_shaders())
 
@@ -312,7 +311,7 @@ function create_transparancy_pass(wh, background, npasses)
     targets = RenderTargetDict(:colorblender => RenderTarget{ColorBlendTarget}(color_blender, background),
                                :peel1        => RenderTarget{PeelTarget}(peel1, background),
                                :peel2        => RenderTarget{PeelTarget}(peel2, background))
-    return RenderPass{DepthPeelingPass}(ProgramDict(:main => peel_prog, :main_instanced => peel_instanced_prog, :blending => blend_prog, :composite => comp_prog, :peel_comp => peel_comp_prog),  targets, num_passes=npasses)
+    return RenderPass{DepthPeelingPass}(ProgramDict(:blending => blend_prog, :composite => comp_prog, :peel_comp => peel_comp_prog),  targets, num_passes=npasses)
 end
 
 function final_pass()
