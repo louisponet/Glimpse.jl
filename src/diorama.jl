@@ -16,6 +16,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
+    						FuncGeometry,
+    						FuncColor,
     						Mesh,
 		                    Material,
 		                    Spatial,
@@ -142,11 +144,31 @@ function Base.empty!(dio::Diorama)
 end
 
 #TODO: change such that there are no components until needed?
-component(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
-	getfirst(x -> eltype(x) <: T && isa(x, Component), dio.components)
+function component(dio::Diorama, ::Type{T}) where {T <: ComponentData}
+	for c in components(dio)
+		if eltype(c) <: T && isa(c, Component)
+			return c
+		end
+	end
+	for c in components(dio)
+		if T <: eltype(c) && isa(c, Component)
+			return c
+		end
+	end
+end
 
-shared_component(dio::Diorama, ::Type{T}) where {T <: ComponentData} =
-	getfirst(x -> eltype(x) <: T && isa(x, SharedComponent), dio.components)
+function shared_component(dio::Diorama, ::Type{T}) where {T <: ComponentData}
+	for c in components(dio)
+		if eltype(c) <: T && isa(c, SharedComponent)
+			return c
+		end
+	end
+	for c in components(dio)
+		if T <: eltype(c) && isa(c, SharedComponent)
+			return c
+		end
+	end
+end
 
 components(dio::Diorama) = dio.components
 
@@ -208,28 +230,16 @@ function add_to_components!(id, datas, components)
 	end
 end
 
-function new_entity!(dio::Diorama, data...)
+function new_entity!(dio::Diorama; separate::Vector{ComponentData}=ComponentData[], shared::Vector{ComponentData}=ComponentData[])
 	entity_id  = length(dio.entities) + 1
 
-	names      = typeof.(data)
+	names      = typeof.(separate)
 	components = component.((dio, ), names)
-	@assert !any(components .== nothing) "One or more components in $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
-    add_to_components!(entity_id, data, components)
-	
-	push!(dio.entities, Entity(entity_id))
-	return entity_id
-end
-
-function new_shared_entity!(dio::Diorama, separate_data, shared_data)
-	entity_id  = length(dio.entities) + 1
-
-	names      = typeof.(separate_data)
-	components = component.((dio, ), names)
-	shared_names      = typeof.(shared_data)
+	shared_names      = typeof.(shared)
 	shared_components = shared_component.((dio, ), shared_names)
 	@assert !(any(components .== nothing) || any(shared_components .== nothing)) "One or more components in $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
-    add_to_components!(entity_id, separate_data, components)
-    add_to_components!(entity_id, shared_data, shared_components)
+    add_to_components!(entity_id, separate, components)
+    add_to_components!(entity_id, shared, shared_components)
 	
 	push!(dio.entities, Entity(entity_id))
 	return entity_id

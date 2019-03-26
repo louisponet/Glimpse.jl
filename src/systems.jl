@@ -87,9 +87,9 @@ struct DepthPeelingUploader  <: UploaderSystem end
 
 # UPLOADER
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
-default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, UniformColor, Upload{DefaultPass}, Vao{DefaultPass}, Prog{DefaultPass}), (RenderPass{DefaultPass},))
+default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, Color, Upload{DefaultPass}, Vao{DefaultPass}, Prog{DefaultPass}), (RenderPass{DefaultPass},))
 
-depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Mesh, UniformColor, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}, Prog{DepthPeelingPass}),(RenderPass{DepthPeelingPass},))
+depth_peeling_uploader_system(dio::Diorama) = System{DepthPeelingUploader}(dio, (Mesh, Color, Upload{DepthPeelingPass}, Vao{DepthPeelingPass}, Prog{DepthPeelingPass}),(RenderPass{DepthPeelingPass},))
 
 #TODO figure out a better way of vao <-> renderpass maybe really multiple entities with child and parent things
 #TODO decouple renderpass into some component, or at least the info needed to create the vaos
@@ -102,6 +102,7 @@ function update(uploader::System{<: UploaderSystem})
 	renderpass = singleton(uploader, RenderPass)
 	upload     = comp(Upload)
 	color      = comp(UniformColor)
+	funccolor  = comp(FuncColor)
 	mesh = comp(Mesh)
 	vao  = comp(Vao)
 	prog = scomp(Prog)
@@ -122,11 +123,11 @@ function update(uploader::System{<: UploaderSystem})
 				push!(instanced_renderables[egeom.mesh], entity)
 			end
 		else
-			if has_entity(color, e)
-			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, eprog.program, color=color[e].color), e)
-		    else
-			    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, eprog.program), e)
-		    end
+			# if has_entity(funccolor, e)
+		    vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, eprog.program), e)
+		    # else
+			    # vao[e] = Vao{kind(renderpass)}(VertexArray(egeom.mesh, eprog.program), e)
+		    # end
 		end
 	end
 
@@ -162,7 +163,7 @@ abstract type RenderSystem  <: SystemKind   end
 struct DefaultRenderer      <: RenderSystem end
 
 default_render_system(dio::Diorama) =
-	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, UniformColor, Shape, PointLight, Camera3D, Prog{DefaultPass}), (RenderPass{DefaultPass}, RenderTarget{IOTarget}))
+	System{DefaultRenderer}(dio, (Vao{DefaultPass}, Spatial, Material, Color, Shape, PointLight, Camera3D, Prog{DefaultPass}), (RenderPass{DefaultPass}, RenderTarget{IOTarget}))
 
 function set_uniform(program::GLA.Program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
@@ -187,7 +188,8 @@ function update(renderer::System{DefaultRenderer})
 	spatial    = comp(Spatial)
 	material   = comp(Material)
 	shape      = comp(Shape)
-	color      = comp(UniformColor)
+	ucolor     = comp(UniformColor)
+	fcolor     = comp(FuncColor)
 	sprog      = scomp(Prog)
 
 	light      = comp(PointLight)
@@ -205,13 +207,13 @@ function update(renderer::System{DefaultRenderer})
 		bind(program)
 		#TODO handle this
 		prog_ids   = shared_entities(sprog, program)
-		es         = intersect(valid_entities(vao, spatial, material, shape, color), prog_ids)
-		ses        = intersect(valid_entities(svao, spatial, material, shape, color), prog_ids)
+		es         = intersect(valid_entities(vao, spatial, material, shape), prog_ids)
+		ses        = intersect(valid_entities(svao, spatial, material, shape), prog_ids)
 		if isempty(es) && isempty(ses)
 			continue
 		end
-	    for i in valid_entities(light, color) #TODO assign program to lights
-		    set_uniform(program, light[i], color[i])
+	    for i in valid_entities(light, ucolor) #TODO assign program to lights
+		    set_uniform(program, light[i], ucolor[i])
 	    end
 	    for i in valid_entities(camera, spatial)
 		    set_uniform(program, spatial[i], camera[i])
@@ -227,8 +229,12 @@ function update(renderer::System{DefaultRenderer})
 			set_uniform(program, :specpow, ematerial.specpow)
 			set_uniform(program, :specint, ematerial.specint)
 			set_uniform(program, :modelmat, mat)
-			set_uniform(program, :fragcolor, color[e].color)
-
+			if has_entity(ucolor, e)
+				set_uniform(program, :uniform_color, ucolor[e].color)
+				set_uniform(program, :is_uniform, true)
+			elseif has_entity(fcolor, e)
+				set_uniform(program, :is_uniform, false)
+			end
 			GLA.bind(evao.vertexarray)
 			GLA.draw(evao.vertexarray)
 		end
@@ -244,7 +250,12 @@ function update(renderer::System{DefaultRenderer})
 				set_uniform(program, :specpow, ematerial.specpow)
 				set_uniform(program, :specint, ematerial.specint)
 				set_uniform(program, :modelmat, mat)
-				set_uniform(program, :fragcolor, color[e].color)
+				if has_entity(ucolor, e)
+					set_uniform(program, :uniform_color, ucolor[e].color)
+					set_uniform(program, :is_uniform, true)
+				elseif has_entity(fcolor, e)
+					set_uniform(program, :is_uniform, false)
+				end
 
 				GLA.draw(vao.vertexarray)
 			end
@@ -257,7 +268,7 @@ rem1(x, y) = (x - 1) % y + 1
 struct DepthPeelingRenderer <: RenderSystem end
 
 depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, UniformColor, PointLight, Camera3D, Prog{DepthPeelingPass}), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
+	System{DepthPeelingRenderer}(dio, (Vao{DepthPeelingPass}, Spatial, Material, Shape, Color, PointLight, Camera3D, Prog{DepthPeelingPass}), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
 
 function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
@@ -268,7 +279,8 @@ function update(renderer::System{DepthPeelingRenderer})
 	spatial  = comp(Spatial)
 	material = comp(Material)
 	shape    = comp(Shape)
-	color    = comp(UniformColor)
+	ucolor   = comp(UniformColor)
+	fcolor   = comp(UniformColor)
 	prog     = scomp(Prog)
 
 	light    = comp(PointLight)
@@ -319,7 +331,12 @@ function update(renderer::System{DepthPeelingRenderer})
 			set_uniform(peeling_program, :specpow, ematerial.specpow)
 			set_uniform(peeling_program, :specint, ematerial.specint)
 			set_uniform(peeling_program, :modelmat, mat)
-			set_uniform(peeling_program, :fragcolor, color[i].color)
+			if has_entity(ucolor, i)
+				set_uniform(peeling_program, :uniform_color, ucolor[i].color)
+				set_uniform(peeling_program, :is_uniform, true)
+			elseif has_entity(fcolor, i)
+				set_uniform(peeling_program, :is_uniform, false)
+			end
 		end
 
 		function renderall()
@@ -345,8 +362,8 @@ function update(renderer::System{DepthPeelingRenderer})
 
 		# first pass: Render all the transparent stuff
 	    bind(peeling_program)
-	    for i in valid_entities(light, color)
-		    set_uniform(peeling_program, light[i], color[i])
+	    for i in valid_entities(light, ucolor)
+		    set_uniform(peeling_program, light[i], ucolor[i])
 	    end
 	    for i in valid_entities(camera, spatial)
 		    set_uniform(peeling_program, spatial[i], camera[i])
@@ -480,7 +497,8 @@ function update(sys::System{Mesher})
 		if cycledcolor != nothing && has_entity(cycledcolor, e)
 			# mesh[e] = BasicMesh(
 		elseif funccolor != nothing && has_entity(funccolor, e)
-			#
+			colors = funccolor[e].color.(vertices)
+			mesh[e] = Mesh(AttributeMesh(vertices, faces, normals(vertices, faces), color=colors))
 		else
 			mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
 		end

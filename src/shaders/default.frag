@@ -1,6 +1,7 @@
 #version 420
 in vec3 fragnormal;
 in vec3 world_pos;
+in vec4 fragcolor;
 out vec4 out_color;
 
 struct point_light {
@@ -14,7 +15,6 @@ struct point_light {
 uniform vec3 campos;
 uniform float specpow;
 uniform float specint;
-uniform vec4 fragcolor;
 
 uniform point_light plight;
 void main () {
