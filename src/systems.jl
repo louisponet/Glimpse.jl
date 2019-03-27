@@ -280,7 +280,7 @@ function update(renderer::System{DepthPeelingRenderer})
 	material = comp(Material)
 	shape    = comp(Shape)
 	ucolor   = comp(UniformColor)
-	fcolor   = comp(UniformColor)
+	fcolor   = comp(FuncColor)
 	prog     = scomp(Prog)
 
 	light    = comp(PointLight)
