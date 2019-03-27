@@ -132,7 +132,7 @@ which is an x and y offset.
 """
 function scroll(window::Window, s::Observable{NTuple{2, Float64}}=Observable((0.,0.)))
     GLFW.SetScrollCallback(window, (window, xoffset::Cdouble, yoffset::Cdouble) -> begin
-        s[] = (xoffset, yoffset)
+        s[] = (s[][1]+xoffset, s[][2]+yoffset)
     end)
     s
 end

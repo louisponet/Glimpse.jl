@@ -1,4 +1,4 @@
-#version 410
+#version 420
 in vec3 position;
 in vec2 uv;
 out vec2 tex_coord;

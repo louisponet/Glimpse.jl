@@ -46,7 +46,7 @@ function rotate(v1::Vec3{T}, v2::Vec3{T}) where T
 	if length(axis) > 0.0001
         return rotate(angle, axis)
     end
-    return Mat4(eye(T, 4))
+    return Mat4(Eye4f0(T, 4))
 end
 
 function rotmat_x(angle::T) where T
@@ -164,8 +164,11 @@ function lookatmat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         T0,       T0,       T0,       T1
     ) * translmat(-eyePos)
 end
-function lookatmat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
-    lookatmat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
+function lookatmat(eyePos, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+    lookatmat(Vec{3, T}(eyePos), lookAt, up)
+end
+function lookatmat(::Type{T}, eyePos, lookAt::Vec{3}, up::Vec{3}) where T
+    lookatmat(Vec{3, T}(eyePos), Vec{3, T}(lookAt), Vec{3, T}(up))
 end
 
 

@@ -3,13 +3,13 @@ import GLAbstraction: INVALID_ATTRIBUTE, attribute_location, GEOMETRY_DIVISOR
 
 
 
-BasicMesh(geometry::T, ft=Face{3, Glint}) where T =
+BasicMesh(geometry::T, ft=Face{3, GLint}) where T =
     error("Please implement a `BasicMesh` constructor for type $T.")
 
 function BasicMesh(geometry::AbstractGeometry{D, T}, ft=Face{3, GLint}) where {D, T}
-    vertices = decompose(Point{D, T}, geometry)
-    faces    = decompose(ft, geometry)
-    norms    = normals(vertices, faces)
+    vertices = collect(decompose(Point{D, T}, geometry))
+    faces    = collect(decompose(ft, geometry))
+    norms    = collect(normals(vertices, faces))
     return BasicMesh(vertices, faces, norms)
 end
 
@@ -17,6 +17,12 @@ function BasicMesh(geometry::HyperSphere, complexity=2)
     vertices, normals, faces = generate_sphere(complexity)
     return BasicMesh(vertices, faces, normals)
 end
+
+function BasicMesh(geometry::String)
+	faces, vertices, normals = getfield.((load(geometry),), [:faces, :vertices, :normals])
+    return BasicMesh(vertices, faces, Point3f0.(normals))
+end
+
 Base.eltype(::Type{BasicMesh{D, T, FD, FT}}) where {D, T, FD, FT} = (D, T, FD, FT)
 Base.eltype(mesh::BM) where {BM <: BasicMesh} = eltype(BM)
 
@@ -30,6 +36,9 @@ facelength(mesh::BasicMesh{D, T, FD, FT} where {D, T, FD}) where FT = length(FT)
 
 Base.length(mesh::AbstractGlimpseMesh) = length(vertices(mesh))
 
+Base.isequal(mesh::BasicMesh, mesh2::BasicMesh) = mesh.faces == mesh2.faces && mesh.vertices == mesh2.vertices
+import Base: ==
+==(mesh::BasicMesh, mesh2::BasicMesh) = isequal(mesh, mesh2)
 
 AttributeMesh(attributes, args...) =
     AttributeMesh(attributes, BasicMesh(args...))
@@ -41,12 +50,24 @@ Base.eltype(mesh::AM) where {AM <: AttributeMesh} = eltype(AM)
 
 basicmesh(mesh::AttributeMesh) = mesh.basic
 
-function generate_buffers(mesh::BasicMesh, program::Program)
+function generate_buffers(mesh::BasicMesh, program::Program; extra_attributes...)
     buffers = BufferAttachmentInfo[]
     for n in (:vertices, :normals)
         loc = attribute_location(program, n)
         if loc != INVALID_ATTRIBUTE
             push!(buffers, BufferAttachmentInfo(loc, Buffer(getfield(mesh, n)), GEOMETRY_DIVISOR))
+        end
+    end
+    for (name, val) in pairs(extra_attributes)
+        loc = attribute_location(program, name)
+        if loc != INVALID_ATTRIBUTE
+	        buflen = length(mesh)
+            vallen = length(val)
+            if vallen == buflen
+                push!(buffers, BufferAttachmentInfo(loc, Buffer(val), GEOMETRY_DIVISOR))
+            elseif !isa(val, Vector)
+                push!(buffers, BufferAttachmentInfo(loc, Buffer(fill(val, buflen)), GEOMETRY_DIVISOR))
+            end
         end
     end
     return buffers
@@ -69,5 +90,5 @@ function generate_buffers(mesh::AttributeMesh{AT}, program::Program) where AT
     return buffers
 end
 
-VertexArray(mesh::AbstractGlimpseMesh, program::Program) =
-    VertexArray(generate_buffers(mesh, program), faces(mesh) .- GLint(1))
+GLA.VertexArray(mesh::AbstractGlimpseMesh, program::Program; extra_attributes...) =
+    VertexArray(generate_buffers(mesh, program; extra_attributes...), faces(mesh) .- GLint(1))

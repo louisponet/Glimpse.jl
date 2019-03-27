@@ -8,6 +8,7 @@ default_instanced_shaders() = [load(joinpath(@__DIR__, "shaders/default_instance
 transparency_shaders() = [load(joinpath(@__DIR__, "shaders/default.vert")), load(joinpath(@__DIR__, "shaders/transparency.frag"))]
 
 peeling_shaders() = [load(joinpath(@__DIR__, "shaders/default.vert")), load(joinpath(@__DIR__, "shaders/peel.frag"))]
+peeling_compositing_shaders() = [load(joinpath(@__DIR__, "shaders/composite.vert")), load(joinpath(@__DIR__, "shaders/fullscreen_peel.frag"))]
 peeling_instanced_shaders() = [load(joinpath(@__DIR__, "shaders/default_instanced.vert")),
                                load(joinpath(@__DIR__, "shaders/peel_instanced.frag"))]
 
