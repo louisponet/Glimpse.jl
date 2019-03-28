@@ -34,6 +34,15 @@ function Base.getindex(A::GappedVector, i::Int)
 	error("Gapped out of bounds.")
 end
 
+function overwrite!(A::GappedVector{T}, v::T, i::Int) where T
+	for (startid, bvec) in zip(A.start_ids, A.data)
+		endid   = startid + length(bvec)
+		if startid <= i < endid # overwrite
+			bvec[i - startid + 1] = v
+		end
+	end
+end
+
 function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
 	# conv_v = convert(T, v)
 	conv_v = v
@@ -64,10 +73,6 @@ function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
 				startid -= 1
 				handled = true
 				break
-		# elseif endid < i < A.start_ids[vid+1] - 1 # insert new vec in a gap
-			# 	add!()
-			# 	handled = true
-			# 	break
 			end
 		end
 		if !handled

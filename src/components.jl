@@ -21,6 +21,7 @@ Base.getindex(c::Component, i)       = getindex(c.data, i)
 Base.getindex(c::SharedComponent, i) = c.shared[getindex(c.data, i)]
 
 Base.setindex!(c::Component, v, i)   = setindex!(c.data, v, i)
+overwrite!(c::Component, v, i)       = overwrite!(c.data, v, i)
 
 function Base.setindex!(c::SharedComponent,v, i)
 	id = findfirst(isequal(v), c.shared)

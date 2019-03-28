@@ -91,8 +91,12 @@ function update(sys::System{UniformCalculator})
 	dynamic_entities = valid_entities(dyn)
 	already_filled    = valid_entities(modelmat)
 	es               = valid_entities(spatial, shape)
-	for e in setdiff(setdiff(es, dynamic_entities), already_filled) ∪ (es ∩ dynamic_entities)	 
+	for e in setdiff(es, already_filled)	 
 		modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
+	end
+	
+	for e in es ∩ dynamic_entities
+		overwrite!(modelmat, ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale))), e)
 	end
 end
 
@@ -204,7 +208,6 @@ function update(uploader::System{PeelingUploader})
 
 
 	instanced_entities = setdiff(valid_entities(iprog, smesh, modelmat, material, ucolor), uploaded_entities)
-	println(instanced_entities)
 	for m in smesh.shared
 		t_es = shared_entities(smesh, m) ∩ instanced_entities
 		if !isempty(t_es)
@@ -287,7 +290,6 @@ function update(renderer::System{DefaultRenderer})
 		    set_uniform(program, spatial[i], camera[i])
 	    end
 		for vao in ivao.shared
-			println("πng")
 			GLA.bind(vao.vertexarray)
 			GLA.draw(vao.vertexarray)
 		end
@@ -324,12 +326,6 @@ function update(renderer::System{DefaultRenderer})
 			GLA.draw(evao.vertexarray)
 		end
 	end
-		#TODO handle this
-
-		# # render all separate vaos
-
-		# render all shared vaos
-	# GLA.unbind(vao[end].vertexarray)
 end
 
 rem1(x, y) = (x - 1) % y + 1
@@ -385,12 +381,22 @@ function update(renderer::System{DepthPeelingRenderer})
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
 	# #TODO hack !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-	peeling_program  = prog.shared[1]
-	ipeeling_program = iprog.shared[1]
-
-	prog_ids           = shared_entities(prog, peeling_program)
-	separate_entities  = intersect(valid_entities(vao, spatial, material, shape, modelmat), prog_ids)
+	render_separate  = !isempty(prog.shared)
+	render_instanced = !isempty(iprog.shared)
+	peeling_program = nothing
+	if render_separate
+		peeling_program  = prog.shared[1]
+	end
+	ipeeling_program = nothing
+	if render_instanced
+		ipeeling_program = iprog.shared[1]
+	end
+	prog_ids = Int[]
+	separate_entitites = Int[]
+	if render_separate
+		prog_ids           = shared_entities(prog, peeling_program)
+		separate_entities  = intersect(valid_entities(vao, spatial, material, shape, modelmat), prog_ids)
+	end
 	# instanced_entities = intersect(valid_entities(ivao), prog_ids)
 
 	function set_entity_uniforms(i)
@@ -426,34 +432,38 @@ function update(renderer::System{DepthPeelingRenderer})
 
 
 	# first pass: Render all the transparent stuff
-    bind(peeling_program)
-    for i in valid_entities(light, ucolor)
-	    set_uniform(peeling_program, light[i], ucolor[i])
-    end
-    for i in valid_entities(camera, spatial)
-	    set_uniform(peeling_program, spatial[i], camera[i])
+	# separate
+	if render_separate 
+	    bind(peeling_program)
+	    for i in valid_entities(light, ucolor)
+		    set_uniform(peeling_program, light[i], ucolor[i])
+	    end
+	    for i in valid_entities(camera, spatial)
+		    set_uniform(peeling_program, spatial[i], camera[i])
+	    end
+
+	    set_uniform(peeling_program, :first_pass, true)
+	    set_uniform(peeling_program, :canvas_width, canvas_width)
+	    set_uniform(peeling_program, :canvas_height, canvas_height)
+		renderall_separate()
+	    set_uniform(peeling_program, :first_pass, false)
     end
 
-    set_uniform(peeling_program, :first_pass, true)
-    set_uniform(peeling_program, :canvas_width, canvas_width)
-    set_uniform(peeling_program, :canvas_height, canvas_height)
-    bind(ipeeling_program)
-    for i in valid_entities(light, ucolor)
-	    set_uniform(ipeeling_program, light[i], ucolor[i])
+    #instanced
+    if render_instanced
+	    bind(ipeeling_program)
+	    for i in valid_entities(light, ucolor)
+		    set_uniform(ipeeling_program, light[i], ucolor[i])
+	    end
+	    for i in valid_entities(camera, spatial)
+		    set_uniform(ipeeling_program, spatial[i], camera[i])
+	    end
+	    set_uniform(ipeeling_program, :first_pass, true)
+	    set_uniform(ipeeling_program, :canvas_width, canvas_width)
+	    set_uniform(ipeeling_program, :canvas_height, canvas_height)
+		renderall_instanced()
+	    set_uniform(ipeeling_program, :first_pass, false)
     end
-    for i in valid_entities(camera, spatial)
-	    set_uniform(ipeeling_program, spatial[i], camera[i])
-    end
-
-    set_uniform(ipeeling_program, :first_pass, true)
-    set_uniform(ipeeling_program, :canvas_width, canvas_width)
-    set_uniform(ipeeling_program, :canvas_height, canvas_height)
-    bind(peeling_program)
-	renderall_separate()
-	bind(ipeeling_program)
-	renderall_instanced()
-    set_uniform(peeling_program, :first_pass, false)
-    set_uniform(ipeeling_program, :first_pass, false)
 
 	#start peeling passes
     for layer=1:rp.options.num_passes
@@ -476,12 +486,16 @@ function update(renderer::System{DepthPeelingRenderer})
 	    draw(fullscreenvao)
 
 		# peel: Render all the transparent stuff
-        bind(peeling_program)
-        set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
-		renderall_separate()
-        bind(ipeeling_program)
-        set_uniform(ipeeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
-		renderall_instanced()
+		if render_separate
+	        bind(peeling_program)
+	        set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
+			renderall_separate()
+		end
+		if render_instanced
+	        bind(ipeeling_program)
+	        set_uniform(ipeeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
+			renderall_instanced()
+		end
 
 
         # bind(peeling_instanced_program)
@@ -547,13 +561,12 @@ function update(sys::System{Mesher})
 	spolygon = scomp(PolygonGeometry)
 	sfile    = scomp(FileGeometry)
 	smesh    = scomp(Mesh)
+	meshed_entities  = valid_entities(mesh)
+	smeshed_entities = valid_entities(smesh)
 
 	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file), (spolygon, sfile)))
 		for com in geomcomps
-			for e in valid_entities(com)
-				if has_entity(meshcomp, e)
-					continue
-				end
+			for e in setdiff(valid_entities(com), valid_entities(meshcomp))
 				meshcomp[e] = Mesh(BasicMesh(com[e].geometry))
 			end
 		end
@@ -561,9 +574,6 @@ function update(sys::System{Mesher})
 
 
 	funcgeometry  = comp(FuncGeometry)
-	if funcgeometry == nothing
-		return
-	end
 	grid          = scomp(Grid)
 	funccolor     = comp(FuncColor)
 	cycledcolor   = comp(CycledColor)

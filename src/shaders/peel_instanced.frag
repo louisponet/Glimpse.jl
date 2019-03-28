@@ -5,6 +5,7 @@ in vec3 world_pos;
 in float specPow;
 in float specInt;
 out vec4 out_color;
+in vec4 fragcolor;
 
 struct point_light {
     vec3 position;
@@ -20,7 +21,6 @@ uniform vec3 campos;
 uniform float canvas_width;
 uniform float canvas_height;
 uniform bool first_pass;
-uniform vec4 fragcolor;
 uniform point_light plight;
 layout(binding=0) uniform sampler2D depth_texture;
 void main () {
