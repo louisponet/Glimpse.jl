@@ -9,7 +9,7 @@ assemble_sphere(;position::Point3f0 = zero(Point3f0),
        radius  ::Float32       = 1f0,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
-       program ::Prog{RP}      = Prog{DefaultPass}(:default, GLA.Program(default_shaders()))
+       program ::RenderProgram{RP}      = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
        ) where {RP <: RenderPassKind} = (Spatial(position, velocity),
 		                                           PolygonGeometry(Sphere(Point3f0(0.0), 1.0f0)),
 		                                           Upload{RP}(false, true),
@@ -25,7 +25,7 @@ assemble_box(;position::Point3f0 = zero(Point3f0),
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
        scale   ::Float32       = 1.0f0,
-       program ::Prog{RP}      = Prog{DefaultPass}(:default, GLA.Program(default_shaders()))
+       program ::RenderProgram{RP}      = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
        ) where {RP <: RenderPassKind} = (Spatial(position, velocity),
 		                                           PolygonGeometry(HyperRectangle(left, right)),
 		                                           Upload{RP}(false, true),
@@ -42,7 +42,7 @@ assemble_pyramid(;position::Point3f0 = zero(Point3f0),
        specint   ::Float32       = 0.8f0,
        specpow   ::Float32       = 0.8f0,
        scale     ::Float32       = 1.0f0,
-       program ::Prog{RP}      = Prog{DefaultPass}(:default, GLA.Program(default_shaders()))
+       program ::RenderProgram{RP}      = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
        ) where {RP <: RenderPassKind} = (Spatial(position, velocity),
 		                                           PolygonGeometry(Pyramid(Point3f0(0), height, width)),
 		                                           Upload{RP}(false, true),
@@ -57,7 +57,7 @@ assemble_file_mesh(file;position::Point3f0 = zero(Point3f0),
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
        scale   ::Float32       = 1.0f0,
-       program ::Prog{RP}      = Prog{DefaultPass}(:default, GLA.Program(default_shaders()))
+       program ::RenderProgram{RP}      = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
        ) where {RP <: RenderPassKind} = (Spatial(position, velocity),
 		                                           FileGeometry(file),
 		                                           Upload{RP}(false, true),

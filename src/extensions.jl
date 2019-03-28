@@ -65,6 +65,8 @@ function mergepop!(d1, d2)
     d2 = [d...]
     return t
 end
+Base.ndims(::Type{<:Colorant}) = 1
+Base.size(::Type{<:Number}) = 1
 
 #this stuff is here because of world age stuff I think
 function gluniform(location::Integer, x::Mat4{Float32})
@@ -85,8 +87,6 @@ function gluniform(location::Integer, x::FSA) where FSA
     gluniform(location, xref)
 end
 
-Base.ndims(::Type{<:Colorant}) = 1
-Base.size(::Type{<:Number}) = 1
 
 @generated function gluniform(location::Integer, x::Vector{FSA}) where FSA
     GLAbstraction.glasserteltype(eltype(FSA))
@@ -149,7 +149,23 @@ end
 
 glDisableCullFace() = glDisable(GL_CULL_FACE)
 
-
+function generate_buffers(program::Program, divisor::GLint = GLint(1); name_buffers...)
+	buflen  = 0
+    buffers = BufferAttachmentInfo[]
+    for (name, val) in pairs(name_buffers)
+        loc = attribute_location(program, name)
+        if loc != INVALID_ATTRIBUTE
+	        buflen = buflen == 0 ? length(val) : buflen 
+            vallen = length(val)
+            if vallen == buflen
+                push!(buffers, BufferAttachmentInfo(loc, Buffer(val), divisor))
+            elseif !isa(val, Vector)
+                push!(buffers, BufferAttachmentInfo(loc, Buffer(fill(val, buflen)), divisor))
+            end
+        end
+    end
+    return buffers
+end
 #----------------GeometryTypes-------------------------#
 
 # const INSTANCED_MESHES = Dict{Symbol, BasicMesh}()

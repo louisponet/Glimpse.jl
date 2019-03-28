@@ -24,7 +24,6 @@ layout(binding=0) uniform sampler2D depth_texture;
 
 uniform point_light plight;
 void main () {
-    vec2 tex_coord = vec2(float(gl_FragCoord.x) / canvas_width, float(gl_FragCoord.y) / canvas_height);
     vec4 ambient_color  = vec4(plight.color * plight.amb_intensity, 1.0f);
     vec3 light_position = normalize(plight.position - world_pos);
     vec3 normal         = normalize(fragnormal);
@@ -47,6 +46,7 @@ void main () {
     }
     vec4 relcolor = ambient_color + diffuse_color;// specular_color;
     if(!first_pass){
+        vec2 tex_coord = vec2(float(gl_FragCoord.x) / canvas_width, float(gl_FragCoord.y) / canvas_height);
         float max_depth = texture(depth_texture, tex_coord).r;
         if (gl_FragCoord.z <= max_depth){
             discard;

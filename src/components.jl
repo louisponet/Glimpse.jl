@@ -48,45 +48,46 @@ end
 
 ==(c1::T, c2::T) where {T <: ComponentData} = all(getfield.((c1,), fieldnames(T)) .== getfield.((c2,), fieldnames(T)))
 # DEFAULT COMPONENTS
-struct Spatial <: ComponentData
-	position::Vec3f0
-	velocity::Vec3f0
-end
 
-struct Vao{RP <: RenderPassKind} <: ComponentData
+
+abstract type ProgramKind end
+
+struct RenderProgram{P <: ProgramKind} <: ComponentData
+	program::Program
+end
+GLA.bind(p::RenderProgram) = bind(p.program)
+GLA.set_uniform(p::RenderProgram, args...) = set_uniform(p.program, args...)
+
+struct Vao{P <: ProgramKind} <: ComponentData
 	vertexarray::VertexArray
 	meshID     ::Int
 end
 
-struct Prog{RP <: RenderPassKind} <: ComponentData
-	name   ::Symbol
-	program::Program
-end
-GLA.bind(p::Prog) = bind(p.program)
-GLA.set_uniform(p::Prog, args...) = set_uniform(p.program, args...)
-
-struct Upload{RP <: RenderPassKind} <: ComponentData
-	is_instanced::Bool
-	is_visible  ::Bool
+# NON rendering Components
+struct Dynamic <: ComponentData end
+Base.@kwdef struct Spatial <: ComponentData
+	position::Point3f0 = zero(Point3f0)
+	velocity::Vec3f0   = zero(Vec3f0)
 end
 
-is_instanced(data::Upload) = data.is_instanced
-kind(::Type{Upload{Kind}}) where Kind = Kind
-
-struct Material <: ComponentData
-	specpow ::Float32
-	specint ::Float32
+Base.@kwdef struct Shape <: ComponentData
+	scale::Float32 = 1f0
 end
 
-struct Shape <: ComponentData
-	scale::Float32
+Base.@kwdef struct ModelMat <: ComponentData
+	modelmat::Mat4f0 = Eye4f0()
 end
 
-struct PointLight <: ComponentData
-    position::Vec3f0
-    diffuse ::Float32
-    specular::Float32
-    ambient ::Float32
+Base.@kwdef struct Material <: ComponentData
+	specpow ::Float32 = 0.8f0
+	specint ::Float32 = 0.8f0
+end
+
+Base.@kwdef struct PointLight <: ComponentData
+    position::Point3f0 = Point3f0(200)
+    diffuse ::Float32  = 0.5f0
+    specular::Float32  = 0.5f0
+    ambient ::Float32  = 0.5f0
 end
 
 struct DirectionLight <: ComponentData
@@ -125,6 +126,11 @@ struct UniformColor <: Color
 	color::RGBAf0
 end
 
+# vector of colors, either supplied manually or filled in by mesher
+struct BufferColor <: Color
+	color::Vector{RGBAf0}
+end
+	
 # color function, mesher uses it to throw in points and get out colors
 struct FuncColor{F} <: Color 
 	color::F

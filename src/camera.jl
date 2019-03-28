@@ -96,7 +96,7 @@ function update(updater::System{Camera})
 		#keyboard stuff
 	    if keyboard_button[3] == Int(PRESS) || keyboard_button[3] == Int(GLFW.REPEAT)
 	        if keyboard_button[1] in WASD_KEYS
-	            new_pos = wasd_event(new_pos, cam, keyboard_button)
+	            new_pos = Point3f0(wasd_event(new_pos, cam, keyboard_button))
 	        # elseif keyboard_button[1] == Int(KEY_Q)
 	            # cam.fov -= 1
 	            # cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 300f0)
@@ -107,7 +107,7 @@ function update(updater::System{Camera})
 	    cam.proj      = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
 
 	    #scroll stuff no dx
-	    translation   = calcforward(new_pos, cam) * (scroll_dy - cam.scroll_dy)* cam.translation_speed * norm(new_pos - cam.lookat)
+	    translation   = Point3f0(calcforward(new_pos, cam) * (scroll_dy - cam.scroll_dy)* cam.translation_speed * norm(new_pos - cam.lookat))
 	    cam.scroll_dy = scroll_dy
 	    new_pos      += translation
 

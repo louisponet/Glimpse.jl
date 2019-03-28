@@ -50,7 +50,7 @@ Base.eltype(mesh::AM) where {AM <: AttributeMesh} = eltype(AM)
 
 basicmesh(mesh::AttributeMesh) = mesh.basic
 
-function generate_buffers(mesh::BasicMesh, program::Program; extra_attributes...)
+function generate_buffers(program::Program, mesh::BasicMesh)
     buffers = BufferAttachmentInfo[]
     for n in (:vertices, :normals)
         loc = attribute_location(program, n)
@@ -58,22 +58,10 @@ function generate_buffers(mesh::BasicMesh, program::Program; extra_attributes...
             push!(buffers, BufferAttachmentInfo(loc, Buffer(getfield(mesh, n)), GEOMETRY_DIVISOR))
         end
     end
-    for (name, val) in pairs(extra_attributes)
-        loc = attribute_location(program, name)
-        if loc != INVALID_ATTRIBUTE
-	        buflen = length(mesh)
-            vallen = length(val)
-            if vallen == buflen
-                push!(buffers, BufferAttachmentInfo(loc, Buffer(val), GEOMETRY_DIVISOR))
-            elseif !isa(val, Vector)
-                push!(buffers, BufferAttachmentInfo(loc, Buffer(fill(val, buflen)), GEOMETRY_DIVISOR))
-            end
-        end
-    end
     return buffers
 end
 
-function generate_buffers(mesh::AttributeMesh{AT}, program::Program) where AT
+function generate_buffers(program::Program, mesh::AttributeMesh{AT}) where AT
     buffers = generate_buffers(basicmesh(mesh), program)
     buflen  = length(mesh)
     for (name, val) in pairs(mesh.attributes)
@@ -90,5 +78,5 @@ function generate_buffers(mesh::AttributeMesh{AT}, program::Program) where AT
     return buffers
 end
 
-GLA.VertexArray(mesh::AbstractGlimpseMesh, program::Program; extra_attributes...) =
-    VertexArray(generate_buffers(mesh, program; extra_attributes...), faces(mesh) .- GLint(1))
+GLA.VertexArray(program::Program, mesh::AbstractGlimpseMesh; extra_attributes...) =
+    VertexArray(generate_buffers(program, mesh; extra_attributes...), faces(mesh) .- GLint(1))
