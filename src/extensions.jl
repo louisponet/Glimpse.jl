@@ -149,7 +149,7 @@ end
 
 glDisableCullFace() = glDisable(GL_CULL_FACE)
 
-function generate_buffers(program::Program, divisor::GLint = GLint(1); name_buffers...)
+function generate_buffers(program::Program, divisor::GLint; name_buffers...)
 	buflen  = 0
     buffers = BufferAttachmentInfo[]
     for (name, val) in pairs(name_buffers)

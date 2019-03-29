@@ -130,8 +130,12 @@ struct BufferColor <: Color
 end
 	
 # color function, mesher uses it to throw in points and get out colors
-struct FuncColor{F} <: Color 
+struct FunctionColor{F} <: Color 
 	color::F
+end
+
+struct DensityColor <: Color 
+	color::Array{RGBAf0, 3}
 end
 
 # Cycle, mesher uses it to iterate over together with points
@@ -153,9 +157,14 @@ struct FileGeometry <: Geometry #.obj files
 	geometry::String 
 end
 
-struct FuncGeometry <: Geometry
+struct FunctionGeometry <: Geometry
 	geometry::Function
-	iso_value::Float64
+	iso::Float64
+end
+
+struct DensityGeometry <: Geometry
+	geometry::Array{Float64, 3}
+	iso::Float64
 end
 
 struct VectorGeometry <: Geometry

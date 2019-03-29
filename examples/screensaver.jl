@@ -1,7 +1,7 @@
 #%%
 using Glimpse
 const Gl = Glimpse
-import Glimpse: SystemKind, System, Component, ComponentData, update, Spatial, TimingData, valid_entities, singleton, component
+import Glimpse: SystemKind, System, Component, ComponentData, update, Spatial, TimingData, valid_entities, singleton, component, RGBAf0
 using LinearAlgebra
 
 # define rotation component and system
@@ -31,24 +31,25 @@ function update(sys::System{Rotator})
 end
 
 begin
-	dio = Diorama(:Glimpse, Screen(:default, (1260,720)));
+	dio = Diorama(background=RGBAf0(0.0,0.0,0.0,1.0));
 
 	# add new component and system to the diorama, alongside with the already present rendering systems/components
 	Gl.add_component!(dio, Rotation);
 	Gl.add_system!(dio, rotator_system(dio));
 	# add some sphere entities and the new extra component which will automatically engage with the new system
+	geom = Gl.PolygonGeometry(Sphere(Point3f0(0.0), 1.0f0))
+	progtag = Gl.ProgramTag{Gl.PeelingProgram}()
 	for i = 1:2000
-		comps = Gl.assemble_sphere(50*(1 .- rand(Point3f0)), rand(Vec3f0), rand(RGBA{Float32}), 1.0f0, 0.8f0, 0.8f0, Gl.DepthPeelingPass)
-		Gl.new_entity!(dio, comps...);
-		Gl.set_entity_component!(dio, i, Rotation(0.2f0, 50*(1 .- rand(Point3f0)), normalize(1 .- rand(Vec3f0))))
+		Gl.new_entity!(dio, separate=[Gl.UniformColor(rand(RGBAf0)),
+		                              Gl.Spatial(50*(1 .- rand(Point3f0)), rand(Vec3f0)),
+		                              Gl.Material(),
+		                              Gl.Shape(),
+		                              Rotation(0.2f0, 50*(1 .- rand(Point3f0)), normalize(1 .- rand(Vec3f0))),
+		                              Gl.Dynamic(),
+		                              progtag],
+                            shared=[geom])
 	end
-
-	# add the some light and camera entities to actually see some stuff
-	Gl.new_entity!(dio, Gl.PointLight(Point3f0(200.0), 0.5f0, 0.5f0, 0.5f0, RGBA{Float32}(1.0))); 
-	camid = Gl.new_entity!(dio, Gl.assemble_camera3d(Point3f0(Gl.perspective_defaults()[:eyepos]), Vec3f0(0))...)
-
-	# one can even rotate the camera itself!
-	# Gl.set_entity_component!(dio, camid, Rotation(1f0, 50*(1 .- rand(Point3f0)), normalize(1 .- rand(Vec3f0))))
+	dio.loop = @async Gl.renderloop(dio)
 end
 #%%
 

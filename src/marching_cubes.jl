@@ -1,22 +1,22 @@
 using GeometryTypes
 
-function vertex_interp(iso, p1, p2, valp1, valp2, tol=1e-5)
+function vertex_interp(iso, p1::Point3{T}, p2::Point3{T}, valp1, valp2, tol=1e-5) where T
     if abs(iso-valp1) < tol
         return p1
     elseif abs(iso-valp2) < tol
         return p2
     elseif abs(valp1-valp2) < tol
-        return (p1+p2)/2
+        return (p1 + p2)/2
     else
-        return p1 + (iso-valp1) / (valp2 - valp1) * (p2 - p1)
+        return p1 + T((iso-valp1) / (valp2 - valp1)) * (p2 - p1)
     end
 end
 
-function marching_cubes(values::Array{T,3}, points::Array{Point3{T},3},iso,cube_size=1) where T<:AbstractFloat
+function marching_cubes(values::Array{T,3}, points::Array{Point3{PT}, 3}, iso, cube_size=1) where {PT <: AbstractFloat, T <: AbstractFloat}
     iso = T(iso)
-    vertices     = Vector{Point3f0}()
-    indices      = Vector{Tuple{Int,Int,Int}}()
-    vertex_list  = zeros(Point3f0, 12)
+    vertices     = Vector{Point3{PT}}()
+    indices      = Vector{NTuple{3, Int}}()
+    vertex_list  = zeros(Point3{PT}, 12)
     ind_pushed   = false
     edge_table,tri_table = get_edge_tri_table()
     i_max,j_max,k_max    = size(points)

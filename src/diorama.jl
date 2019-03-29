@@ -20,8 +20,10 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
-    						FuncGeometry,
-    						FuncColor,
+    						FunctionGeometry,
+    						DensityGeometry,
+    						FunctionColor,
+    						DensityColor,
     						BufferColor,
     						Mesh,
 		                    Material,
@@ -59,6 +61,9 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             final_render_system(dio),
 			             sleeper_system(dio)])
 
+
+	new_entity!(dio, separate = [PointLight(), UniformColor(RGBA{Float32}(1.0))])
+	new_entity!(dio, separate = [assemble_camera3d(Point3f0(perspective_defaults()[:eyepos]), Vec3f0(0))...])
 	return dio
 end
 
@@ -240,7 +245,7 @@ function add_to_components!(id, datas, components)
 	end
 end
 
-function new_entity!(dio::Diorama; separate::Vector{ComponentData}=ComponentData[], shared::Vector{ComponentData}=ComponentData[])
+function new_entity!(dio::Diorama; separate::Vector{<:ComponentData}=ComponentData[], shared::Vector{<: ComponentData}=ComponentData[])
 	entity_id  = length(dio.entities) + 1
 
 	names      = typeof.(separate)

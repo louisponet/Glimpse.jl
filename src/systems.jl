@@ -160,7 +160,7 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram,
 	for (m, entities) in zip((mesh, smesh), (mesh_entities, smesh_entities))
 		for e in entities
 			if e ∈ bcol_entities
-			    vao[e] = Vao{K}(VertexArray(prog.program, m[e].mesh, color=bcolor[e].color), e)
+			    vao[e] = Vao{K}(VertexArray([generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color)], faces(m[e].mesh).-GLint(1)), e)
 		    else
 			    vao[e] = Vao{K}(VertexArray(prog.program, m[e].mesh, ), e)
 		    end
@@ -218,7 +218,7 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstance
 			end
 			tprog = iprog.program
 			tmesh = smesh[t_es[1]].mesh
-		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1))
+		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1))
 		    for e in t_es
 			    ivao.data[e] = length(ivao.shared)
 		    end
@@ -271,7 +271,7 @@ function update(renderer::System{DefaultRenderer})
 	modelmat   = comp(ModelMat)
 	shape      = comp(Shape)
 	ucolor     = comp(UniformColor)
-	fcolor     = comp(FuncColor)
+	fcolor     = comp(FunctionColor)
 	prog       = singleton(renderer, RenderProgram{DefaultProgram})
 	progtag    = comp(ProgramTag{DefaultProgram})
 	iprog      = singleton(renderer, RenderProgram{DefaultInstancedProgram})
@@ -353,7 +353,7 @@ function update(renderer::System{DepthPeelingRenderer})
 	shape    = comp(Shape)
 	modelmat = comp(ModelMat)
 	ucolor   = comp(UniformColor)
-	fcolor   = comp(FuncColor)
+	fcolor   = comp(FunctionColor)
 	peeling_program  = singleton(renderer, RenderProgram{PeelingProgram})
 	ipeeling_program = singleton(renderer, RenderProgram{PeelingInstancedProgram})
 	progtag  = comp(ProgramTag{PeelingProgram})
@@ -554,27 +554,36 @@ function update(sys::System{Mesher})
 		end
 	end
 
-
-	funcgeometry  = comp(FuncGeometry)
+	funcgeometry  = comp(FunctionGeometry)
+	densgeometry  = comp(DensityGeometry)
 	grid          = scomp(Grid)
-	funccolor     = comp(FuncColor)
+	funccolor     = comp(FunctionColor)
+	denscolor     = comp(DensityColor)
 	cycledcolor   = comp(CycledColor)
 	colorbuffers  = comp(BufferColor)
-	for e in valid_entities(funcgeometry, grid)
-		if has_entity(mesh, e)
-			continue
-		end
-		values        = funcgeometry[e].geometry.(grid[e].points)
-		vertices, ids = marching_cubes(values, grid[e].points, funcgeometry[e].iso_value)
+
+	meshed_entities = valid_entities(mesh)
+
+	function calc_mesh(density, iso, e)
+		vertices, ids = marching_cubes(density, grid[e].points, iso)
 		faces         = [Face{3, GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
 
-		if cycledcolor != nothing && has_entity(cycledcolor, e)
-		elseif funccolor != nothing && has_entity(funccolor, e)
-			colorbuffers[e] = funccolor[e].color.(vertices)
+		# if has_entity(cycledcolor, e)
+		if has_entity(funccolor, e)
+			colorbuffers[e] = BufferColor(funccolor[e].color.(vertices))
+		elseif has_entity(denscolor, e)
+			colorbuffers[e] = BufferColor([denscolor[e].color[i...] for i in ids])
 		end
 		mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
 	end
 
+	for e in setdiff(valid_entities(funcgeometry, grid), meshed_entities)
+		values        = funcgeometry[e].geometry.(grid[e].points)
+		calc_mesh(values, funcgeometry[e].iso, e)
+	end
+	for e in setdiff(valid_entities(densgeometry, grid), meshed_entities)
+		calc_mesh(densgeometry[e].geometry, densgeometry[e].iso, e)
+	end
 end
 		
 
