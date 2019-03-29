@@ -271,17 +271,13 @@ function update(renderer::System{DefaultRenderer})
 	modelmat   = comp(ModelMat)
 	shape      = comp(Shape)
 	ucolor     = comp(UniformColor)
-	fcolor     = comp(FunctionColor)
 	prog       = singleton(renderer, RenderProgram{DefaultProgram})
 	progtag    = comp(ProgramTag{DefaultProgram})
 	iprog      = singleton(renderer, RenderProgram{DefaultInstancedProgram})
-	iprogtag   = comp(ProgramTag{DefaultInstancedProgram})
     ufunc      = set_entity_uniforms_func(prog, renderer)
 
 	light      = comp(PointLight)
 	camera     = comp(Camera3D)
-	renderpass = renderer.singletons[1]
-
 
 	fbo = singleton(renderer, RenderTarget{IOTarget})
 	bind(fbo)
@@ -289,30 +285,27 @@ function update(renderer::System{DefaultRenderer})
 	glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
 
+	function set_light_camera_uniforms(prog)
+	    for i in valid_entities(light, ucolor)
+		    set_uniform(prog, light[i], ucolor[i])
+	    end
+	    for i in valid_entities(camera, spatial)
+		    set_uniform(prog, spatial[i], camera[i])
+	    end
+    end
+
 	bind(iprog)
-    for i in valid_entities(light, ucolor)
-	    set_uniform(iprog, light[i], ucolor[i])
-    end
-    for i in valid_entities(camera, spatial)
-	    set_uniform(iprog, spatial[i], camera[i])
-    end
+    set_light_camera_uniforms(iprog)
+    
 	for vao in ivao.shared
 		GLA.bind(vao.vertexarray)
 		GLA.draw(vao.vertexarray)
 	end
 
 	bind(prog)
-    for i in valid_entities(light, ucolor) #TODO assign prog to lights
-	    set_uniform(prog, light[i], ucolor[i])
-    end
-    for i in valid_entities(camera, spatial)
-	    set_uniform(prog, spatial[i], camera[i])
-    end
+	set_light_camera_uniforms(prog)
 
 	es = valid_entities(vao, spatial, material, shape, modelmat, progtag)
-	if isempty(es)
-		return
-	end
 	for e in es
 		evao   = vao[e]
 		ufunc(e)
@@ -392,7 +385,6 @@ function update(renderer::System{DepthPeelingRenderer})
     bind(fullscreenvao)
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
-	# #TODO hack !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	separate_entities  = valid_entities(vao, spatial, material, shape, modelmat, progtag)
 	instanced_entities = valid_entities(ivao)
 	render_separate  = !isempty(separate_entities)
@@ -406,6 +398,7 @@ function update(renderer::System{DepthPeelingRenderer})
 			GLA.draw(evao.vertexarray)
 		end
 	end
+
 	function renderall_instanced()
 		for evao in ivao.shared
 			GLA.bind(evao.vertexarray)
@@ -413,39 +406,31 @@ function update(renderer::System{DepthPeelingRenderer})
 		end
 	end
 
+	function render_start(prog, renderfunc)
+	    bind(prog)
+	    for i in valid_entities(light, ucolor)
+		    set_uniform(prog, light[i], ucolor[i])
+	    end
+	    for i in valid_entities(camera, spatial)
+		    set_uniform(prog, spatial[i], camera[i])
+	    end
+
+	    set_uniform(prog, :first_pass, true)
+	    set_uniform(prog, :canvas_width, canvas_width)
+	    set_uniform(prog, :canvas_height, canvas_height)
+		renderfunc()
+	    set_uniform(prog, :first_pass, false)
+    end
 
 	# first pass: Render all the transparent stuff
 	# separate
 	if render_separate
-	    bind(peeling_program)
-	    for i in valid_entities(light, ucolor)
-		    set_uniform(peeling_program, light[i], ucolor[i])
-	    end
-	    for i in valid_entities(camera, spatial)
-		    set_uniform(peeling_program, spatial[i], camera[i])
-	    end
-
-	    set_uniform(peeling_program, :first_pass, true)
-	    set_uniform(peeling_program, :canvas_width, canvas_width)
-	    set_uniform(peeling_program, :canvas_height, canvas_height)
-		renderall_separate()
-	    set_uniform(peeling_program, :first_pass, false)
+		render_start(peeling_program, renderall_separate)
     end
 
     #instanced
     if render_instanced
-	    bind(ipeeling_program)
-	    for i in valid_entities(light, ucolor)
-		    set_uniform(ipeeling_program, light[i], ucolor[i])
-	    end
-	    for i in valid_entities(camera, spatial)
-		    set_uniform(ipeeling_program, spatial[i], camera[i])
-	    end
-	    set_uniform(ipeeling_program, :first_pass, true)
-	    set_uniform(ipeeling_program, :canvas_width, canvas_width)
-	    set_uniform(ipeeling_program, :canvas_height, canvas_height)
-		renderall_instanced()
-	    set_uniform(ipeeling_program, :first_pass, false)
+	    render_start(ipeeling_program, renderall_instanced)
     end
 
 	#start peeling passes

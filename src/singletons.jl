@@ -246,6 +246,7 @@ clear!(r::RenderTarget, c=r.background) = clear!(r.target, c)
 Base.size(r::RenderTarget)   = size(r.target)
 depth_attachment(r::RenderTarget, args...) = depth_attachment(r.target, args...)
 color_attachment(r::RenderTarget, args...) = color_attachment(r.target, args...)
+GLA.free!(r::RenderTarget) = free!(r.target)
 
 const RenderTargetDict  = Dict{Symbol, RenderTarget}
 
