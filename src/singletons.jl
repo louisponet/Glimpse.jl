@@ -326,3 +326,10 @@ mutable struct TimingData <: Singleton
 	preferred_fps::Float64
 	reversed ::Bool
 end
+
+struct RenderProgram{P <: ProgramKind} <: Singleton
+	program::GLA.Program	
+end
+
+GLA.bind(p::RenderProgram) = bind(p.program)
+GLA.set_uniform(p::RenderProgram, args...) = set_uniform(p.program, args...)

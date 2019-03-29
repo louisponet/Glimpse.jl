@@ -11,9 +11,13 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	depth_peeling_pass = create_transparancy_pass(wh, c.background, 5)
 	fp                 = final_pass()
 	fullscreenvao      = FullscreenVao()
+    def_prog           = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
+    def_inst_prog      = RenderProgram{DefaultInstancedProgram}(GLA.Program(default_instanced_shaders()))
+    peel_prog          = RenderProgram{PeelingProgram}(GLA.Program(peeling_shaders()))
+    peel_inst_prog     = RenderProgram{PeelingInstancedProgram}(GLA.Program(peeling_instanced_shaders()))
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao], System[])
+	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
     						FuncGeometry,
@@ -28,6 +32,10 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    Camera3D,
 		                    Dynamic,
 		                    ModelMat,
+		                    ProgramTag{DefaultProgram},
+		                    ProgramTag{DefaultInstancedProgram},
+		                    ProgramTag{PeelingProgram},
+		                    ProgramTag{PeelingInstancedProgram},
 		                    Vao{DefaultProgram},
 		                    Vao{PeelingProgram}])
     add_shared_component!.((dio,), [PolygonGeometry,
@@ -35,10 +43,6 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     							    Mesh,
 							        Vao{DefaultInstancedProgram},
     							    Vao{PeelingInstancedProgram},
-    							    RenderProgram{DefaultProgram},
-    							    RenderProgram{PeelingProgram},
-    							    RenderProgram{DefaultInstancedProgram},
-    							    RenderProgram{PeelingInstancedProgram},
     							    Grid])
 
 	add_system!.((dio,),[timer_system(dio),
@@ -46,7 +50,9 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
                          mesher_system(dio),
                          uniform_calculator_system(dio),
 			             default_uploader_system(dio),
+			             default_instanced_uploader_system(dio),
 			             peeling_uploader_system(dio),
+			             peeling_instanced_uploader_system(dio),
 			             camera_system(dio),
 			             default_render_system(dio),
 			             depth_peeling_render_system(dio),

@@ -53,11 +53,8 @@ end
 
 abstract type ProgramKind end
 
-struct RenderProgram{P <: ProgramKind} <: ComponentData
-	program::Program
+struct ProgramTag{P <: ProgramKind} <: ComponentData
 end
-GLA.bind(p::RenderProgram) = bind(p.program)
-GLA.set_uniform(p::RenderProgram, args...) = set_uniform(p.program, args...)
 
 struct Vao{P <: ProgramKind} <: ComponentData
 	vertexarray::VertexArray

@@ -102,54 +102,106 @@ end
 
 struct DefaultProgram          <: ProgramKind end
 struct DefaultInstancedProgram <: ProgramKind end
-struct PeelingProgram          <: ProgramKind end
 struct PeelingCompositeProgram <: ProgramKind end
+struct PeelingProgram          <: ProgramKind end
 struct PeelingInstancedProgram <: ProgramKind end
 
-abstract type Uploader <: SystemKind end
-struct DefaultUploader <: Uploader   end
-struct PeelingUploader <: Uploader   end
+function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultProgram, PeelingProgram}}, system)
+    prog = render_program.program
+    material = component(system, Material)
+    modelmat = component(system, ModelMat)
+    ucolor   = component(system, UniformColor)
+	return e -> begin
+		set_uniform(prog, :specint, material[e].specint)
+		set_uniform(prog, :specpow, material[e].specpow)
+		set_uniform(prog, :modelmat, modelmat[e].modelmat)
+		if has_entity(ucolor, e)
+			set_uniform(prog, :uniform_color, ucolor[e].color)
+			set_uniform(prog, :is_uniform, true)
+		else
+			set_uniform(prog, :is_uniform, false)
+			set_uniform(prog, :specpow, material[e].specpow)
+		end
+	end
+end
 
+struct Uploader{P <: ProgramKind} <: SystemKind end
+	
 
-default_uploader_system(dio::Diorama) = System{DefaultUploader}(dio, (Mesh, Color, ModelMat, Material, Vao{DefaultProgram},Vao{DefaultInstancedProgram}, RenderProgram{DefaultProgram}, RenderProgram{DefaultInstancedProgram}), ())
-peeling_uploader_system(dio::Diorama) = System{PeelingUploader}(dio, (Mesh, Color, ModelMat, Material, Vao{PeelingProgram},Vao{PeelingInstancedProgram}, RenderProgram{PeelingProgram}, RenderProgram{PeelingInstancedProgram}),())
+default_uploader_system(dio::Diorama) =
+	System{Uploader{DefaultProgram}}(dio, (Mesh,
+										   BufferColor,
+								      	   Vao{DefaultProgram},
+								      	   ProgramTag{DefaultProgram},
+								      	   ), (RenderProgram{DefaultProgram},))
 
+peeling_uploader_system(dio::Diorama) =
+	System{Uploader{PeelingProgram}}(dio, (Mesh,
+                                           BufferColor,
+                                           Vao{PeelingProgram},
+                                           ProgramTag{PeelingProgram},
+                                           ), (RenderProgram{PeelingProgram},))
 
-function update(uploader::System{DefaultUploader})
+function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram}}
 	comp(T)  = component(uploader, T)
 	scomp(T) = shared_component(uploader, T)
 
-	ucolor   = comp(UniformColor)
 	bcolor   = comp(BufferColor)
 	mesh     = comp(Mesh)
-	vao      = comp(Vao{DefaultProgram})
-	ivao     = scomp(Vao{DefaultInstancedProgram})
-	prog     = scomp(RenderProgram{DefaultProgram})
-	iprog    = scomp(RenderProgram{DefaultInstancedProgram})
+	vao      = comp(Vao)
+	prog     = singleton(uploader, RenderProgram)
+	progtag  = comp(ProgramTag)
 	smesh    = scomp(Mesh)
+
+	uploaded_entities = valid_entities(vao)
+	bcol_entities     = valid_entities(bcolor)
+	smesh_entities    = setdiff(valid_entities(progtag, smesh), uploaded_entities) 
+	mesh_entities     = setdiff(valid_entities(progtag, mesh),  uploaded_entities) 
+	for (m, entities) in zip((mesh, smesh), (mesh_entities, smesh_entities))
+		for e in entities
+			if e ∈ bcol_entities
+			    vao[e] = Vao{K}(VertexArray(prog.program, m[e].mesh, color=bcolor[e].color), e)
+		    else
+			    vao[e] = Vao{K}(VertexArray(prog.program, m[e].mesh, ), e)
+		    end
+	    end
+	end
+end
+
+default_instanced_uploader_system(dio::Diorama) =
+	System{Uploader{DefaultInstancedProgram}}(dio, (Mesh,
+										      	    Color,
+										      	    ModelMat,
+										      	    Material,
+										      	    Vao{DefaultInstancedProgram},
+										      	    ProgramTag{DefaultInstancedProgram},
+										      	    ), (RenderProgram{DefaultInstancedProgram},))
+
+peeling_instanced_uploader_system(dio::Diorama) =
+	System{Uploader{PeelingInstancedProgram}}(dio, (Mesh,
+                                           			UniformColor,
+                                           			ModelMat,
+                                           			Material,
+                                           			Vao{PeelingInstancedProgram},
+                                           			ProgramTag{PeelingInstancedProgram},
+                                           			),(RenderProgram{PeelingInstancedProgram},))
+
+function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstancedProgram, PeelingInstancedProgram}}
+	comp(T)  = component(uploader, T)
+	scomp(T) = shared_component(uploader, T)
+
+	smesh    = scomp(Mesh)
+	ivao     = scomp(Vao{K})
+	iprog    = singleton(uploader, RenderProgram{K})
+	iprogtag = comp(ProgramTag{K})
 	modelmat = comp(ModelMat)
 	material = comp(Material)
+	ucolor   = comp(UniformColor)
 
-	uploaded_entities = valid_entities(vao) ∪ valid_entities(ivao)
-	bcol_entities     = valid_entities(bcolor)
-	ucol_entities     = valid_entities(ucolor)
-	smesh_entities    = setdiff(valid_entities(prog, smesh), uploaded_entities) 
-	mesh_entities     = setdiff(valid_entities(prog, mesh),  uploaded_entities) 
-	for e in mesh_entities ∩ ucol_entities
-	    vao[e] = Vao{DefaultProgram}(VertexArray(prog[e].program, mesh[e].mesh, ), e)
+	instanced_entities = setdiff(valid_entities(iprogtag, smesh, modelmat, material, ucolor), valid_entities(ivao))
+	if isempty(instanced_entities)
+		return
 	end
-	for e in smesh_entities ∩ ucol_entities
-	    vao[e] = Vao{DefaultProgram}(VertexArray(prog[e].program, smesh[e].mesh, ), e)
-	end
-	for e in mesh_entities ∩ bcol_entities
-	    vao[e] = Vao{DefaultProgram}(VertexArray(prog[e].program, mesh[e].mesh, color=bcolor[e].color), e)
-	end
-	for e in smesh_entities ∩ bcol_entities
-	    vao[e] = Vao{DefaultProgram}(VertexArray(prog[e].program, smesh[e].mesh, color=bcolor[e].color), e)
-	end
-
-
-	instanced_entities = setdiff(valid_entities(iprog, smesh, modelmat, material, ucolor), uploaded_entities)
 	for m in smesh.shared
 		t_es = shared_entities(smesh, m) ∩ instanced_entities
 		if !isempty(t_es)
@@ -164,73 +216,19 @@ function update(uploader::System{DefaultUploader})
 				specpows[i]  = material[e].specpow
 				ucolors[i]   = ucolor[e].color
 			end
-			tprog = iprog[t_es[1]].program
+			tprog = iprog.program
 			tmesh = smesh[t_es[1]].mesh
-		    push!(ivao.shared, Vao{DefaultInstancedProgram}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1))
+		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1))
 		    for e in t_es
 			    ivao.data[e] = length(ivao.shared)
 		    end
 	    end
 	end
 end
-function update(uploader::System{PeelingUploader})
-	comp(T)  = component(uploader, T)
-	scomp(T) = shared_component(uploader, T)
-
-	ucolor   = comp(UniformColor)
-	bcolor   = comp(BufferColor)
-	mesh     = comp(Mesh)
-	vao      = comp(Vao{PeelingProgram})
-	ivao     = scomp(Vao{PeelingInstancedProgram})
-	prog     = scomp(RenderProgram{PeelingProgram})
-	iprog    = scomp(RenderProgram{PeelingInstancedProgram})
-	smesh    = scomp(Mesh)
-	modelmat = comp(ModelMat)
-	material = comp(Material)
-
-	uploaded_entities = valid_entities(vao) ∪ valid_entities(ivao)
-	bcol_entities     = valid_entities(bcolor)
-	ucol_entities     = valid_entities(ucolor)
-	smesh_entities    = setdiff(valid_entities(prog, smesh), uploaded_entities) 
-	mesh_entities     = setdiff(valid_entities(prog, mesh),  uploaded_entities) 
-	for e in mesh_entities ∩ ucol_entities
-	    vao[e] = Vao{PeelingProgram}(VertexArray(prog[e].program, mesh[e].mesh, ), e)
-	end
-	for e in smesh_entities ∩ ucol_entities
-	    vao[e] = Vao{PeelingProgram}(VertexArray(prog[e].program, smesh[e].mesh, ), e)
-	end
-	for e in mesh_entities ∩ bcol_entities
-	    vao[e] = Vao{PeelingProgram}(VertexArray(prog[e].program, mesh[e].mesh, color=bcolor[e].color), e)
-	end
-	for e in smesh_entities ∩ bcol_entities
-	    vao[e] = Vao{PeelingProgram}(VertexArray(prog[e].program, smesh[e].mesh, color=bcolor[e].color), e)
-	end
 
 
-	instanced_entities = setdiff(valid_entities(iprog, smesh, modelmat, material, ucolor), uploaded_entities)
-	for m in smesh.shared
-		t_es = shared_entities(smesh, m) ∩ instanced_entities
-		if !isempty(t_es)
-			modelmats = Vector{Mat4f0}(undef,  length(t_es))
-			ucolors   = Vector{RGBAf0}(undef,  length(t_es))
-			specints  = Vector{Float32}(undef, length(t_es))
-			specpows  = Vector{Float32}(undef, length(t_es))
 
-			for (i, e) in enumerate(t_es)
-				modelmats[i] = modelmat[e].modelmat
-				specints[i]  = material[e].specint
-				specpows[i]  = material[e].specpow
-				ucolors[i]   = ucolor[e].color
-			end
-			tprog = iprog[t_es[1]].program
-			tmesh = smesh[t_es[1]].mesh
-		    push!(ivao.shared, Vao{PeelingInstancedProgram}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1))
-		    for e in t_es
-			    ivao.data[e] = length(ivao.shared)
-		    end
-	    end
-	end
-end# UPLOADER
+
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
 
 
@@ -239,7 +237,20 @@ abstract type RenderSystem  <: SystemKind   end
 struct DefaultRenderer      <: RenderSystem end
 
 default_render_system(dio::Diorama) =
-	System{DefaultRenderer}(dio, (Vao{DefaultProgram}, Vao{DefaultInstancedProgram}, Spatial, Material, ModelMat, Color, Shape, PointLight, Camera3D, RenderProgram{DefaultProgram}, RenderProgram{DefaultInstancedProgram}), (RenderPass{DefaultPass}, RenderTarget{IOTarget}))
+	System{DefaultRenderer}(dio, (Vao{DefaultProgram},
+								  Vao{DefaultInstancedProgram},
+								  ProgramTag{DefaultProgram},
+								  ProgramTag{DefaultInstancedProgram},
+								  Spatial,
+								  Material,
+								  ModelMat,
+								  Color,
+								  Shape,
+								  PointLight,
+								  Camera3D), (RenderPass{DefaultPass},
+								  			  RenderTarget{IOTarget},
+								  			  RenderProgram{DefaultProgram},
+								  			  RenderProgram{DefaultInstancedProgram}))
 
 function set_uniform(program::GLA.Program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
@@ -267,8 +278,11 @@ function update(renderer::System{DefaultRenderer})
 	shape      = comp(Shape)
 	ucolor     = comp(UniformColor)
 	fcolor     = comp(FuncColor)
-	prog       = scomp(RenderProgram{DefaultProgram})
-	iprog      = scomp(RenderProgram{DefaultInstancedProgram})
+	prog       = singleton(renderer, RenderProgram{DefaultProgram})
+	progtag    = comp(ProgramTag{DefaultProgram})
+	iprog      = singleton(renderer, RenderProgram{DefaultInstancedProgram})
+	iprogtag   = comp(ProgramTag{DefaultInstancedProgram})
+    ufunc      = set_entity_uniforms_func(prog, renderer)
 
 	light      = comp(PointLight)
 	camera     = comp(Camera3D)
@@ -281,50 +295,35 @@ function update(renderer::System{DefaultRenderer})
 	glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
 
-	for program in iprog.shared 
-		bind(program)
-	    for i in valid_entities(light, ucolor) #TODO assign program to lights
-		    set_uniform(program, light[i], ucolor[i])
-	    end
-	    for i in valid_entities(camera, spatial)
-		    set_uniform(program, spatial[i], camera[i])
-	    end
-		for vao in ivao.shared
-			GLA.bind(vao.vertexarray)
-			GLA.draw(vao.vertexarray)
-		end
+	bind(iprog)
+    for i in valid_entities(light, ucolor)
+	    set_uniform(iprog, light[i], ucolor[i])
+    end
+    for i in valid_entities(camera, spatial)
+	    set_uniform(iprog, spatial[i], camera[i])
+    end
+	for vao in ivao.shared
+		GLA.bind(vao.vertexarray)
+		GLA.draw(vao.vertexarray)
 	end
-	for program in prog.shared 
-		bind(program)
-	    for i in valid_entities(light, ucolor) #TODO assign program to lights
-		    set_uniform(program, light[i], ucolor[i])
-	    end
-	    for i in valid_entities(camera, spatial)
-		    set_uniform(program, spatial[i], camera[i])
-	    end
 
-		prog_ids   = shared_entities(prog, program)
-		es         = intersect(valid_entities(vao, spatial, material, shape, modelmat), prog_ids)
-		if isempty(es)
-			continue
-		end
-		for e in es
-			evao   = vao[e]
-			ematerial = material[e]
-			espatial  = spatial[e]
-			eshape    = shape[e]
-			set_uniform(program, :specpow, ematerial.specpow)
-			set_uniform(program, :specint, ematerial.specint)
-			set_uniform(program, :modelmat, modelmat[e].modelmat)
-			if has_entity(ucolor, e)
-				set_uniform(program, :uniform_color, ucolor[e].color)
-				set_uniform(program, :is_uniform, true)
-			elseif has_entity(fcolor, e)
-				set_uniform(program, :is_uniform, false)
-			end
-			GLA.bind(evao.vertexarray)
-			GLA.draw(evao.vertexarray)
-		end
+	bind(prog)
+    for i in valid_entities(light, ucolor) #TODO assign prog to lights
+	    set_uniform(prog, light[i], ucolor[i])
+    end
+    for i in valid_entities(camera, spatial)
+	    set_uniform(prog, spatial[i], camera[i])
+    end
+
+	es = valid_entities(vao, spatial, material, shape, modelmat, progtag)
+	if isempty(es)
+		return
+	end
+	for e in es
+		evao   = vao[e]
+		ufunc(e)
+		GLA.bind(evao.vertexarray)
+		GLA.draw(evao.vertexarray)
 	end
 end
 
@@ -332,9 +331,24 @@ rem1(x, y) = (x - 1) % y + 1
 struct DepthPeelingRenderer <: RenderSystem end
 
 depth_peeling_render_system(dio::Diorama) =
-	System{DepthPeelingRenderer}(dio, (Vao{PeelingProgram}, Vao{PeelingInstancedProgram}, ModelMat, Spatial, Material, Shape, Color, PointLight, Camera3D, RenderProgram{PeelingProgram}, RenderProgram{PeelingInstancedProgram}), (RenderPass{DepthPeelingPass}, RenderTarget{IOTarget}, FullscreenVao))
+	System{DepthPeelingRenderer}(dio, (Vao{PeelingProgram},
+								       Vao{PeelingInstancedProgram},
+								       ProgramTag{PeelingProgram},
+								       ProgramTag{PeelingInstancedProgram},
+								       ModelMat,
+								       Spatial,
+								       Material,
+								       Shape,
+								       Color,
+								       PointLight,
+								       Camera3D,), (RenderPass{DepthPeelingPass},
+								       				RenderTarget{IOTarget},
+								       				FullscreenVao,
+								       				RenderProgram{PeelingProgram},
+								       				RenderProgram{PeelingInstancedProgram}))
 
 function update(renderer::System{DepthPeelingRenderer})
+
 	comp(T)  = component(renderer, T)
 	scomp(T) = shared_component(renderer, T)
 
@@ -346,8 +360,12 @@ function update(renderer::System{DepthPeelingRenderer})
 	modelmat = comp(ModelMat)
 	ucolor   = comp(UniformColor)
 	fcolor   = comp(FuncColor)
-	prog     = scomp(RenderProgram{PeelingProgram})
-	iprog    = scomp(RenderProgram{PeelingInstancedProgram})
+	peeling_program  = singleton(renderer, RenderProgram{PeelingProgram})
+	ipeeling_program = singleton(renderer, RenderProgram{PeelingInstancedProgram})
+	progtag  = comp(ProgramTag{PeelingProgram})
+	iprogtag = comp(ProgramTag{PeelingInstancedProgram})
+
+	ufunc = set_entity_uniforms_func(peeling_program, renderer)
 
 	light    = comp(PointLight)
 	camera   = comp(Camera3D)
@@ -381,44 +399,15 @@ function update(renderer::System{DepthPeelingRenderer})
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
 	# #TODO hack !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	render_separate  = !isempty(prog.shared)
-	render_instanced = !isempty(iprog.shared)
-	peeling_program = nothing
-	if render_separate
-		peeling_program  = prog.shared[1]
-	end
-	ipeeling_program = nothing
-	if render_instanced
-		ipeeling_program = iprog.shared[1]
-	end
-	prog_ids = Int[]
-	separate_entitites = Int[]
-	if render_separate
-		prog_ids           = shared_entities(prog, peeling_program)
-		separate_entities  = intersect(valid_entities(vao, spatial, material, shape, modelmat), prog_ids)
-	end
-	# instanced_entities = intersect(valid_entities(ivao), prog_ids)
-
-	function set_entity_uniforms(i)
-		ematerial = material[i]
-		espatial  = spatial[i]
-		eshape    = shape[i]
-		set_uniform(peeling_program, :specpow, ematerial.specpow)
-		set_uniform(peeling_program, :specint, ematerial.specint)
-		set_uniform(peeling_program, :modelmat, modelmat[i].modelmat)
-		if has_entity(ucolor, i)
-			set_uniform(peeling_program, :uniform_color, ucolor[i].color)
-			set_uniform(peeling_program, :is_uniform, true)
-		elseif has_entity(fcolor, i)
-			set_uniform(peeling_program, :is_uniform, false)
-		end
-	end
-
+	separate_entities  = valid_entities(vao, spatial, material, shape, modelmat, progtag)
+	instanced_entities = valid_entities(ivao)
+	render_separate  = !isempty(separate_entities)
+	render_instanced = !isempty(instanced_entities)
 	function renderall_separate()
 		#render all separate ones first
 		for i in separate_entities
 			evao   = vao[i]
-			set_entity_uniforms(i)
+			ufunc(i)
 			GLA.bind(evao.vertexarray)
 			GLA.draw(evao.vertexarray)
 		end
@@ -433,7 +422,7 @@ function update(renderer::System{DepthPeelingRenderer})
 
 	# first pass: Render all the transparent stuff
 	# separate
-	if render_separate 
+	if render_separate
 	    bind(peeling_program)
 	    for i in valid_entities(light, ucolor)
 		    set_uniform(peeling_program, light[i], ucolor[i])
@@ -526,7 +515,6 @@ function update(renderer::System{DepthPeelingRenderer})
     bind(fullscreenvao)
     draw(fullscreenvao)
     glFlush()
-
 end
 
 struct FinalRenderer <: RenderSystem end
