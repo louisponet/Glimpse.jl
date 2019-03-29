@@ -89,7 +89,7 @@ function update(sys::System{UniformCalculator})
 	modelmat = comp(ModelMat)
 	
 	dynamic_entities = valid_entities(dyn)
-	already_filled    = valid_entities(modelmat)
+	already_filled   = valid_entities(modelmat)
 	es               = valid_entities(spatial, shape)
 	for e in setdiff(es, already_filled)	 
 		modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
@@ -226,13 +226,7 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstance
 	end
 end
 
-
-
-
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
-
-
-
 abstract type RenderSystem  <: SystemKind   end
 struct DefaultRenderer      <: RenderSystem end
 
