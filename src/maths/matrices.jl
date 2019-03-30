@@ -190,7 +190,7 @@ function projmatortho(
     ) where T
     (right==left || bottom==top || znear==zfar) && return eye(Mat{4,4,T})
     T0, T1, T2 = zero(T), one(T), T(2)
-    Mat{4}(
+    return Mat4{T}(
         T2/(right-left), T0, T0,  T0,
         T0, T2/(top-bottom), T0,  T0,
         T0, T0, -T2/(zfar-znear), T0,

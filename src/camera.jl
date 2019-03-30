@@ -10,7 +10,7 @@ function projmat(x::CamKind, w::Int, h::Int, near::T, far::T, fov::T) where T
     if x == pixel
         return eye(T,4)
     elseif x == orthographic
-        return projmatortho(w, h, near, far)
+	    return projmatortho(Float32, -w, w, -h, h, near, far)
     else
         return projmatpersp(w, h, fov, near, far)
     end
