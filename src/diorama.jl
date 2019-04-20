@@ -15,9 +15,10 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     def_inst_prog      = RenderProgram{DefaultInstancedProgram}(GLA.Program(default_instanced_shaders()))
     peel_prog          = RenderProgram{PeelingProgram}(GLA.Program(peeling_shaders()))
     peel_inst_prog     = RenderProgram{PeelingInstancedProgram}(GLA.Program(peeling_instanced_shaders()))
+    updated_components  = UpdatedComponents(DataType[])
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog], System[])
+	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
     						FunctionGeometry,
@@ -51,6 +52,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 						 resizer_system(dio),
                          mesher_system(dio),
                          uniform_calculator_system(dio),
+                         uniform_uploader_system(dio),
 			             default_uploader_system(dio),
 			             default_instanced_uploader_system(dio),
 			             peeling_uploader_system(dio),
@@ -72,6 +74,8 @@ end
 # darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
 # lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
 
+#This is kind of like a try catch command to execute only when a valid canvas is attached to the diorama
+#i.e All GL calls should be inside one of these otherwise it might be bad.
 function canvas_command(dio::Diorama, command::Function, catchcommand = x -> nothing)
 	canvas = singleton(dio, Canvas)
 	if canvas != nothing
@@ -99,11 +103,13 @@ function renderloop(dio)
 			    bind(iofbo)
 			    draw(iofbo)
 			    clear!(iofbo)
-		        for sys in dio.systems
+			    empty!(singleton(dio, UpdatedComponents))
+		        for sys in engaged_systems(dio)
 			        update(sys)
 		        end
 		        swapbuffers(canvas)
 		    end
+		    close(canvas)
 		    should_close!(canvas, false)
 			dio.loop = nothing
 		end
@@ -122,7 +128,6 @@ function reload(dio::Diorama)
 	    end
     )
 end
-
 close(dio::Diorama) = canvas_command(dio, c -> should_close!(c, true))
 free!(dio::Diorama) = canvas_command(dio, c -> free!(c))
 
@@ -333,7 +338,7 @@ function has_components(e::Entity, components::Vector{<:Component})
 	return c == length(component_ids)
 end
 
-
+engaged_systems(dio) = filter(x->x.engaged, dio.systems)
 
 # function reupload(::Diorama)
 # 	renderables = fi(x -> x.should_upload, dio.renderables)

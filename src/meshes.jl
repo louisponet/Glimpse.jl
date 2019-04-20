@@ -55,7 +55,7 @@ function generate_buffers(program::Program, mesh::BasicMesh)
     for n in (:vertices, :normals)
         loc = attribute_location(program, n)
         if loc != INVALID_ATTRIBUTE
-            push!(buffers, BufferAttachmentInfo(loc, Buffer(getfield(mesh, n)), GEOMETRY_DIVISOR))
+            push!(buffers, BufferAttachmentInfo(n, loc, Buffer(getfield(mesh, n)), GEOMETRY_DIVISOR))
         end
     end
     return buffers
@@ -69,9 +69,9 @@ function generate_buffers(program::Program, mesh::AttributeMesh{AT}) where AT
         if loc != INVALID_ATTRIBUTE
             vallen = length(val)
             if vallen == buflen
-                push!(buffers, BufferAttachmentInfo(loc, Buffer(val), GEOMETRY_DIVISOR))
+                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(val), GEOMETRY_DIVISOR))
             elseif !isa(val, Vector)
-                push!(buffers, BufferAttachmentInfo(loc, Buffer(fill(val, buflen)), GEOMETRY_DIVISOR))
+                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(fill(val, buflen)), GEOMETRY_DIVISOR))
             end
         end
     end

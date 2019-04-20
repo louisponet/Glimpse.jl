@@ -80,23 +80,26 @@ function update(sys::System{Resizer})
 end
 
 struct UniformCalculator <: SystemKind end
-uniform_calculator_system(dio::Diorama) = System{UniformCalculator}(dio, (Spatial, Shape, ModelMat, Dynamic), ())
+uniform_calculator_system(dio::Diorama) = System{UniformCalculator}(dio, (Spatial, Shape, ModelMat, Dynamic), (UpdatedComponents,))
 function update(sys::System{UniformCalculator})
 	comp(T) = component(sys, T) 
 	spatial  = comp(Spatial)
 	shape    = comp(Shape)
 	dyn      = comp(Dynamic)
 	modelmat = comp(ModelMat)
-	
 	dynamic_entities = valid_entities(dyn)
 	already_filled   = valid_entities(modelmat)
 	es               = valid_entities(spatial, shape)
 	for e in setdiff(es, already_filled)	 
 		modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
 	end
-	
-	for e in es ∩ dynamic_entities
-		overwrite!(modelmat, ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale))), e)
+	# Updating uniforms if it's updated
+	uc       = singleton(sys, UpdatedComponents)
+	if Spatial in uc || Shape in uc
+		push!(singleton(sys, UpdatedComponents), ModelMat)
+		for e in es ∩ dynamic_entities
+			overwrite!(modelmat, ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale))), e)
+		end
 	end
 end
 
@@ -160,9 +163,9 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram,
 	for (m, entities) in zip((mesh, smesh), (mesh_entities, smesh_entities))
 		for e in entities
 			if e ∈ bcol_entities
-			    vao[e] = Vao{K}(VertexArray([generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color)], faces(m[e].mesh).-GLint(1)), e)
+			    vao[e] = Vao{K}(VertexArray([generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color)], faces(m[e].mesh).-GLint(1)), e, true)
 		    else
-			    vao[e] = Vao{K}(VertexArray(prog.program, m[e].mesh, ), e)
+			    vao[e] = Vao{K}(VertexArray(generate_buffers(prog.program, m[e].mesh),faces(m[e].mesh).-GLint(1)), e, true)
 		    end
 	    end
 	end
@@ -218,7 +221,7 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstance
 			end
 			tprog = iprog.program
 			tmesh = smesh[t_es[1]].mesh
-		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1))
+		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1, true))
 		    for e in t_es
 			    ivao.data[e] = length(ivao.shared)
 		    end
@@ -226,9 +229,45 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstance
 	end
 end
 
+struct UniformUploader <: SystemKind end
+uniform_uploader_system(dio::Diorama) = System{UniformUploader}(dio, (Vao{DefaultInstancedProgram},
+                                                                      Vao{PeelingInstancedProgram},
+                                                                      ModelMat),
+                                                                     (UpdatedComponents,))
+
+function update(sys::System{UniformUploader})
+	uc = singleton(sys, UpdatedComponents)
+	dvao = shared_component(sys, Vao{DefaultInstancedProgram})
+	pvao = shared_component(sys, Vao{PeelingInstancedProgram})
+
+	mat = component(sys, ModelMat)
+	mat_entities = valid_entities(mat)
+	if ModelMat in uc.components
+		upload = instanced_vao -> begin
+			for v in instanced_vao.shared
+				eids = shared_entities(instanced_vao, v) ∩ mat_entities 
+				modelmats = Vector{Mat4f0}(undef, length(eids))
+				for (i, eid)  in enumerate(eids)
+					modelmats[i] = mat[eid].modelmat
+				end
+				if !isempty(modelmats)
+					binfo = GLA.bufferinfo(v.vertexarray, :modelmat)
+					if binfo != nothing
+						GLA.upload_buffer_data!(binfo.buffer, modelmats)
+					end
+				end
+			end
+		end
+		upload(dvao)
+		upload(pvao)
+	end
+end
+
+
+
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
-abstract type RenderSystem  <: SystemKind   end
-struct DefaultRenderer      <: RenderSystem end
+abstract type AbstractRenderSystem  <: SystemKind   end
+struct DefaultRenderer      <: AbstractRenderSystem end
 
 default_render_system(dio::Diorama) =
 	System{DefaultRenderer}(dio, (Vao{DefaultProgram},
@@ -298,8 +337,10 @@ function update(renderer::System{DefaultRenderer})
     set_light_camera_uniforms(iprog)
     
 	for vao in ivao.shared
-		GLA.bind(vao.vertexarray)
-		GLA.draw(vao.vertexarray)
+		if vao.visible
+			GLA.bind(vao.vertexarray)
+			GLA.draw(vao.vertexarray)
+		end
 	end
 
 	bind(prog)
@@ -308,14 +349,16 @@ function update(renderer::System{DefaultRenderer})
 	es = valid_entities(vao, spatial, material, shape, modelmat, progtag)
 	for e in es
 		evao   = vao[e]
-		ufunc(e)
-		GLA.bind(evao.vertexarray)
-		GLA.draw(evao.vertexarray)
+		if evao.visible
+			ufunc(e)
+			GLA.bind(evao.vertexarray)
+			GLA.draw(evao.vertexarray)
+		end
 	end
 end
 
 rem1(x, y) = (x - 1) % y + 1
-struct DepthPeelingRenderer <: RenderSystem end
+struct DepthPeelingRenderer <: AbstractRenderSystem end
 
 depth_peeling_render_system(dio::Diorama) =
 	System{DepthPeelingRenderer}(dio, (Vao{PeelingProgram},
@@ -393,16 +436,20 @@ function update(renderer::System{DepthPeelingRenderer})
 		#render all separate ones first
 		for i in separate_entities
 			evao   = vao[i]
-			ufunc(i)
-			GLA.bind(evao.vertexarray)
-			GLA.draw(evao.vertexarray)
+			if evao.visible
+				ufunc(i)
+				GLA.bind(evao.vertexarray)
+				GLA.draw(evao.vertexarray)
+			end
 		end
 	end
 
 	function renderall_instanced()
 		for evao in ivao.shared
-			GLA.bind(evao.vertexarray)
-			GLA.draw(evao.vertexarray)
+			if evao.visible
+				GLA.bind(evao.vertexarray)
+				GLA.draw(evao.vertexarray)
+			end
 		end
 	end
 
@@ -496,7 +543,7 @@ function update(renderer::System{DepthPeelingRenderer})
     glFlush()
 end
 
-struct FinalRenderer <: RenderSystem end
+struct FinalRenderer <: AbstractRenderSystem end
 final_render_system(dio) = System{FinalRenderer}(dio, (), (RenderPass{FinalPass}, Canvas, RenderTarget{IOTarget}, FullscreenVao))
 
 function update(sys::System{FinalRenderer})

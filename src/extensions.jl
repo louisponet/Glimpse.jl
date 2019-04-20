@@ -10,23 +10,16 @@ const fullscreen_pos = [Vec3f0(-1, 1, 0), Vec3f0(-1, -1, 0),
 const fullscreen_uv = [Vec2f0(0, 1), Vec2f0(0, 0),
                        Vec2f0(1, 1), Vec2f0(1, 0)]
 
-#This is to be used with composite program
-function compositing_vertexarray(program::Program)
-    uv       = attribute_location(program, :uv)
-    position = attribute_location(program, :position)
-    VertexArray([Buffer(fullscreen_pos) => position,
-                 Buffer(fullscreen_uv) => uv],
-                nothing;
-                facelength=5)
-end
 fullscreen_vertexarray() =
-    VertexArray([BufferAttachmentInfo(GLint(0),
-                                       Buffer(fullscreen_pos),
-                                       GEOMETRY_DIVISOR),
-                 BufferAttachmentInfo(GLint(1),
-                                       Buffer(fullscreen_uv),
-                                       GEOMETRY_DIVISOR)],
-                5)
+    VertexArray([BufferAttachmentInfo(:position,
+                                      GLint(0),
+                                      Buffer(fullscreen_pos),
+                                      GEOMETRY_DIVISOR),
+                 BufferAttachmentInfo(:uv,
+                                      GLint(1),
+                                      Buffer(fullscreen_uv),
+                                      GEOMETRY_DIVISOR)],
+                 5)
 
 #REVIEW: not used
 function glenum2julia(x::UInt32)
@@ -158,9 +151,9 @@ function generate_buffers(program::Program, divisor::GLint; name_buffers...)
 	        buflen = buflen == 0 ? length(val) : buflen 
             vallen = length(val)
             if vallen == buflen
-                push!(buffers, BufferAttachmentInfo(loc, Buffer(val), divisor))
+                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(val), divisor))
             elseif !isa(val, Vector)
-                push!(buffers, BufferAttachmentInfo(loc, Buffer(fill(val, buflen)), divisor))
+                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(fill(val, buflen)), divisor))
             end
         end
     end

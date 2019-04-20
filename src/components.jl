@@ -56,10 +56,12 @@ abstract type ProgramKind end
 struct ProgramTag{P <: ProgramKind} <: ComponentData
 end
 
-struct Vao{P <: ProgramKind} <: ComponentData
+Base.@kwdef struct Vao{P <: ProgramKind} <: ComponentData
 	vertexarray::VertexArray
 	meshID     ::Int
+	visible    ::Bool = true
 end
+programkind(::Vao{P}) where {P} = P
 
 # NON rendering Components
 struct Dynamic <: ComponentData end
@@ -95,7 +97,7 @@ struct DirectionLight <: ComponentData
     ambient  ::Float32
 end
 
-mutable struct Camera3D <: ComponentData
+struct Camera3D <: ComponentData
     lookat ::Vec3f0
     up     ::Vec3f0
     right  ::Vec3f0

@@ -6,20 +6,22 @@ using Reexport
 using FixedPointNumbers
 using ModernGL
 using Quaternions
+Base.length(::Type{<:RGBA}) = 4
 using GLAbstraction
 const GLA = GLAbstraction
 
 using LinearAlgebra
 using GLFW
 using Observables
+@reexport using Setfield
 include("extensions.jl")
 include("types.jl")
 include("entities.jl")
 include("systems.jl")
 include("utils.jl")
+include("color_utils.jl")
 include("maths/matrices.jl")
 include("maths/vecmath.jl")
-include("color_utils.jl")
 include("callbacks.jl")
 include("shader.jl")
 export default_shaders, default_instanced_shaders, transparency_shaders, peeling_shaders, compositing_shaders,

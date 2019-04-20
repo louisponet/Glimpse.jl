@@ -45,8 +45,9 @@ struct System{Kind <: SystemKind} #DT has the components datatypes
 	components::Vector{AbstractComponent}
 	requested_components # so that new components can be added as well
 	singletons::Vector{Singleton}
-	function System{Kind}(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}) where Kind
-		return new{Kind}(c, req, singletons)
+	engaged ::Bool
+	function System{Kind}(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}, engaged=true) where Kind
+		return new{Kind}(c, req, singletons, engaged)
 	end
 end
 

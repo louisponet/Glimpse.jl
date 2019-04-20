@@ -217,7 +217,7 @@ canvas_defaults() = SymAnyDict(:area       => Area(0, 0, standard_screen_resolut
                            	   :monitor    => nothing)
 
 import GLAbstraction: Program, Shader, FrameBuffer, Float24
-import GLAbstraction: context_framebuffer, start, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id, current_context
+import GLAbstraction: context_framebuffer, free!, bind, shadertype, uniform_names, separate, clear!, gluniform, set_uniform, depth_attachment, color_attachment, id, current_context
 #Do we really need the context if it is already in frambuffer and program?
 
 struct FullscreenVao <: Singleton
@@ -334,3 +334,12 @@ end
 
 GLA.bind(p::RenderProgram) = bind(p.program)
 GLA.set_uniform(p::RenderProgram, args...) = set_uniform(p.program, args...)
+
+struct UpdatedComponents <: Singleton
+	components::Vector{DataType}
+end
+
+Base.empty!(uc::UpdatedComponents) = empty!(uc.components)
+Base.push!(uc::UpdatedComponents, t::T) where {T<:ComponentData} = push!(uc.components, T)
+Base.push!(uc::UpdatedComponents, t::DataType) = push!(uc.components, t)
+Base.iterate(uc::UpdatedComponents, r...) = iterate(uc.components, r...)

@@ -74,7 +74,8 @@ function update(updater::System{Camera})
 		#world orientation/mouse stuff
 	    dx      = x - cam.mouse_pos[1]
 	    dy      = y - cam.mouse_pos[2]
-	    cam.mouse_pos = Vec(x, y)
+	    new_mouse_pos = Vec(x, y)
+	    new_lookat    = cam.lookat
 	    if mouse_button[2] == Int(PRESS)
 
 	        if mouse_button[1] == Int(MOUSE_BUTTON_1) #rotation
@@ -88,7 +89,7 @@ function update(updater::System{Camera})
 	        elseif mouse_button[1] == Int(MOUSE_BUTTON_2) #panning
 				rt          = cam.right * dx *0.5* cam.translation_speed
 				ut          = -cam.up   * dy *0.5* cam.translation_speed
-				cam.lookat += rt + ut
+				new_lookat += rt + ut
 				new_pos    += rt + ut
 	        end
         end
@@ -104,25 +105,33 @@ function update(updater::System{Camera})
 	    end
 
 	    #resize stuff
-	    cam.proj      = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
+	    new_proj = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
 
 	    #scroll stuff no dx
-	    translation   = Point3f0(calcforward(new_pos, cam) * (scroll_dy - cam.scroll_dy)* cam.translation_speed * norm(new_pos - cam.lookat))
-	    cam.scroll_dy = scroll_dy
-	    new_pos      += translation
+	    new_forward   = forward(new_pos, new_lookat)
+	    new_scroll_dy = scroll_dy
+	    new_pos      += Point3f0(new_forward * (scroll_dy - cam.scroll_dy) * cam.translation_speed)
 
 		# update_viewmat
-	    cam.right     = calcright(new_pos, cam)
-	    cam.up        = calcup(new_pos, cam)
-	    cam.view      = lookatmat(new_pos, cam.lookat, cam.up)
-	    cam.projview  = cam.proj * cam.view
-		spatial[i]    = Spatial(new_pos, spat.velocity)
+		u_forward    = normalize(new_forward)
+	    new_right    = unitright(u_forward, cam.up)
+	    new_up       = unitup(u_forward, new_right)
+	    new_view     = lookatmat(new_pos, new_lookat, new_up)
+	    new_projview = new_proj * new_view
+		spatial[i]   = @set spat.position = new_pos
+		overwrite!(camera, Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
+		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed,
+		                            new_mouse_pos, cam.scroll_dx, new_scroll_dy), i)
     end
 end
 
-calcforward(position, cam::Camera3D) = normalize(cam.lookat-position)
-calcright(position, cam::Camera3D)   = normalize(cross(calcforward(position, cam), cam.up))
-calcup(position, cam::Camera3D)      = -normalize(cross(calcforward(position, cam), cam.right))
+unitforward(position, lookat) = normalize(forward(position, lookat))
+unitright(forward, up)        = normalize(right(forward, up))
+unitup(forward, right)        = normalize(up(forward, right))
+
+forward(position, lookat) = lookat - position
+right(forward, up)        = cross(forward, up)
+up(forward, right)        = cross(right, forward)
 
 
 #maybe it would be better to make the eyepos up etc vectors already vec4 but ok
