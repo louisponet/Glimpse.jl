@@ -236,6 +236,23 @@ system(dio::Diorama, ::Type{T}) where {T <: SystemKind} =
 	getfirst(x -> eltype(x) <: T, dio.systems)
 
 add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
+
+insert_system!(dio::Diorama, i::Int, sys::System) = insert!(dio.systems, i, sys)
+
+function insert_system_after!(dio::Diorama, ::Type{T}, sys::System) where {T<:SystemKind}
+	id = findfirst(x -> eltype(x) <: T, dio.systems)
+	if id != nothing
+		insert!(dio.systems, id + 1, sys)
+	end
+end
+
+function insert_system_before!(dio::Diorama, ::Type{T}, sys::System) where {T<:SystemKind}
+	id = findfirst(x -> eltype(x) <: T, dio.systems)
+	if id != nothing
+		insert!(dio.systems, id - 1, sys)
+	end
+end
+
 function remove_system!(dio::Diorama, ::Type{T}) where {T <: SystemKind}
 	sysids = findall(x -> eltype(x) <: T, dio.systems)
 	deleteat!(dio.systems, sysids)

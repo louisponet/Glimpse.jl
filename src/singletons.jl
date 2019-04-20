@@ -343,3 +343,9 @@ Base.empty!(uc::UpdatedComponents) = empty!(uc.components)
 Base.push!(uc::UpdatedComponents, t::T) where {T<:ComponentData} = push!(uc.components, T)
 Base.push!(uc::UpdatedComponents, t::DataType) = push!(uc.components, t)
 Base.iterate(uc::UpdatedComponents, r...) = iterate(uc.components, r...)
+
+function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:ComponentData}
+	if !in(T, uc.components)
+		push!(uc, T)
+	end
+end

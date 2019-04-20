@@ -97,7 +97,7 @@ function update(updater::System{Camera})
 		#keyboard stuff
 	    if keyboard_button[3] == Int(PRESS) || keyboard_button[3] == Int(GLFW.REPEAT)
 	        if keyboard_button[1] in WASD_KEYS
-	            new_pos = Point3f0(wasd_event(new_pos, cam, keyboard_button))
+	            new_pos, new_lookat = wasd_event(new_pos, cam, keyboard_button)
 	        # elseif keyboard_button[1] == Int(KEY_Q)
 	            # cam.fov -= 1
 	            # cam.proj = projmatpersp( Area(0,0,standard_screen_resolution()...), cam.fov,0.1f0, 300f0)
@@ -110,7 +110,7 @@ function update(updater::System{Camera})
 	    #scroll stuff no dx
 	    new_forward   = forward(new_pos, new_lookat)
 	    new_scroll_dy = scroll_dy
-	    new_pos      += Point3f0(new_forward * (scroll_dy - cam.scroll_dy) * cam.translation_speed)
+	    new_pos      += Point3f0(new_forward * (scroll_dy - cam.scroll_dy) * cam.translation_speed/2)
 
 		# update_viewmat
 		u_forward    = normalize(new_forward)
@@ -138,31 +138,32 @@ up(forward, right)        = cross(right, forward)
 function wasd_event(position, cam::Camera3D, button)
     #ok this is a bit hacky but fine
     # origlen = norm(position)
+    new_lookat = cam.lookat
     if button[1] == Int(KEY_A)
 	    move        = cam.translation_speed * 5 * cam.right
         #the world needs to move in the opposite direction
         position   -= move
-        cam.lookat -= move
+        new_lookat -= move
 	end
     if button[1] == Int(KEY_D)
 	    move        = cam.translation_speed * 5 * cam.right
         position   += move
-        cam.lookat += move
+        new_lookat += move
 	end
     if button[1] == Int(KEY_W)
-	    move = calcforward(position, cam) * 5 * cam.translation_speed
+	    move = unitforward(position, cam.lookat) * 5 * cam.translation_speed
         position   += move
-        cam.lookat += move
+        new_lookat += move
 
 	end
     if button[1] == Int(KEY_S)
 
-	    move = calcforward(position, cam) * 5 * cam.translation_speed
+	    move = unitforward(position, cam.lookat) * 5 * cam.translation_speed
         position   -= move
-        cam.lookat -= move
+        new_lookat -= move
 
     end
-    return position
+    return position, new_lookat
 end
 
 #----------------------------------DEFAULTS----------------------------#
@@ -175,7 +176,7 @@ perspective_defaults() = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
                                                :near   => 0.1f0,
                                                :far    => 3000f0,
                                                :rotation_speed    => 0.001f0,
-                                               :translation_speed => 0.1f0)
+                                               :translation_speed => 0.5f0)
 orthographic_defaults() = perspective_defaults()
 pixel_defaults()        = merge(perspective_defaults(), Dict(
 								:fov  => 0f0,
