@@ -123,7 +123,7 @@ function projmatpersp(fovy::T, aspect::T, znear::T, zfar::T) where T
     w = T(h * aspect)
     return frustum(-w, w, -h, h, znear, zfar)
 end
-projmatpersp(w::Int, h::Int, fovy::T, znear::T, zfar::T) where T =
+projmatpersp(w::Integer, h::Integer, fovy::T, znear::T, zfar::T) where T =
     projmatpersp(fovy, T(w/h), znear, zfar)
 function projmatpersp(
         ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
@@ -180,7 +180,7 @@ function projmatortho(
     ) where T
     projmatortho(wh, T(near), T(far))
 end
-projmatortho(w::Int, h::Int, near::T, far::T) where T =
+projmatortho(w::Integer, h::Integer, near::T, far::T) where T =
     projmatortho(zero(T), T(w), zero(T), T(h), near, far)
 
 function projmatortho(
@@ -307,3 +307,16 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     half = normalize(u+v)
     return Quaternions.Quaternion(dot(u, half), cross(u, half)...)
 end
+
+function projmat(x::CamKind, w::Integer, h::Integer, near::T, far::T, fov::T) where T
+    if x == pixel
+        return eye(T,4)
+    elseif x == orthographic
+	    return projmatortho(Float32, -w, w, -h, h, near, far)
+    else
+        return projmatpersp(w, h, fov, near, far)
+    end
+end
+
+projmat(x::CamKind, wh::SimpleRectangle, args...) =
+    projmat(x, wh.w, wh.h, args...)

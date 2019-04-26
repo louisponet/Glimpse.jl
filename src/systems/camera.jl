@@ -1,51 +1,9 @@
-import GLFW: GetMouseButton, SetCursorPosCallback, SetKeyCallback, SetWindowSizeCallback, SetFramebufferSizeCallback,
-             SetScrollCallback
 import GLFW: MOUSE_BUTTON_1, MOUSE_BUTTON_2, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, PRESS
-import GeometryTypes: Vec, Mat
+# import GeometryTypes: Vec, Mat
 
 const WASD_KEYS = Int.([KEY_W, KEY_A, KEY_S, KEY_D])
 
-
-function projmat(x::CamKind, w::Int, h::Int, near::T, far::T, fov::T) where T
-    if x == pixel
-        return eye(T,4)
-    elseif x == orthographic
-	    return projmatortho(Float32, -w, w, -h, h, near, far)
-    else
-        return projmatpersp(w, h, fov, near, far)
-    end
-end
-
-projmat(x::CamKind, wh::SimpleRectangle, args...) =
-    projmat(x, wh.w, wh.h, args...)
-
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
-
-function Camera3D(eyepos, lookat, up, right, area, fov, near, far, rotation_speed, translation_speed)
-    up    = normalizeperp(lookat - eyepos, up)
-    right = normalize(cross(lookat - eyepos, up))
-
-    viewm = lookatmat(eyepos, lookat, up)
-    projm = projmat(perspective, area, near, far, fov)
-    return Camera3D(lookat, up, right, fov, near, far, viewm, projm, projm * viewm, rotation_speed, translation_speed, Vec2f0(0), 0.0f0, 0.0f0)
-end
-
-function Camera3D(eyepos, lookat, up, right; overrides...)
-    defaults = mergepop_defaults!(perspective; overrides...)
-    return Camera3D(eyepos, lookat, up, right, defaults[:area], defaults[:fov], defaults[:near], defaults[:far], defaults[:rotation_speed], defaults[:translation_speed])
-end
-
-function Camera3D(eyepos; overrides...)
-    defaults = mergepop_defaults!(perspective, overrides...)
-    return Camera3D(eyepos, defaults[:lookat], defaults[:up], defaults[:right]; defaults...)
-end
-
-function Camera3D(; overrides...)
-    defaults = mergepop_defaults!(perspective, overrides...)
-    return Camera3D(defaults[:eyepos], defaults[:lookat], defaults[:up], defaults[:right]; defaults...)
-end
-
-
 abstract type InteractiveSystem <: SystemKind end
 struct Camera <: InteractiveSystem end
 
@@ -164,40 +122,4 @@ function wasd_event(position, cam::Camera3D, button)
 
     end
     return position, new_lookat
-end
-
-#----------------------------------DEFAULTS----------------------------#
-perspective_defaults() = Dict{Symbol, Any}(:eyepos => Vec3(0f0, -1f0, 0f0),
-                                               :lookat => Vec3(0f0,  0f0, 0f0),
-                                               :up     => Vec3(0f0,  0f0, 1f0),
-                                               :right  => Vec3(1f0,  0f0, 0f0),
-                                               :area   => Area(0,0,  standard_screen_resolution()...),
-                                               :fov    => 42f0,
-                                               :near   => 0.1f0,
-                                               :far    => 3000f0,
-                                               :rotation_speed    => 0.001f0,
-                                               :translation_speed => 0.5f0)
-orthographic_defaults() = perspective_defaults()
-pixel_defaults()        = merge(perspective_defaults(), Dict(
-								:fov  => 0f0,
-								:near => 0f0,
-								:far  => 0f0,
-								:rotation_speed    => 0f0,
-								:translation_speed => 0f0)
-								)
-
-function merge_defaults(x::CamKind; overrides...)
-    if x == orthographic
-        merge(orthographic_defaults(), overrides)
-    elseif x == perspective
-        merge(perspective_defaults(), overrides)
-    end
-end
-
-function mergepop_defaults!(x::CamKind; overrides...)
-    if x == orthographic
-        mergepop!(orthographic_defaults(), overrides)
-    elseif x == perspective
-        mergepop!(perspective_defaults(), overrides)
-    end
 end

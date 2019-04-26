@@ -46,8 +46,9 @@ struct System{Kind <: SystemKind} #DT has the components datatypes
 	requested_components # so that new components can be added as well
 	singletons::Vector{Singleton}
 	engaged ::Bool
+	indices ::Vector{Vector{Int}}
 	function System{Kind}(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}, engaged=true) where Kind
-		return new{Kind}(c, req, singletons, engaged)
+		return new{Kind}(c, req, singletons, engaged, Vector{Int}[])
 	end
 end
 
@@ -93,7 +94,6 @@ end
 include("components.jl")
 include("singletons.jl")
 include("meshes.jl")
-include("camera.jl")
 include("diorama.jl")
 
 

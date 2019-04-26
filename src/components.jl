@@ -97,21 +97,40 @@ struct DirectionLight <: ComponentData
     ambient  ::Float32
 end
 
-struct Camera3D <: ComponentData
-    lookat ::Vec3f0
-    up     ::Vec3f0
-    right  ::Vec3f0
-    fov    ::Float32
-    near   ::Float32
-    far    ::Float32
+const X_AXIS = Vec3f0(1.0f0, 0.0  , 0.0)
+const Y_AXIS = Vec3f0(0.0,   1.0f0, 0.0)
+const Z_AXIS = Vec3f0(0.0,   0.0  , 1.0f0)
+
+Base.@kwdef struct Camera3D <: ComponentData
+    lookat ::Vec3f0  = zero(Vec3f0)
+    up     ::Vec3f0  = Z_AXIS 
+    right  ::Vec3f0  = X_AXIS 
+    fov    ::Float32 = 42f0
+    near   ::Float32 = 0.1f0
+    far    ::Float32 = 3000f0
     view   ::Mat4f0
     proj        ::Mat4f0
     projview    ::Mat4f0
-    rotation_speed    ::Float32
-    translation_speed ::Float32
-    mouse_pos         ::Vec2f0
-    scroll_dx         ::Float32
-    scroll_dy         ::Float32
+    rotation_speed    ::Float32 = 0.001f0
+    translation_speed ::Float32 = 0.5f0
+    mouse_pos         ::Vec2f0  = zero(Vec2f0)
+    scroll_dx         ::Float32 = 0.0f0
+    scroll_dy         ::Float32 = 0.0f0
+end
+
+function Camera3D(width_pixels::Integer, height_pixels::Integer; eyepos = -10*Y_AXIS,
+													     lookat = zero(Vec3f0),
+                                                         up     = Z_AXIS,
+                                                         right  = X_AXIS,
+                                                         near   = 0.1f0,
+                                                         far    = 3000f0,
+                                                         fov    = 42f0)
+    up    = normalizeperp(lookat - eyepos, up)
+    right = normalize(cross(lookat - eyepos, up))
+
+    viewm = lookatmat(eyepos, lookat, up)
+    projm = projmat(perspective, width_pixels, height_pixels, near, far, fov)
+    return Camera3D(lookat=lookat, up=up, right=right, fov=fov, near=near, far=far, view=viewm, proj=projm, projview=projm * viewm) 
 end
 
 # Meshing and the like

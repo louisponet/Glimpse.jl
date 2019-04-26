@@ -66,8 +66,9 @@ assemble_file_mesh(file;position::Point3f0 = zero(Point3f0),
 		                                           Shape(scale),
 		                                           program)
 
-assemble_camera3d(eyepos  ::Point3f0,
-				  velocity::Vec3f0,
-				  args...) = (Spatial(eyepos, velocity),
-				              Camera3D(eyepos, args...))
+assemble_camera3d(width_pixels ::Int32,
+			      height_pixels::Int32; eyepos   = -10*Y_AXIS,
+			   					        velocity = zero(Vec3f0), kwargs...) = (Spatial(eyepos, velocity),
+	   					                                                      Camera3D(width_pixels, height_pixels;
+		                                                                                eyepos = eyepos, kwargs...))
 

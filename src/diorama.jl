@@ -65,7 +65,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 
 
 	new_entity!(dio, separate = [PointLight(), UniformColor(RGBA{Float32}(1.0))])
-	new_entity!(dio, separate = [assemble_camera3d(Point3f0(perspective_defaults()[:eyepos]), Vec3f0(0))...])
+	new_entity!(dio, separate = [assemble_camera3d(pixelsize(dio)...)...])
 	return dio
 end
 
@@ -104,7 +104,7 @@ function renderloop(dio)
 			    draw(iofbo)
 			    clear!(iofbo)
 			    empty!(singleton(dio, UpdatedComponents))
-		        for sys in engaged_systems(dio)
+		        @timeit to "updating all sys" for sys in engaged_systems(dio)
 			        update(sys)
 		        end
 		        swapbuffers(canvas)

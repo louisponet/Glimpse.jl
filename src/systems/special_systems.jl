@@ -16,7 +16,7 @@ function update(sys::System{Oscillator})
 	td     = singleton(sys, TimingData)
 	dt     = td.dtime
 	for spr in spring.shared
-		for e in shared_entities(spring, spr) ∩ sp_es
+		for e in shared_entities(spring, spr) ∩ sp_es 
 			e_spat   = spat[e]
 			e_spring = spr
 			v_prev   = e_spat.velocity
