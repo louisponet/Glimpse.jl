@@ -66,9 +66,9 @@ function update(sleeper::System{Sleeper})
 	curtime    = time()
 	sleep_time = sd.preferred_fps - (curtime - sd.time)
     st         = sleep_time - 0.002
-    # while (time() - curtime) < st
-    #     sleep(0.001) # sleep for the minimal amount of time
-    # end
+    while (time() - curtime) < st
+        sleep(0.001) # sleep for the minimal amount of time
+    end
 end
 
 struct Resizer <: SystemKind end

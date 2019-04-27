@@ -185,7 +185,7 @@ function Base.pointer(A::GappedVector, start_id::Int)
 			curstart = sid[1]
 		end
 	end
-	pointer(t_v, start_id - curstart)
+	pointer(t_v, start_id - curstart + 1)
 end
 
 #TODO Performance: this can be optimized quite a bit

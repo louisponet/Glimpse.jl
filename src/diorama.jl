@@ -107,7 +107,7 @@ function renderloop(dio)
 		        @timeit to "updating all sys" for sys in engaged_systems(dio)
 			        update(sys)
 		        end
-		        swapbuffers(canvas)
+		        @timeit to "swapping buffers" swapbuffers(canvas)
 		    end
 		    close(canvas)
 		    should_close!(canvas, false)
