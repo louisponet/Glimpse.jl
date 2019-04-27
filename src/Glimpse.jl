@@ -33,6 +33,7 @@ export default_shaders, default_instanced_shaders, transparency_shaders, peeling
 export windowsize, pixelsize, present
 include("geometries.jl")
 include("marching_cubes.jl")
+export RGBAf0
 #GLAbstraction exports
 
 
