@@ -111,7 +111,6 @@ function update_indices!(sys::System{Mesher})
  end
 
 function update(sys::System{Mesher})
-	@timeit to "mesher" begin
 	if all(isempty.(sys.indices))
 		return
 	end
@@ -166,6 +165,5 @@ function update(sys::System{Mesher})
 	for e in sys.indices[id_counter]
 		calc_mesh(densgeometry[e].geometry, densgeometry[e].iso, e)
 	end
-end
 end
 
