@@ -32,8 +32,8 @@ function Base.setindex!(c::SharedComponent,v, i)
 	c.data[i] = id
 end
 
-valid_entities(c::AbstractComponent)     = Iterators.flatten(ranges(c.data))
-valid_entities(cs::AbstractComponent...) = Iterators.flatten(ranges(data.(cs)...))
+valid_entities(c::AbstractComponent)     = collect(Iterators.flatten(ranges(c.data)))
+valid_entities(cs::AbstractComponent...) = collect(Iterators.flatten(ranges(data.(cs)...)))
 has_entity(c::AbstractComponent, entity) = has_index(c.data, entity)
 
 function shared_entities(c::SharedComponent{T}, dat::T) where T

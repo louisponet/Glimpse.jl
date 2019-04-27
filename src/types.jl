@@ -41,7 +41,7 @@ end
 
 abstract type SystemKind end
 
-struct System{Kind <: SystemKind} #DT has the components datatypes
+mutable struct System{Kind <: SystemKind} #DT has the components datatypes
 	components::Vector{AbstractComponent}
 	requested_components # so that new components can be added as well
 	singletons::Vector{Singleton}

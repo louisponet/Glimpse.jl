@@ -42,6 +42,8 @@ function singletons(sys::System, ::Type{T})::Vector{T} where {T <: Singleton}
 	return sys.singletons[singlids]
 end
 
+update_indices!(sys::System) = nothing
+
 #DEFAULT SYSTEMS
 abstract type SimulationSystem <: SystemKind end
 struct Timer <: SimulationSystem end 

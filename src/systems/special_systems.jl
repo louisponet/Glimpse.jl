@@ -9,18 +9,26 @@ struct Oscillator <: SystemKind end
 
 oscillator_system(dio) = System{Oscillator}(dio, (Spatial, Spring), (TimingData, UpdatedComponents))
 
+function update_indices!(sys::System{Oscillator})
+	sp_es  = valid_entities(component(sys, Spatial))
+	spring = shared_component(sys, Spring)
+	tids   = Vector{Int}[]
+	for spr in spring.shared
+		push!(tids,  shared_entities(spring, spr) ∩ sp_es)
+	end
+	sys.indices = tids
+end
+
 function update(sys::System{Oscillator})
 	spat   = component(sys, Spatial)
-	sp_es  = valid_entities(spat)
 	spring = shared_component(sys, Spring)
 	td     = singleton(sys, TimingData)
 	dt     = td.dtime
-	for spr in spring.shared
-		for e in shared_entities(spring, spr) ∩ sp_es 
+	for (is, spr) in enumerate(spring.shared)
+		Threads.@threads for e in sys.indices[is] 
 			e_spat   = spat[e]
-			e_spring = spr
 			v_prev   = e_spat.velocity
-			new_v    = v_prev - (e_spat.position - e_spring.center) * e_spring.k - v_prev * spr.damping
+			new_v    = v_prev - (e_spat.position - spr.center) * spr.k - v_prev * spr.damping
 			new_p    = e_spat.position + v_prev * dt
 			overwrite!(spat, Spatial(new_p, new_v), e)
 		end

@@ -152,17 +152,17 @@ nativewindow(c::Canvas) = c.native_window
 Base.size(canvas::Canvas)  = size(canvas.area)
 function Base.resize!(c::Canvas, wh::NTuple{2, Int}, resize_window=false)
 	resize!(context_framebuffer(), wh)
-    nw = c.native_window
-    area = c.area
-	w, h = wh
-    f = scaling_factor(c)
+    # nw = c.native_window
+    # area = c.area
+	# w, h = wh
+    # f = scaling_factor(c)
     # There was some performance issue with round.(Int, SVector) - not sure if resolved.
-    wf, hf = Int.(round.(f .* Vec(w, h)))
-    c.area = Area(area.x, area.y, wf, hf)
-    if resize_window
-        GLFW.SetWindowSize(c.native_window, wf, hf)
-    end
-    return c.area
+    # wf, hf = Int.(round.(f .* Vec(w, h)))
+    # c.area = Area(area.x, area.y, wf, hf)
+    # if resize_window
+        # GLFW.SetWindowSize(c.native_window, wf, hf)
+    # end
+    # return c.area
 end
 
 """

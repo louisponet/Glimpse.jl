@@ -1,6 +1,7 @@
 struct UniformCalculator <: SystemKind end
 uniform_calculator_system(dio::Diorama) = System{UniformCalculator}(dio, (Spatial, Shape, ModelMat, Dynamic), (UpdatedComponents,))
-function update(sys::System{UniformCalculator})
+
+function update_indices!(sys::System{UniformCalculator})
 	comp(T) = component(sys, T) 
 	spatial  = comp(Spatial)
 	shape    = comp(Shape)
@@ -9,14 +10,24 @@ function update(sys::System{UniformCalculator})
 	dynamic_entities = valid_entities(dyn)
 	already_filled   = valid_entities(modelmat)
 	es               = valid_entities(spatial, shape)
-	for e in setdiff(es, already_filled)	 
+	sys.indices = Vector{Int}[setdiff(es, already_filled),
+	                          es ∩ dynamic_entities]
+end
+
+function update(sys::System{UniformCalculator})
+	comp(T) = component(sys, T) 
+	spatial  = comp(Spatial)
+	shape    = comp(Shape)
+	dyn      = comp(Dynamic)
+	modelmat = comp(ModelMat)
+	for e in sys.indices[1]	 
 		modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
 	end
 	# Updating uniforms if it's updated
 	uc       = singleton(sys, UpdatedComponents)
 	if Spatial in uc || Shape in uc
 		push!(singleton(sys, UpdatedComponents), ModelMat)
-		for e in es ∩ dynamic_entities
+		Threads.@threads for e in sys.indices[2]
 			overwrite!(modelmat, ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale))), e)
 		end
 	end
@@ -154,20 +165,36 @@ uniform_uploader_system(dio::Diorama) = System{UniformUploader}(dio, (Vao{Defaul
                                                                       ModelMat),
                                                                      (UpdatedComponents,))
 
+function update_indices!(sys::System{UniformUploader})
+	mat_entities = valid_entities(component(sys, ModelMat))
+	dvao         = shared_component(sys, Vao{DefaultInstancedProgram})
+	pvao         = shared_component(sys, Vao{PeelingInstancedProgram})
+	tids = Vector{Int}[]
+	for v in dvao.shared 
+		push!(tids, shared_entities(dvao, v) ∩ mat_entities)
+	end
+	for v in pvao.shared 
+		push!(tids, shared_entities(pvao, v) ∩ mat_entities)
+	end
+	sys.indices = tids                       
+end
+
 function update(sys::System{UniformUploader})
+
 	uc = singleton(sys, UpdatedComponents)
 	dvao = shared_component(sys, Vao{DefaultInstancedProgram})
 	pvao = shared_component(sys, Vao{PeelingInstancedProgram})
 
 	mat = component(sys, ModelMat)
-	mat_entities = valid_entities(mat)
+	indices_id = 1
 	if ModelMat in uc.components
 		upload = instanced_vao -> begin
 			for v in instanced_vao.shared
-				eids = shared_entities(instanced_vao, v) ∩ mat_entities 
+				eids = sys.indices[indices_id]
+				indices_id += 1 
 				modelmats = Vector{Mat4f0}(undef, length(eids))
-				for (i, eid)  in enumerate(eids)
-					modelmats[i] = mat[eid].modelmat
+				Threads.@threads for i = 1:length(eids)
+					modelmats[i] = mat[eids[i]].modelmat
 				end
 				if !isempty(modelmats)
 					binfo = GLA.bufferinfo(v.vertexarray, :modelmat)
@@ -217,6 +244,20 @@ function set_uniform(program::GLA.Program, pointlight::PointLight, color::Unifor
     set_uniform(program, Symbol("plight.diff_intensity"),     pointlight.diffuse)
 end
 
+function update_indices!(sys::System{DefaultRenderer})
+	comp(T)  = component(sys, T)
+	spat     = comp(Spatial)
+	sys.indices = [valid_entities(comp(PointLight), comp(UniformColor)),
+                   valid_entities(comp(Camera3D), spat),
+		           valid_entities(comp(Vao{DefaultProgram}),
+		                          spat,
+		                          comp(Material),
+		                          comp(Shape),
+		                          comp(ModelMat),
+		                          comp(ProgramTag{DefaultProgram}))]                       
+end
+
+
 #maybe this should be splitted into a couple of systems
 function update(renderer::System{DefaultRenderer})
 	comp(T)  = component(renderer, T)
@@ -244,10 +285,10 @@ function update(renderer::System{DefaultRenderer})
     glDepthFunc(GL_LEQUAL)
 
 	function set_light_camera_uniforms(prog)
-	    for i in valid_entities(light, ucolor)
+	    for i in renderer.indices[1]
 		    set_uniform(prog, light[i], ucolor[i])
 	    end
-	    for i in valid_entities(camera, spatial)
+	    for i in renderer.indices[2]
 		    set_uniform(prog, spatial[i], camera[i])
 	    end
     end
@@ -265,8 +306,7 @@ function update(renderer::System{DefaultRenderer})
 	bind(prog)
 	set_light_camera_uniforms(prog)
 
-	es = valid_entities(vao, spatial, material, shape, modelmat, progtag)
-	for e in es
+	for e in renderer.indices[3]
 		evao   = vao[e]
 		if evao.visible
 			ufunc(e)
@@ -296,11 +336,23 @@ depth_peeling_render_system(dio::Diorama) =
 								       				RenderProgram{PeelingProgram},
 								       				RenderProgram{PeelingInstancedProgram}))
 
-function update(renderer::System{DepthPeelingRenderer})
+function update_indices!(sys::System{DepthPeelingRenderer})
+	comp(T)  = component(sys, T)
+	spat     = comp(Spatial)
+	sys.indices = [valid_entities(comp(PointLight), comp(UniformColor)),
+                   valid_entities(comp(Camera3D), spat),
+		           valid_entities(comp(Vao{PeelingProgram}),
+		                          spat,
+		                          comp(Material),
+		                          comp(Shape),
+		                          comp(ModelMat),
+		                          comp(ProgramTag{PeelingProgram})),                        
+                   valid_entities(shared_component(sys, Vao{PeelingInstancedProgram}))]
+end
 
+function update(renderer::System{DepthPeelingRenderer})
 	comp(T)  = component(renderer, T)
 	scomp(T) = shared_component(renderer, T)
-
 	vao      = comp(Vao{PeelingProgram})
 	ivao     = scomp(Vao{PeelingInstancedProgram})
 	spatial  = comp(Spatial)
@@ -347,8 +399,8 @@ function update(renderer::System{DepthPeelingRenderer})
     bind(fullscreenvao)
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
-	separate_entities  = valid_entities(vao, spatial, material, shape, modelmat, progtag)
-	instanced_entities = valid_entities(ivao)
+	separate_entities  = renderer.indices[3]
+	instanced_entities = renderer.indices[4]
 	render_separate  = !isempty(separate_entities)
 	render_instanced = !isempty(instanced_entities)
 	function renderall_separate()
@@ -374,10 +426,10 @@ function update(renderer::System{DepthPeelingRenderer})
 
 	function render_start(prog, renderfunc)
 	    bind(prog)
-	    for i in valid_entities(light, ucolor)
+	    for i in renderer.indices[1]
 		    set_uniform(prog, light[i], ucolor[i])
 	    end
-	    for i in valid_entities(camera, spatial)
+	    for i in renderer.indices[2]
 		    set_uniform(prog, spatial[i], camera[i])
 	    end
 

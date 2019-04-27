@@ -52,11 +52,11 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 						 resizer_system(dio),
                          mesher_system(dio),
                          uniform_calculator_system(dio),
-                         uniform_uploader_system(dio),
 			             default_uploader_system(dio),
 			             default_instanced_uploader_system(dio),
 			             peeling_uploader_system(dio),
 			             peeling_instanced_uploader_system(dio),
+                         uniform_uploader_system(dio),
 			             camera_system(dio),
 			             default_render_system(dio),
 			             depth_peeling_render_system(dio),
@@ -356,6 +356,16 @@ function has_components(e::Entity, components::Vector{<:Component})
 end
 
 engaged_systems(dio) = filter(x->x.engaged, dio.systems)
+
+function update_system_indices!(dio::Diorama)
+	for j = 1:2
+	for i=1:length(dio.systems) - 1
+		update(dio.systems[i])
+		update_indices!(dio.systems[i+1])
+	end
+end
+end
+
 
 # function reupload(::Diorama)
 # 	renderables = fi(x -> x.should_upload, dio.renderables)

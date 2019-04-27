@@ -25,7 +25,7 @@ Base.isempty(A::GappedVector) = length(A) == 0
 Base.empty!(A::GappedVector{T}) where T = (A.start_ids = Int[1]; A.data = [T[]])
 # Base.push!(A::GappedVector{T}, x) where T = A[end+1] = convert(T, x)
 
-@timeit to function Base.getindex(A::GappedVector, i::Int)
+function Base.getindex(A::GappedVector, i::Int)
 	for (s_id, bvec) in zip(A.start_ids, A.data)
 		if s_id <= i < s_id + length(bvec)
 			return bvec[i - s_id + 1]
@@ -34,7 +34,7 @@ Base.empty!(A::GappedVector{T}) where T = (A.start_ids = Int[1]; A.data = [T[]])
 	error("Gapped out of bounds.")
 end
 
-@timeit to function overwrite!(A::GappedVector{T}, v::T, i::Int) where T
+function overwrite!(A::GappedVector{T}, v::T, i::Int) where T
 	for (startid, bvec) in zip(A.start_ids, A.data)
 		endid   = startid + length(bvec)
 		if startid <= i < endid # overwrite
@@ -43,7 +43,7 @@ end
 	end
 end
 
-@timeit to function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
+function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
 	# conv_v = convert(T, v)
 	conv_v = v
 
@@ -179,7 +179,7 @@ end
 ranges(A::GappedVector) = [sid:sid + length(vec) - 1  for (sid, vec) in zip(A.start_ids, A.data)]
 ranges(As::GappedVector...) = find_overlaps(ranges.(As))
 
-@timeit to function find_overlaps(ranges)
+function find_overlaps(ranges)
 	out_ranges = UnitRange{Int}[]
 	for r1 in ranges[1], r2 in ranges[2]
 		tr = intersect(r1, r2)
@@ -190,7 +190,7 @@ ranges(As::GappedVector...) = find_overlaps(ranges.(As))
 	return out_ranges
 end
 
-@timeit to function find_overlaps(rangevecvec::Vector{Vector{UnitRange{Int}}})
+function find_overlaps(rangevecvec::Vector{Vector{UnitRange{Int}}})
 	rs = rangevecvec[1]
 	for rs2 in rangevecvec[2:end]
 		rs = find_overlaps(rs, rs2)
