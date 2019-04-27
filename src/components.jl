@@ -35,6 +35,7 @@ end
 valid_entities(c::AbstractComponent)     = collect(Iterators.flatten(ranges(c.data)))
 valid_entities(cs::AbstractComponent...) = collect(Iterators.flatten(ranges(data.(cs)...)))
 has_entity(c::AbstractComponent, entity) = has_index(c.data, entity)
+Base.pointer(c::AbstractComponent, id::Int) = pointer(c.data, id)
 
 function shared_entities(c::SharedComponent{T}, dat::T) where T
 	ids = Int[]

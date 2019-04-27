@@ -66,9 +66,9 @@ function update(sleeper::System{Sleeper})
 	curtime    = time()
 	sleep_time = sd.preferred_fps - (curtime - sd.time)
     st         = sleep_time - 0.002
-    while (time() - curtime) < st
-        sleep(0.001) # sleep for the minimal amount of time
-    end
+    # while (time() - curtime) < st
+    #     sleep(0.001) # sleep for the minimal amount of time
+    # end
 end
 
 struct Resizer <: SystemKind end
@@ -86,7 +86,35 @@ end
 struct Mesher <: SystemKind end
 mesher_system(dio) = System{Mesher}(dio, (Geometry, Color, Mesh, Grid), ())
 
+function update_indices!(sys::System{Mesher})
+	comp(T)  = component(sys, T)
+	scomp(T) = shared_component(sys, T)
+	polygon  = comp(PolygonGeometry)
+	file     = comp(FileGeometry)
+	mesh     = comp(Mesh)
+	spolygon = scomp(PolygonGeometry)
+	sfile    = scomp(FileGeometry)
+	smesh    = scomp(Mesh)
+	meshed_entities  = valid_entities(mesh)
+	funcgeometry  = comp(FunctionGeometry)
+	densgeometry  = comp(DensityGeometry)
+	grid          = scomp(Grid)
+	# cycledcolor   = comp(CycledColor)
+	tids = Vector{Int}[]
+	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file), (spolygon, sfile)))
+		for com in geomcomps
+			push!(tids, setdiff(valid_entities(com), valid_entities(meshcomp)))
+		end
+	end
+	sys.indices = [tids; [setdiff(valid_entities(funcgeometry, grid), meshed_entities),
+	                      setdiff(valid_entities(densgeometry, grid), meshed_entities)]]
+ end
+
 function update(sys::System{Mesher})
+	@timeit to "mesher" begin
+	if all(isempty.(sys.indices))
+		return
+	end
 	comp(T)  = component(sys, T)
 	scomp(T) = shared_component(sys, T)
 	#setup separate meshes
@@ -98,12 +126,13 @@ function update(sys::System{Mesher})
 	smesh    = scomp(Mesh)
 	meshed_entities  = valid_entities(mesh)
 	smeshed_entities = valid_entities(smesh)
-
+	id_counter = 1
 	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file), (spolygon, sfile)))
 		for com in geomcomps
-			for e in setdiff(valid_entities(com), valid_entities(meshcomp))
+			for e in sys.indices[id_counter]
 				meshcomp[e] = Mesh(BasicMesh(com[e].geometry))
 			end
+			id_counter += 1
 		end
 	end
 
@@ -129,12 +158,14 @@ function update(sys::System{Mesher})
 		mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
 	end
 
-	for e in setdiff(valid_entities(funcgeometry, grid), meshed_entities)
+	for e in sys.indices[id_counter] 
 		values        = funcgeometry[e].geometry.(grid[e].points)
 		calc_mesh(values, funcgeometry[e].iso, e)
+		id_counter += 1
 	end
-	for e in setdiff(valid_entities(densgeometry, grid), meshed_entities)
+	for e in sys.indices[id_counter]
 		calc_mesh(densgeometry[e].geometry, densgeometry[e].iso, e)
 	end
+end
 end
 

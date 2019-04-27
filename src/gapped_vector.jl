@@ -174,6 +174,19 @@ function Base.eachindex(A::GappedVector)
 	end
 end
 
+function Base.pointer(A::GappedVector, start_id::Int)
+	t_v = A.data[1]
+	curstart = A.start_ids[1][1]
+	for (sid, vec) in zip(A.start_ids, A.data)
+		if start_id < sid
+			break
+		else
+			t_v = vec
+			curstart = sid[1]
+		end
+	end
+	pointer(t_v, start_id - curstart)
+end
 
 #TODO Performance: this can be optimized quite a bit
 ranges(A::GappedVector) = [sid:sid + length(vec) - 1  for (sid, vec) in zip(A.start_ids, A.data)]

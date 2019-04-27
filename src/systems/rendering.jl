@@ -118,6 +118,22 @@ peeling_instanced_uploader_system(dio::Diorama) =
                                            			Vao{PeelingInstancedProgram},
                                            			ProgramTag{PeelingInstancedProgram},
                                            			),(RenderProgram{PeelingInstancedProgram},))
+function update_indices!(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstancedProgram, PeelingInstancedProgram}}
+	comp(T)  = component(uploader, T)
+	scomp(T) = shared_component(uploader, T)
+
+	smesh    = scomp(Mesh)
+	ivao     = scomp(Vao{K})
+	iprog    = singleton(uploader, RenderProgram{K})
+	iprogtag = comp(ProgramTag{K})
+	modelmat = comp(ModelMat)
+	material = comp(Material)
+	ucolor   = comp(UniformColor)
+	uploader.indices = [setdiff(valid_entities(iprogtag, smesh, modelmat, material, ucolor), valid_entities(ivao))]
+	for m in smesh.shared
+		push!(uploader.indices, shared_entities(smesh, m) ∩ uploader.indices[1])
+	end
+end
 
 function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstancedProgram, PeelingInstancedProgram}}
 	comp(T)  = component(uploader, T)
@@ -131,12 +147,12 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstance
 	material = comp(Material)
 	ucolor   = comp(UniformColor)
 
-	instanced_entities = setdiff(valid_entities(iprogtag, smesh, modelmat, material, ucolor), valid_entities(ivao))
+	instanced_entities = uploader.indices[1]
 	if isempty(instanced_entities)
 		return
 	end
-	for m in smesh.shared
-		t_es = shared_entities(smesh, m) ∩ instanced_entities
+	for (i, m) in enumerate(smesh.shared)
+		t_es = uploader.indices[i+1]
 		if !isempty(t_es)
 			modelmats = Vector{Mat4f0}(undef,  length(t_es))
 			ucolors   = Vector{RGBAf0}(undef,  length(t_es))
@@ -179,6 +195,23 @@ function update_indices!(sys::System{UniformUploader})
 	sys.indices = tids                       
 end
 
+function find_contiguous_bounds(indices)
+	ranges = UnitRange[]
+	i = 1
+	cur_start = indices[1]
+	while i <= length(indices) - 1
+		id = indices[i]
+		id_1 = indices[i + 1]
+		if id_1 - id != 1
+			push!(ranges, cur_start:id)
+			cur_start = id_1
+		end
+		i += 1
+	end
+	push!(ranges, cur_start:indices[end])
+	return ranges
+end
+
 function update(sys::System{UniformUploader})
 
 	uc = singleton(sys, UpdatedComponents)
@@ -186,20 +219,24 @@ function update(sys::System{UniformUploader})
 	pvao = shared_component(sys, Vao{PeelingInstancedProgram})
 
 	mat = component(sys, ModelMat)
+	matsize = sizeof(eltype(mat))
 	indices_id = 1
 	if ModelMat in uc.components
 		upload = instanced_vao -> begin
 			for v in instanced_vao.shared
 				eids = sys.indices[indices_id]
-				indices_id += 1 
-				modelmats = Vector{Mat4f0}(undef, length(eids))
-				Threads.@threads for i = 1:length(eids)
-					modelmats[i] = mat[eids[i]].modelmat
-				end
-				if !isempty(modelmats)
+				contiguous_ranges = find_contiguous_bounds(eids)
+				offset = 0
+				if !isempty(eids)
 					binfo = GLA.bufferinfo(v.vertexarray, :modelmat)
 					if binfo != nothing
-						GLA.upload_buffer_data!(binfo.buffer, modelmats)
+						GLA.bind(binfo.buffer)
+						for r in contiguous_ranges
+							s = length(r) * matsize
+							glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(mat, r[1]))
+							offset += s
+						end
+						GLA.unbind(binfo.buffer)
 					end
 				end
 			end

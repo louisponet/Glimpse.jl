@@ -151,9 +151,9 @@ function generate_buffers(program::Program, divisor::GLint; name_buffers...)
 	        buflen = buflen == 0 ? length(val) : buflen 
             vallen = length(val)
             if vallen == buflen
-                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(val), divisor))
+                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(val, usage=GL_DYNAMIC_DRAW), divisor))
             elseif !isa(val, Vector)
-                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(fill(val, buflen)), divisor))
+                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(fill(val, buflen), usage=GL_DYNAMIC_DRAW), divisor))
             end
         end
     end
