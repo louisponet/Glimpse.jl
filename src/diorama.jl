@@ -107,7 +107,6 @@ function renderloop(dio)
 		        for sys in engaged_systems(dio)
 			        update(sys)
 		        end
-		        swapbuffers(canvas)
 		    end
 		    close(canvas)
 		    should_close!(canvas, false)

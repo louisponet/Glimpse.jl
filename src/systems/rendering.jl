@@ -75,6 +75,18 @@ peeling_uploader_system(dio::Diorama) =
                                            ProgramTag{PeelingProgram},
                                            ), (RenderProgram{PeelingProgram},))
 
+function update_indices!(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram}}
+	comp(T)  = component(uploader, T)
+	scomp(T) = shared_component(uploader, T)
+
+	progtag  = comp(ProgramTag{K})
+
+	uploaded_entities = valid_entities(comp(Vao{K}))
+	uploader.indices  = [setdiff(valid_entities(progtag, scomp(Mesh)), uploaded_entities),
+	                     setdiff(valid_entities(progtag, comp(Mesh)),  uploaded_entities),
+	                     valid_entities(comp(BufferColor))]
+end
+
 function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram}}
 	comp(T)  = component(uploader, T)
 	scomp(T) = shared_component(uploader, T)
@@ -86,13 +98,9 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram,
 	progtag  = comp(ProgramTag{K})
 	smesh    = scomp(Mesh)
 
-	uploaded_entities = valid_entities(vao)
-	bcol_entities     = valid_entities(bcolor)
-	smesh_entities    = setdiff(valid_entities(progtag, smesh), uploaded_entities) 
-	mesh_entities     = setdiff(valid_entities(progtag, mesh),  uploaded_entities) 
-	for (m, entities) in zip((mesh, smesh), (mesh_entities, smesh_entities))
-		for e in entities
-			if e ∈ bcol_entities
+	for (i, m) in enumerate((mesh, smesh))
+		for e in uploader.indices[i]
+			if e ∈ uploader.indices[3]
 			    vao[e] = Vao{K}(VertexArray([generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color)], faces(m[e].mesh).-GLint(1)), e, true)
 		    else
 			    vao[e] = Vao{K}(VertexArray(generate_buffers(prog.program, m[e].mesh),faces(m[e].mesh).-GLint(1)), e, true)

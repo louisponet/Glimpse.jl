@@ -59,9 +59,10 @@ function update(timer::System{Timer})
 end
 
 struct Sleeper <: SimulationSystem end 
-sleeper_system(dio::Diorama) = System{Sleeper}(dio, (), (TimingData,))
+sleeper_system(dio::Diorama) = System{Sleeper}(dio, (), (TimingData, Canvas))
 
 function update(sleeper::System{Sleeper})
+	swapbuffers(singleton(sleeper, Canvas))
 	sd         = sleeper.singletons[1]
 	curtime    = time()
 	sleep_time = sd.preferred_fps - (curtime - sd.time)
