@@ -104,10 +104,10 @@ function renderloop(dio)
 			    draw(iofbo)
 			    clear!(iofbo)
 			    empty!(singleton(dio, UpdatedComponents))
-		        @timeit to "updating all sys" for sys in engaged_systems(dio)
+		        for sys in engaged_systems(dio)
 			        update(sys)
 		        end
-		        @timeit to "swapping buffers" swapbuffers(canvas)
+		        swapbuffers(canvas)
 		    end
 		    close(canvas)
 		    should_close!(canvas, false)
