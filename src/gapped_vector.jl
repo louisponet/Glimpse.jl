@@ -31,7 +31,7 @@ function Base.getindex(A::GappedVector, i::Int)
 			return bvec[i - s_id + 1]
 		end
 	end
-	error("Gapped out of bounds.")
+	error("Index $i is out of bounds.")
 end
 
 function overwrite!(A::GappedVector{T}, v::T, i::Int) where T

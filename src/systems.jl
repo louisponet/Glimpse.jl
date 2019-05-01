@@ -97,12 +97,13 @@ function update_indices!(sys::System{Mesher})
 	sfile    = scomp(FileGeometry)
 	smesh    = scomp(Mesh)
 	meshed_entities  = valid_entities(mesh)
-	funcgeometry  = comp(FunctionGeometry)
-	densgeometry  = comp(DensityGeometry)
-	grid          = scomp(Grid)
+	funcgeometry     = comp(FunctionGeometry)
+	densgeometry     = comp(DensityGeometry)
+	grid             = scomp(Grid)
+	vgeom            = comp(VectorGeometry)
 	# cycledcolor   = comp(CycledColor)
 	tids = Vector{Int}[]
-	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file), (spolygon, sfile)))
+	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file, vgeom), (spolygon, sfile)))
 		for com in geomcomps
 			push!(tids, setdiff(valid_entities(com), valid_entities(meshcomp)))
 		end
@@ -121,13 +122,15 @@ function update(sys::System{Mesher})
 	polygon  = comp(PolygonGeometry)
 	file     = comp(FileGeometry)
 	mesh     = comp(Mesh)
+	
 	spolygon = scomp(PolygonGeometry)
 	sfile    = scomp(FileGeometry)
 	smesh    = scomp(Mesh)
-	meshed_entities  = valid_entities(mesh)
-	smeshed_entities = valid_entities(smesh)
+
+	vgeom    = comp(VectorGeometry)
 	id_counter = 1
-	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file), (spolygon, sfile)))
+
+	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file, vgeom), (spolygon, sfile)))
 		for com in geomcomps
 			for e in sys.indices[id_counter]
 				meshcomp[e] = Mesh(BasicMesh(com[e].geometry))
@@ -143,8 +146,6 @@ function update(sys::System{Mesher})
 	denscolor     = comp(DensityColor)
 	# cycledcolor   = comp(CycledColor)
 	colorbuffers  = comp(BufferColor)
-
-	meshed_entities = valid_entities(mesh)
 
 	function calc_mesh(density, iso, e)
 		vertices, ids = marching_cubes(density, grid[e].points, iso)
@@ -163,6 +164,7 @@ function update(sys::System{Mesher})
 		calc_mesh(values, funcgeometry[e].iso, e)
 		id_counter += 1
 	end
+
 	for e in sys.indices[id_counter]
 		calc_mesh(densgeometry[e].geometry, densgeometry[e].iso, e)
 	end

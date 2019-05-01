@@ -147,6 +147,8 @@ function generate_buffers(program::Program, divisor::GLint; name_buffers...)
     buffers = BufferAttachmentInfo[]
     for (name, val) in pairs(name_buffers)
         loc = attribute_location(program, name)
+        @show name
+        @show loc
         if loc != INVALID_ATTRIBUTE
 	        buflen = buflen == 0 ? length(val) : buflen 
             vallen = length(val)
@@ -186,3 +188,4 @@ end
 
 #----------------------GLFW----------------------------#
 destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
+

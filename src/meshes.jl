@@ -23,6 +23,13 @@ function BasicMesh(geometry::String)
     return BasicMesh(vertices, faces, Point3f0.(normals))
 end
 
+function BasicMesh(vec_geometry::Vector)
+	vertices = Point3f0.(vec_geometry)
+	faces    = Face{1}.([i for i=1:length(vec_geometry)])
+	normals  = Point3f0[]
+	return BasicMesh(vertices, faces, normals)
+end
+
 Base.eltype(::Type{BasicMesh{D, T, FD, FT}}) where {D, T, FD, FT} = (D, T, FD, FT)
 Base.eltype(mesh::BM) where {BM <: BasicMesh} = eltype(BM)
 

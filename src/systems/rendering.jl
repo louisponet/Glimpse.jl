@@ -10,8 +10,11 @@ function update_indices!(sys::System{UniformCalculator})
 	dynamic_entities = valid_entities(dyn)
 	already_filled   = valid_entities(modelmat)
 	es               = valid_entities(spatial, shape)
+	es1               = setdiff(valid_entities(spatial), valid_entities(shape))
 	sys.indices = Vector{Int}[setdiff(es, already_filled),
-	                          es ∩ dynamic_entities]
+	                          es ∩ dynamic_entities,
+	                          setdiff(es1, already_filled),
+	                          es1 ∩ dynamic_entities]
 end
 
 function update(sys::System{UniformCalculator})
@@ -23,12 +26,18 @@ function update(sys::System{UniformCalculator})
 	for e in sys.indices[1]	 
 		modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
 	end
+	for e in sys.indices[3]
+		modelmat[e] = ModelMat(translmat(spatial[e].position))
+	end
 	# Updating uniforms if it's updated
 	uc       = singleton(sys, UpdatedComponents)
 	if Spatial in uc || Shape in uc
 		push!(singleton(sys, UpdatedComponents), ModelMat)
 		Threads.@threads for e in sys.indices[2]
 			overwrite!(modelmat, ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale))), e)
+		end
+		Threads.@threads for e in sys.indices[4]
+			overwrite!(modelmat, ModelMat(translmat(spatial[e].position)), e)
 		end
 	end
 end
@@ -38,8 +47,9 @@ struct DefaultInstancedProgram <: ProgramKind end
 struct PeelingCompositeProgram <: ProgramKind end
 struct PeelingProgram          <: ProgramKind end
 struct PeelingInstancedProgram <: ProgramKind end
+struct LineProgram             <: ProgramKind end
 
-function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultProgram, PeelingProgram}}, system)
+function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultProgram, PeelingProgram, LineProgram}}, system)
     prog = render_program.program
     material = component(system, Material)
     modelmat = component(system, ModelMat)
@@ -57,9 +67,18 @@ function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultP
 		end
 	end
 end
+function set_entity_uniforms_func(render_program::RenderProgram{LineProgram}, system)
+    prog = render_program.program
+    vao      = component(system, Vao{LineProgram})
+    modelmat = component(system, ModelMat)
+	return e -> begin
+	    totlen   = length(vao[e].vertexarray.bufferinfos[1].buffer)
+		set_uniform(prog, :modelmat, modelmat[e].modelmat)
+		set_uniform(prog, :thickness, 20.0f0)
+	end
+end
 
 struct Uploader{P <: ProgramKind} <: SystemKind end
-	
 
 default_uploader_system(dio::Diorama) =
 	System{Uploader{DefaultProgram}}(dio, (Mesh,
@@ -75,19 +94,26 @@ peeling_uploader_system(dio::Diorama) =
                                            ProgramTag{PeelingProgram},
                                            ), (RenderProgram{PeelingProgram},))
 
-function update_indices!(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram}}
+lines_uploader_system(dio::Diorama) =
+	System{Uploader{LineProgram}}(dio, (Mesh,
+                                           BufferColor,
+                                           Vao{LineProgram},
+                                           ProgramTag{LineProgram},
+                                           ), (RenderProgram{LineProgram},))
+
+function update_indices!(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram, LineProgram}}
 	comp(T)  = component(uploader, T)
 	scomp(T) = shared_component(uploader, T)
 
 	progtag  = comp(ProgramTag{K})
 
 	uploaded_entities = valid_entities(comp(Vao{K}))
-	uploader.indices  = [setdiff(valid_entities(progtag, scomp(Mesh)), uploaded_entities),
-	                     setdiff(valid_entities(progtag, comp(Mesh)),  uploaded_entities),
+	uploader.indices  = [setdiff(valid_entities(progtag, comp(Mesh)), uploaded_entities),
+	                     setdiff(valid_entities(progtag, scomp(Mesh)),  uploaded_entities),
 	                     valid_entities(comp(BufferColor))]
 end
 
-function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram}}
+function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram, LineProgram}}
 	comp(T)  = component(uploader, T)
 	scomp(T) = shared_component(uploader, T)
 
@@ -97,13 +123,18 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram,
 	prog     = singleton(uploader, RenderProgram{K})
 	progtag  = comp(ProgramTag{K})
 	smesh    = scomp(Mesh)
-
 	for (i, m) in enumerate((mesh, smesh))
 		for e in uploader.indices[i]
-			if e ∈ uploader.indices[3]
-			    vao[e] = Vao{K}(VertexArray([generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color)], faces(m[e].mesh).-GLint(1)), e, true)
+			if e ∈ uploader.indices[end]
+				@show prog.program
+				buffers = [generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color, lastlen=[m[e].mesh.vertices[i+1]-m[e].mesh.vertices[i] for i = 1:length(m[e].mesh.vertices)-1])]
 		    else
-			    vao[e] = Vao{K}(VertexArray(generate_buffers(prog.program, m[e].mesh),faces(m[e].mesh).-GLint(1)), e, true)
+			    buffers = generate_buffers(prog.program, m[e].mesh)
+		    end
+		    if K == LineProgram
+			    vao[e] = Vao{K}(VertexArray(buffers,11), e, true)
+		    else
+			    vao[e] = Vao{K}(VertexArray(buffers, faces(m[e].mesh) .- GLint(1)), e, true)
 		    end
 	    end
 	end
@@ -126,6 +157,7 @@ peeling_instanced_uploader_system(dio::Diorama) =
                                            			Vao{PeelingInstancedProgram},
                                            			ProgramTag{PeelingInstancedProgram},
                                            			),(RenderProgram{PeelingInstancedProgram},))
+
 function update_indices!(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstancedProgram, PeelingInstancedProgram}}
 	comp(T)  = component(uploader, T)
 	scomp(T) = shared_component(uploader, T)
@@ -263,8 +295,10 @@ struct DefaultRenderer      <: AbstractRenderSystem end
 default_render_system(dio::Diorama) =
 	System{DefaultRenderer}(dio, (Vao{DefaultProgram},
 								  Vao{DefaultInstancedProgram},
+								  Vao{LineProgram},
 								  ProgramTag{DefaultProgram},
 								  ProgramTag{DefaultInstancedProgram},
+								  ProgramTag{LineProgram},
 								  Spatial,
 								  Material,
 								  ModelMat,
@@ -274,7 +308,8 @@ default_render_system(dio::Diorama) =
 								  Camera3D), (RenderPass{DefaultPass},
 								  			  RenderTarget{IOTarget},
 								  			  RenderProgram{DefaultProgram},
-								  			  RenderProgram{DefaultInstancedProgram}))
+								  			  RenderProgram{DefaultInstancedProgram},
+								  			  RenderProgram{LineProgram}))
 
 function set_uniform(program::GLA.Program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
@@ -299,7 +334,10 @@ function update_indices!(sys::System{DefaultRenderer})
 		                          comp(Material),
 		                          comp(Shape),
 		                          comp(ModelMat),
-		                          comp(ProgramTag{DefaultProgram}))]                       
+		                          comp(ProgramTag{DefaultProgram})),
+                   valid_entities(comp(Vao{LineProgram}),
+		                          comp(ModelMat),
+		                          comp(ProgramTag{LineProgram}))]                       
 end
 
 
@@ -316,9 +354,19 @@ function update(renderer::System{DefaultRenderer})
 	shape      = comp(Shape)
 	ucolor     = comp(UniformColor)
 	prog       = singleton(renderer, RenderProgram{DefaultProgram})
-	progtag    = comp(ProgramTag{DefaultProgram})
+
+
+	iprog            = singleton(renderer, RenderProgram{DefaultInstancedProgram})
+    ufunc_default    = set_entity_uniforms_func(prog, renderer)
+
+	light      = comp(PointLight)
+
+	line_prog    = singleton(renderer, RenderProgram{LineProgram})
+	line_vao     = comp(Vao{LineProgram})
+    ufunc_lines  = set_entity_uniforms_func(line_prog, renderer)
+
 	iprog      = singleton(renderer, RenderProgram{DefaultInstancedProgram})
-    ufunc      = set_entity_uniforms_func(prog, renderer)
+    ufunc_default    = set_entity_uniforms_func(prog, renderer)
 
 	light      = comp(PointLight)
 	camera     = comp(Camera3D)
@@ -337,7 +385,7 @@ function update(renderer::System{DefaultRenderer})
 		    set_uniform(prog, spatial[i], camera[i])
 	    end
     end
-
+	#Render instanced-renderables
 	bind(iprog)
     set_light_camera_uniforms(iprog)
     
@@ -348,17 +396,34 @@ function update(renderer::System{DefaultRenderer})
 		end
 	end
 
+	#Render non-instanced renderables
 	bind(prog)
 	set_light_camera_uniforms(prog)
 
 	for e in renderer.indices[3]
 		evao   = vao[e]
 		if evao.visible
-			ufunc(e)
+			ufunc_default(e)
 			GLA.bind(evao.vertexarray)
 			GLA.draw(evao.vertexarray)
 		end
 	end
+
+	#Render lines
+	bind(line_prog)
+	set_uniform(line_prog, :Viewport, Vec2f0(size(singleton(renderer, RenderTarget{IOTarget}))))
+	set_uniform(line_prog, :MiterLimit, 0.1f0)
+	set_light_camera_uniforms(line_prog)
+
+	for e in renderer.indices[4]
+		evao   = line_vao[e]
+		if evao.visible
+			ufunc_lines(e)
+			GLA.bind(evao.vertexarray)
+			GLA.draw(evao.vertexarray)
+		end
+	end
+
 end
 
 rem1(x, y) = (x - 1) % y + 1

@@ -15,14 +15,16 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     def_inst_prog      = RenderProgram{DefaultInstancedProgram}(GLA.Program(default_instanced_shaders()))
     peel_prog          = RenderProgram{PeelingProgram}(GLA.Program(peeling_shaders()))
     peel_inst_prog     = RenderProgram{PeelingInstancedProgram}(GLA.Program(peeling_instanced_shaders()))
+    line_prog          = RenderProgram{LineProgram}(GLA.Program(line_shaders()))
     updated_components  = UpdatedComponents(DataType[])
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components], System[])
+	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
     						FunctionGeometry,
     						DensityGeometry,
+    						VectorGeometry,
     						FunctionColor,
     						DensityColor,
     						BufferColor,
@@ -39,8 +41,10 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    ProgramTag{DefaultInstancedProgram},
 		                    ProgramTag{PeelingProgram},
 		                    ProgramTag{PeelingInstancedProgram},
+		                    ProgramTag{LineProgram},
 		                    Vao{DefaultProgram},
-		                    Vao{PeelingProgram}])
+		                    Vao{PeelingProgram},
+		                    Vao{LineProgram}])
     add_shared_component!.((dio,), [PolygonGeometry,
     								FileGeometry,
     							    Mesh,
@@ -54,6 +58,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
                          uniform_calculator_system(dio),
 			             default_uploader_system(dio),
 			             default_instanced_uploader_system(dio),
+			             lines_uploader_system(dio),
 			             peeling_uploader_system(dio),
 			             peeling_instanced_uploader_system(dio),
                          uniform_uploader_system(dio),
