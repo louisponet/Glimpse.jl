@@ -70,7 +70,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             sleeper_system(dio)])
 
 
-	new_entity!(dio, separate = [PointLight(), UniformColor(RGBA{Float32}(1.0))])
+	new_entity!(dio, separate = [Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)), PointLight(), UniformColor(RGBA{Float32}(1.0))])
 	new_entity!(dio, separate = [assemble_camera3d(pixelsize(dio)...)...])
 	return dio
 end

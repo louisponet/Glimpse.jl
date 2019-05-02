@@ -1,5 +1,5 @@
 struct UniformCalculator <: SystemKind end
-uniform_calculator_system(dio::Diorama) = System{UniformCalculator}(dio, (Spatial, Shape, ModelMat, Dynamic), (UpdatedComponents,))
+uniform_calculator_system(dio::Diorama) = System{UniformCalculator}(dio, (Spatial, Shape, ModelMat, Dynamic, Camera3D), (UpdatedComponents,))
 
 function update_indices!(sys::System{UniformCalculator})
 	comp(T) = component(sys, T) 
@@ -10,7 +10,7 @@ function update_indices!(sys::System{UniformCalculator})
 	dynamic_entities = valid_entities(dyn)
 	already_filled   = valid_entities(modelmat)
 	es               = valid_entities(spatial, shape)
-	es1               = setdiff(valid_entities(spatial), valid_entities(shape))
+	es1               = setdiff(setdiff(valid_entities(spatial), valid_entities(shape)), valid_entities(comp(Camera3D)))
 	sys.indices = Vector{Int}[setdiff(es, already_filled),
 	                          es ∩ dynamic_entities,
 	                          setdiff(es1, already_filled),
@@ -23,7 +23,7 @@ function update(sys::System{UniformCalculator})
 	shape    = comp(Shape)
 	dyn      = comp(Dynamic)
 	modelmat = comp(ModelMat)
-	for e in sys.indices[1]	 
+	for e in sys.indices[1]
 		modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
 	end
 	for e in sys.indices[3]
@@ -318,9 +318,9 @@ function set_uniform(program::GLA.Program, spatial, camera::Camera3D)
     set_uniform(program, :campos,   spatial.position)
 end
 
-function set_uniform(program::GLA.Program, pointlight::PointLight, color::UniformColor)
+function set_uniform(program::GLA.Program, pointlight::PointLight, color::UniformColor, spatial::Spatial)
     set_uniform(program, Symbol("plight.color"),              RGB(color.color))
-    set_uniform(program, Symbol("plight.position"),           pointlight.position)
+    set_uniform(program, Symbol("plight.position"),           spatial.position)
     set_uniform(program, Symbol("plight.amb_intensity"),      pointlight.ambient)
     set_uniform(program, Symbol("plight.specular_intensity"), pointlight.specular)
     set_uniform(program, Symbol("plight.diff_intensity"),     pointlight.diffuse)
@@ -329,7 +329,7 @@ end
 function update_indices!(sys::System{DefaultRenderer})
 	comp(T)  = component(sys, T)
 	spat     = comp(Spatial)
-	sys.indices = [valid_entities(comp(PointLight), comp(UniformColor)),
+	sys.indices = [valid_entities(comp(PointLight), comp(UniformColor), spat),
                    valid_entities(comp(Camera3D), spat),
 		           valid_entities(comp(Vao{DefaultProgram}),
 		                          spat,
@@ -382,7 +382,7 @@ function update(renderer::System{DefaultRenderer})
 
 	function set_light_camera_uniforms(prog)
 	    for i in renderer.indices[1]
-		    set_uniform(prog, light[i], ucolor[i])
+		    set_uniform(prog, light[i], ucolor[i], spatial[i])
 	    end
 	    for i in renderer.indices[2]
 		    set_uniform(prog, spatial[i], camera[i])
@@ -450,7 +450,7 @@ depth_peeling_render_system(dio::Diorama) =
 function update_indices!(sys::System{DepthPeelingRenderer})
 	comp(T)  = component(sys, T)
 	spat     = comp(Spatial)
-	sys.indices = [valid_entities(comp(PointLight), comp(UniformColor)),
+	sys.indices = [valid_entities(comp(PointLight), comp(UniformColor), spat),
                    valid_entities(comp(Camera3D), spat),
 		           valid_entities(comp(Vao{PeelingProgram}),
 		                          spat,
@@ -538,7 +538,7 @@ function update(renderer::System{DepthPeelingRenderer})
 	function render_start(prog, renderfunc)
 	    bind(prog)
 	    for i in renderer.indices[1]
-		    set_uniform(prog, light[i], ucolor[i])
+		    set_uniform(prog, light[i], ucolor[i], spatial[i])
 	    end
 	    for i in renderer.indices[2]
 		    set_uniform(prog, spatial[i], camera[i])

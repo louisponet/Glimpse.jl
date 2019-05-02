@@ -129,7 +129,6 @@ function update(sys::System{Mesher})
 
 	vgeom    = comp(VectorGeometry)
 	id_counter = 1
-
 	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file, vgeom), (spolygon, sfile)))
 		for com in geomcomps
 			for e in sys.indices[id_counter]

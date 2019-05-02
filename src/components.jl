@@ -85,7 +85,6 @@ Base.@kwdef struct Material <: ComponentData
 end
 
 Base.@kwdef struct PointLight <: ComponentData
-    position::Point3f0 = Point3f0(200)
     diffuse ::Float32  = 0.5f0
     specular::Float32  = 0.5f0
     ambient ::Float32  = 0.5f0
