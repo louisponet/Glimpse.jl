@@ -37,6 +37,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    Camera3D,
 		                    Dynamic,
 		                    ModelMat,
+		                    Line,
 		                    ProgramTag{DefaultProgram},
 		                    ProgramTag{DefaultInstancedProgram},
 		                    ProgramTag{PeelingProgram},

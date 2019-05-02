@@ -71,10 +71,12 @@ function set_entity_uniforms_func(render_program::RenderProgram{LineProgram}, sy
     prog = render_program.program
     vao      = component(system, Vao{LineProgram})
     modelmat = component(system, ModelMat)
+    line     = component(system, Line)
 	return e -> begin
 	    totlen   = length(vao[e].vertexarray.bufferinfos[1].buffer)
 		set_uniform(prog, :modelmat, modelmat[e].modelmat)
-		set_uniform(prog, :thickness, 20.0f0)
+		set_uniform(prog, :thickness, line[e].thickness)
+		set_uniform(prog, :MiterLimit, line[e].miter)
 	end
 end
 
@@ -126,13 +128,12 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram,
 	for (i, m) in enumerate((mesh, smesh))
 		for e in uploader.indices[i]
 			if e ∈ uploader.indices[end]
-				@show prog.program
-				buffers = [generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color, lastlen=[m[e].mesh.vertices[i+1]-m[e].mesh.vertices[i] for i = 1:length(m[e].mesh.vertices)-1])]
+				buffers = [generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color)]
 		    else
 			    buffers = generate_buffers(prog.program, m[e].mesh)
 		    end
 		    if K == LineProgram
-			    vao[e] = Vao{K}(VertexArray(buffers,11), e, true)
+			    vao[e] = Vao{K}(VertexArray(buffers, 11), e, true)
 		    else
 			    vao[e] = Vao{K}(VertexArray(buffers, faces(m[e].mesh) .- GLint(1)), e, true)
 		    end
@@ -305,6 +306,7 @@ default_render_system(dio::Diorama) =
 								  Color,
 								  Shape,
 								  PointLight,
+								  Line,
 								  Camera3D), (RenderPass{DefaultPass},
 								  			  RenderTarget{IOTarget},
 								  			  RenderProgram{DefaultProgram},
@@ -336,6 +338,7 @@ function update_indices!(sys::System{DefaultRenderer})
 		                          comp(ModelMat),
 		                          comp(ProgramTag{DefaultProgram})),
                    valid_entities(comp(Vao{LineProgram}),
+                                  comp(Line),
 		                          comp(ModelMat),
 		                          comp(ProgramTag{LineProgram}))]                       
 end
@@ -412,9 +415,7 @@ function update(renderer::System{DefaultRenderer})
 	#Render lines
 	bind(line_prog)
 	set_uniform(line_prog, :Viewport, Vec2f0(size(singleton(renderer, RenderTarget{IOTarget}))))
-	set_uniform(line_prog, :MiterLimit, 0.1f0)
 	set_light_camera_uniforms(line_prog)
-
 	for e in renderer.indices[4]
 		evao   = line_vao[e]
 		if evao.visible

@@ -181,14 +181,19 @@ end
 
 struct FunctionGeometry <: Geometry
 	geometry::Function
-	iso::Float64
+	iso     ::Float32
 end
 
 struct DensityGeometry <: Geometry
-	geometry::Array{Float64, 3}
-	iso::Float64
+	geometry::Array{Float32, 3}
+	iso     ::Float32
 end
 
 struct VectorGeometry <: Geometry
 	geometry::Vector{Point3f0}
+end
+
+struct Line <: ComponentData
+	thickness::Float32
+	miter    ::Float32
 end
