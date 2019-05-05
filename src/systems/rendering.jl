@@ -1,20 +1,18 @@
+valid_entities(sys::System, comps::Type{<:ComponentData}...) = valid_entities(component.((sys,), comps)...)
+
 struct UniformCalculator <: SystemKind end
 uniform_calculator_system(dio::Diorama) = System{UniformCalculator}(dio, (Spatial, Shape, ModelMat, Dynamic, Camera3D), (UpdatedComponents,))
 
 function update_indices!(sys::System{UniformCalculator})
-	comp(T) = component(sys, T) 
-	spatial  = comp(Spatial)
-	shape    = comp(Shape)
-	dyn      = comp(Dynamic)
-	modelmat = comp(ModelMat)
-	dynamic_entities = valid_entities(dyn)
-	already_filled   = valid_entities(modelmat)
-	es               = valid_entities(spatial, shape)
-	es1               = setdiff(setdiff(valid_entities(spatial), valid_entities(shape)), valid_entities(comp(Camera3D)))
-	sys.indices = Vector{Int}[setdiff(es, already_filled),
-	                          es ∩ dynamic_entities,
-	                          setdiff(es1, already_filled),
-	                          es1 ∩ dynamic_entities]
+	val_es(x...)  = valid_entities(sys, x...)
+	dynamic_entities = val_es(Dynamic)
+	already_filled   = val_es(ModelMat)
+	es               = val_es(Spatial, Shape)
+	es1              = setdiff(setdiff(val_es(Spatial), val_es(Shape)), val_es(Camera3D))
+	sys.indices = [setdiff(es, already_filled),
+                   es ∩ dynamic_entities,
+                   setdiff(es1, already_filled),
+                   es1 ∩ dynamic_entities]
 end
 
 function update(sys::System{UniformCalculator})
@@ -48,6 +46,7 @@ struct PeelingCompositeProgram <: ProgramKind end
 struct PeelingProgram          <: ProgramKind end
 struct PeelingInstancedProgram <: ProgramKind end
 struct LineProgram             <: ProgramKind end
+struct TextProgram             <: ProgramKind end
 
 function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultProgram, PeelingProgram, LineProgram}}, system)
     prog = render_program.program
@@ -69,39 +68,24 @@ function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultP
 end
 function set_entity_uniforms_func(render_program::RenderProgram{LineProgram}, system)
     prog = render_program.program
-    vao      = component(system, Vao{LineProgram})
-    modelmat = component(system, ModelMat)
-    line     = component(system, Line)
+    comp(T)  = component(system, T)
+    modelmat = comp(ModelMat)
+    line     = comp(Line)
 	return e -> begin
-	    totlen   = length(vao[e].vertexarray.bufferinfos[1].buffer)
-		set_uniform(prog, :modelmat, modelmat[e].modelmat)
-		set_uniform(prog, :thickness, line[e].thickness)
+		set_uniform(prog, :modelmat,   modelmat[e].modelmat)
+		set_uniform(prog, :thickness,  line[e].thickness)
 		set_uniform(prog, :MiterLimit, line[e].miter)
 	end
 end
 
 struct Uploader{P <: ProgramKind} <: SystemKind end
+	
+uploader_system(::Type{P}, dio::Diorama) where {P<:ProgramKind} = 
+	System{Uploader{P}}(dio, (Mesh, BufferColor, Vao{P}, ProgramTag{P}), (RenderProgram{P},))
 
-default_uploader_system(dio::Diorama) =
-	System{Uploader{DefaultProgram}}(dio, (Mesh,
-										   BufferColor,
-								      	   Vao{DefaultProgram},
-								      	   ProgramTag{DefaultProgram},
-								      	   ), (RenderProgram{DefaultProgram},))
-
-peeling_uploader_system(dio::Diorama) =
-	System{Uploader{PeelingProgram}}(dio, (Mesh,
-                                           BufferColor,
-                                           Vao{PeelingProgram},
-                                           ProgramTag{PeelingProgram},
-                                           ), (RenderProgram{PeelingProgram},))
-
-lines_uploader_system(dio::Diorama) =
-	System{Uploader{LineProgram}}(dio, (Mesh,
-                                           BufferColor,
-                                           Vao{LineProgram},
-                                           ProgramTag{LineProgram},
-                                           ), (RenderProgram{LineProgram},))
+default_uploader_system(dio::Diorama) = uploader_system(DefaultProgram, dio)
+peeling_uploader_system(dio::Diorama) = uploader_system(PeelingProgram, dio)
+lines_uploader_system(dio::Diorama)   = uploader_system(LineProgram,    dio)
 
 function update_indices!(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram, PeelingProgram, LineProgram}}
 	comp(T)  = component(uploader, T)
@@ -141,23 +125,17 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram,
 	end
 end
 
-default_instanced_uploader_system(dio::Diorama) =
-	System{Uploader{DefaultInstancedProgram}}(dio, (Mesh,
-										      	    Color,
-										      	    ModelMat,
-										      	    Material,
-										      	    Vao{DefaultInstancedProgram},
-										      	    ProgramTag{DefaultInstancedProgram},
-										      	    ), (RenderProgram{DefaultInstancedProgram},))
+instanced_uploader_system(::Type{P}, dio::Diorama) where {P<:ProgramKind} =
+	System{Uploader{P}}(dio, (Mesh,
+				      	      UniformColor,
+				      	      ModelMat,
+				      	      Material,
+				      	      Vao{P},
+				      	      ProgramTag{P},
+				      	      ), (RenderProgram{P},))
 
-peeling_instanced_uploader_system(dio::Diorama) =
-	System{Uploader{PeelingInstancedProgram}}(dio, (Mesh,
-                                           			UniformColor,
-                                           			ModelMat,
-                                           			Material,
-                                           			Vao{PeelingInstancedProgram},
-                                           			ProgramTag{PeelingInstancedProgram},
-                                           			),(RenderProgram{PeelingInstancedProgram},))
+default_instanced_uploader_system(dio::Diorama) = instanced_uploader_system(DefaultInstancedProgram, dio)
+peeling_instanced_uploader_system(dio::Diorama) = instanced_uploader_system(PeelingInstancedProgram, dio)
 
 function update_indices!(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstancedProgram, PeelingInstancedProgram}}
 	comp(T)  = component(uploader, T)
@@ -349,32 +327,32 @@ function update(renderer::System{DefaultRenderer})
 	comp(T)  = component(renderer, T)
 	scomp(T) = shared_component(renderer, T)
 
-	vao        = comp(Vao{DefaultProgram})
-	ivao       = scomp(Vao{DefaultInstancedProgram})
-	spatial    = comp(Spatial)
-	material   = comp(Material)
-	modelmat   = comp(ModelMat)
-	shape      = comp(Shape)
-	ucolor     = comp(UniformColor)
-	prog       = singleton(renderer, RenderProgram{DefaultProgram})
+	vao      = comp(Vao{DefaultProgram})
+	ivao     = scomp(Vao{DefaultInstancedProgram})
+	spatial  = comp(Spatial)
+	material = comp(Material)
+	modelmat = comp(ModelMat)
+	shape    = comp(Shape)
+	ucolor   = comp(UniformColor)
+	prog     = singleton(renderer, RenderProgram{DefaultProgram})
 
 
-	iprog            = singleton(renderer, RenderProgram{DefaultInstancedProgram})
-    ufunc_default    = set_entity_uniforms_func(prog, renderer)
+	iprog         = singleton(renderer, RenderProgram{DefaultInstancedProgram})
+    ufunc_default = set_entity_uniforms_func(prog, renderer)
 
-	light      = comp(PointLight)
+	light         = comp(PointLight)
 
-	line_prog    = singleton(renderer, RenderProgram{LineProgram})
-	line_vao     = comp(Vao{LineProgram})
-    ufunc_lines  = set_entity_uniforms_func(line_prog, renderer)
+	line_prog     = singleton(renderer, RenderProgram{LineProgram})
+	line_vao      = comp(Vao{LineProgram})
+    ufunc_lines   = set_entity_uniforms_func(line_prog, renderer)
 
-	iprog      = singleton(renderer, RenderProgram{DefaultInstancedProgram})
-    ufunc_default    = set_entity_uniforms_func(prog, renderer)
+	iprog         = singleton(renderer, RenderProgram{DefaultInstancedProgram})
+    ufunc_default = set_entity_uniforms_func(prog, renderer)
 
-	light      = comp(PointLight)
-	camera     = comp(Camera3D)
+	light         = comp(PointLight)
+	camera        = comp(Camera3D)
 
-	fbo = singleton(renderer, RenderTarget{IOTarget})
+	fbo           = singleton(renderer, RenderTarget{IOTarget})
 	bind(fbo)
 	draw(fbo)
 	glEnable(GL_DEPTH_TEST)
@@ -471,17 +449,14 @@ function update(renderer::System{DepthPeelingRenderer})
 	shape    = comp(Shape)
 	modelmat = comp(ModelMat)
 	ucolor   = comp(UniformColor)
-	fcolor   = comp(FunctionColor)
 	peeling_program  = singleton(renderer, RenderProgram{PeelingProgram})
 	ipeeling_program = singleton(renderer, RenderProgram{PeelingInstancedProgram})
-	progtag  = comp(ProgramTag{PeelingProgram})
-	iprogtag = comp(ProgramTag{PeelingInstancedProgram})
 
 	ufunc = set_entity_uniforms_func(peeling_program, renderer)
 
 	light    = comp(PointLight)
 	camera   = comp(Camera3D)
-	rp = renderer.singletons[1]
+	rp       = renderer.singletons[1]
 
 	peel_comp_program   = rp.programs[:peel_comp]
     blending_program    = rp.programs[:blending]
@@ -625,6 +600,106 @@ function update(renderer::System{DepthPeelingRenderer})
     glFlush()
 end
 
+struct TextRenderer <: AbstractRenderSystem end
+text_render_system(dio) = System{TextRenderer}(dio, (Spatial, Text, UniformColor, Camera3D, Vao{TextProgram}), (RenderProgram{TextProgram}, RenderTarget{IOTarget}, RenderPass{TextPass}))
+
+function to_gl_text(string, textsize, font, align=:right)
+    atlas           = AP.get_texture_atlas()
+    rscale          = Float32(textsize)
+    chars           = Vector{Char}(string)
+    scale           = Vec2f0.(AP.glyph_scale!.(Ref(atlas), chars, (font,), rscale))
+    positions2d     = AP.calc_position(string, Point2f0(0), rscale, font, atlas)
+    # font is Vector{FreeType.NativeFont} so we need to protec
+    aoffset         = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, align)
+    aoffsetn        = AP.to_ndim(Point3f0, aoffset, 0f0)
+    uv_offset_width = AP.glyph_uv_width!.(Ref(atlas), chars, (font,))
+
+    positions = map(positions2d) do p
+        AP.to_ndim(Point{3, Float32}, p, 0f0) .+ aoffsetn
+    end
+
+	out = Vector{Vec4f0}[]
+	for (p, uv_o_w, sc) in zip(positions, uv_offset_width, scale)
+		push!(out,[Vec4f0(p[1], p[2] + sc[2]    , uv_o_w[1], uv_o_w[2]),
+	             Vec4f0(p[1], p[2]            , uv_o_w[1], uv_o_w[4]),
+	             Vec4f0(p[1]+sc[1], p[2]+sc[2], uv_o_w[3], uv_o_w[2]),
+	             Vec4f0(p[1]+sc[1], p[2]      , uv_o_w[3], uv_o_w[4])])
+    end
+    return out
+end
+# to_gl_text(t::Text) = to_gl_text(t.str, Vec3f0(500, 500, 0), t.font_size, t.font, t.align)
+to_gl_text(t::Text) = to_gl_text(t.str, t.font_size, t.font, t.align)
+
+function to_gl_text(string, startpos::Vec3f0, textsize, font, align) where {N, T}
+    atlas           = AP.get_texture_atlas()
+    rscale          = Float32(textsize)
+    chars           = Vector{Char}(string)
+    scale           = Vec2f0.(AP.glyph_scale!.(Ref(atlas), chars, (font,), rscale))
+    positions2d     = AP.calc_position(string, Point2f0(0), rscale, font, atlas)
+    # font is Vector{FreeType.NativeFont} so we need to protec
+    aoffset         = AP.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, align)
+    aoffsetn        = AP.to_ndim(Point{3, Float32}, aoffset, 0f0)
+    uv_offset_width = AP.glyph_uv_width!.(Ref(atlas), chars, (font,))
+
+    positions = map(positions2d) do p
+        pn          =AP.to_ndim(Point{3, Float32}, p, 0f0) .+ aoffsetn
+        pn .+ startpos
+    end
+	out = Vector{Vec4f0}[]
+	for (p, uv_o_w, sc) in zip(positions, uv_offset_width, scale)
+		push!(out,[Vec4f0(p[1], p[2] + sc[2]  , uv_o_w[1], uv_o_w[2]),
+	             Vec4f0(p[1], p[2]            , uv_o_w[1], uv_o_w[4]),
+	             Vec4f0(p[1]+sc[1], p[2]+sc[2], uv_o_w[3], uv_o_w[2]),
+	             Vec4f0(p[1]+sc[1], p[2]      , uv_o_w[3], uv_o_w[4])])
+    end
+    out
+end
+
+function update(renderer::System{TextRenderer})
+	comp(T)   = component(renderer, T)
+	spat      = comp(Spatial)
+	text      = comp(Text)
+	col       = comp(UniformColor)
+	prog      = singleton(renderer, RenderProgram{TextProgram})
+	cam       = comp(Camera3D)
+	# vao       = comp(Vao{TextProgram})
+	iofbo     = singleton(renderer, RenderTarget{IOTarget})
+	persp_mat = cam[valid_entities(cam)[1]].projview
+	wh = size(iofbo)
+	# glEnable(GL_DEPTH_TEST)
+	# glDepthFunc(GL_ALWAYS)
+	glEnable(GL_BLEND)
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+	atlas = AP.get_texture_atlas()
+	fbo = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data])
+	GLA.unbind(fbo)
+
+	bind(prog)
+	set_uniform(prog, :canvas_dims, Vec2f0(wh))
+	bind(fbo.attachments[1])
+    bind(iofbo)
+    draw(iofbo)
+	set_uniform(prog, :glyph_texture, (0, color_attachment(fbo, 1)))
+	for e in valid_entities(spat, text, col)
+		# if !has_entity(vao, e)
+		# @show persp_mat*Vec4f0(spat[e].position..., 1.0f0)
+		t_p = persp_mat*Vec4f0(spat[e].position..., 1.0f0)
+		set_uniform(prog, :start_pos, Vec2f0(t_p[1], t_p[2]))
+		set_uniform(prog, :color, col[e].color)
+		for verts in to_gl_text(text[e])
+			b = Buffer(verts)
+			vao = VertexArray([BufferAttachmentInfo(:offsets_uv,
+															  GLint(0),
+															  b,
+															  GEOMETRY_DIVISOR)], 5)
+			bind(vao)
+			draw(vao)
+		end
+	end
+	# unbind(prog)
+end
+
 struct FinalRenderer <: AbstractRenderSystem end
 final_render_system(dio) = System{FinalRenderer}(dio, (), (RenderPass{FinalPass}, Canvas, RenderTarget{IOTarget}, FullscreenVao))
 
@@ -636,7 +711,7 @@ function update(sys::System{FinalRenderer})
     iofbo               = singleton(sys, RenderTarget{IOTarget})
     bind(canvas)
     draw(canvas)
-    clear!(canvas)
+    # clear!(canvas)
     bind(compositing_program)
     set_uniform(compositing_program, :color_texture, (0, color_attachment(iofbo.target, 1)))
     bind(vao)

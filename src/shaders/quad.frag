@@ -6,8 +6,8 @@ uniform sampler2D glyph_texture;
 layout (location = 0) out vec4 out_color;
 void main()
 {
-	float c = texture(glyph_texture, frag_uv.st).r;
-    out_color = vec4((1-c)*frag_color.x, (1-c)*frag_color.y, 0.0, 0.0);
+	vec4 sampled = vec4(1.0, 1.0, 1.0, 1-texture(glyph_texture, frag_uv).r);
+    out_color = vec4(frag_color.xyz, 1.0) * sampled;
     // out_color = vec4(1.0,0.0,0.0,1.0);
 }
 

@@ -171,6 +171,25 @@ function lookatmat(::Type{T}, eyePos, lookAt::Vec{3}, up::Vec{3}) where T
     lookatmat(Vec{3, T}(eyePos), Vec{3, T}(lookAt), Vec{3, T}(up))
 end
 
+"""
+	projmatortho(left::T, right::T, bottom::T, top::T) where T
+
+2D orthographic projection.
+"""
+function projmatortho(left::T, right::T, bottom::T, top::T) where T
+	out = zeros(T, 4, 4)
+	out[1, 1] = 2 / (right - left)
+	out[2, 2] = 2 / (top - bottom)
+	out[3, 3] = -1
+	out[4, 1] = - (right + left) / (right - left)
+	out[4, 2] = - (top + bottom) / (top - bottom)
+	out[4, 4] = 1
+	return Mat4(out')
+end
+
+projmatortho(::Type{T}, left::Number, right::Number, bottom::Number, top::Number) where T =
+	projmatortho(T(left), T(right), T(bottom), T(top))
+
 
 function projmatortho(wh::SimpleRectangle, near::T, far::T) where T
     projmatortho(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
@@ -183,20 +202,27 @@ end
 projmatortho(w::Integer, h::Integer, near::T, far::T) where T =
     projmatortho(zero(T), T(w), zero(T), T(h), near, far)
 
-function projmatortho(
-        left  ::T, right::T,
-        bottom::T, top  ::T,
-        znear ::T, zfar ::T
-    ) where T
-    (right==left || bottom==top || znear==zfar) && return eye(Mat{4,4,T})
-    T0, T1, T2 = zero(T), one(T), T(2)
-    return Mat4{T}(
-        T2/(right-left), T0, T0,  T0,
-        T0, T2/(top-bottom), T0,  T0,
-        T0, T0, -T2/(zfar-znear), T0,
-        -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(zfar+znear)/(zfar-znear), T1
-    )
+"""
+	projmatortho(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
+
+3D orthographic projection.
+"""
+function projmatortho(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
+	if right==left || bottom==top || znear==zfar
+		return eye(Mat{4,4,T})
+	else
+		out = zeros(T, 4, 4)
+		out[1, 1] =   2 / (right - left)
+		out[2, 2] =   2 / (top - bottom)
+		out[3, 3] = - 2 / (zfar - znear)
+		out[4, 1] = - (right + left) / (right - left)
+		out[4, 2] = - (top + bottom) / (top - bottom)
+        out[4, 3] = - (zfar + znear) / (zfar - znear)
+        out[4, 4] = 1
+        return Mat4(out')
+    end
 end
+
 function projmatortho(::Type{T},
         left  ::Number, right::Number,
         bottom::Number, top  ::Number,

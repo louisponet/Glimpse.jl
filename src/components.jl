@@ -196,3 +196,14 @@ struct Line <: ComponentData
 	thickness::Float32
 	miter    ::Float32
 end
+
+Base.@kwdef struct Text <: ComponentData
+	str      ::String = "test"
+	font_size::Int    = 50
+	font     = AP.defaultfont()
+	align    ::Symbol = :right
+end
+	
+
+
+

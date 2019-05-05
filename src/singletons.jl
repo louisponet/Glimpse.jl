@@ -320,6 +320,7 @@ function final_pass()
     RenderPass{FinalPass}(ProgramDict(:main => comp_prog), RenderTargetDict())
 end
 
+
 mutable struct TimingData <: Singleton
 	time  ::Float64
 	dtime ::Float64
@@ -349,3 +350,6 @@ function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:Component
 		push!(uc, T)
 	end
 end
+
+
+struct TextPass <: RenderPassKind end

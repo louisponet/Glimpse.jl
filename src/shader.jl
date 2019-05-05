@@ -28,3 +28,6 @@ blending_shaders()            = [load_shader_source("blend.vert"),
 line_shaders()                = [load_shader_source("lines.vert"),
                                  load_shader_source("lines.geom"),
                                  load_shader_source("lines.frag")]
+
+text_shaders()                = [load_shader_source("text.vert"),
+                                 load_shader_source("text.frag")]

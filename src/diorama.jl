@@ -10,16 +10,18 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	# depth_peeling_pass = create_transparancy_pass(wh, RGBAf0(RGB(c.background),0.0f0), 5)
 	depth_peeling_pass = create_transparancy_pass(wh, c.background, 5)
 	fp                 = final_pass()
+	# text_pass          = text_pass()
 	fullscreenvao      = FullscreenVao()
     def_prog           = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
     def_inst_prog      = RenderProgram{DefaultInstancedProgram}(GLA.Program(default_instanced_shaders()))
     peel_prog          = RenderProgram{PeelingProgram}(GLA.Program(peeling_shaders()))
     peel_inst_prog     = RenderProgram{PeelingInstancedProgram}(GLA.Program(peeling_instanced_shaders()))
     line_prog          = RenderProgram{LineProgram}(GLA.Program(line_shaders()))
-    updated_components  = UpdatedComponents(DataType[])
+    text_prog          = RenderProgram{TextProgram}(GLA.Program(text_shaders()))
+    updated_components = UpdatedComponents(DataType[])
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog], System[])
+	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
     						FunctionGeometry,
@@ -38,6 +40,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    Dynamic,
 		                    ModelMat,
 		                    Line,
+		                    Text,
 		                    ProgramTag{DefaultProgram},
 		                    ProgramTag{DefaultInstancedProgram},
 		                    ProgramTag{PeelingProgram},
@@ -45,7 +48,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    ProgramTag{LineProgram},
 		                    Vao{DefaultProgram},
 		                    Vao{PeelingProgram},
-		                    Vao{LineProgram}])
+		                    Vao{LineProgram},
+		                    Vao{TextProgram}])
     add_shared_component!.((dio,), [PolygonGeometry,
     								FileGeometry,
     							    Mesh,
@@ -66,6 +70,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             camera_system(dio),
 			             default_render_system(dio),
 			             depth_peeling_render_system(dio),
+			             text_render_system(dio),
 			             final_render_system(dio),
 			             sleeper_system(dio)])
 
@@ -114,8 +119,7 @@ function renderloop(dio)
 			        update(sys)
 		        end
 		    end
-		    close(canvas)
-		    should_close!(canvas, false)
+		    close(dio)
 			dio.loop = nothing
 		end
 	)
@@ -133,7 +137,7 @@ function reload(dio::Diorama)
 	    end
     )
 end
-close(dio::Diorama) = canvas_command(dio, c -> should_close!(c, true))
+close(dio::Diorama) = canvas_command(dio, c -> (close(c); should_close!(c, false)))
 free!(dio::Diorama) = canvas_command(dio, c -> free!(c))
 
 isrendering(dio::Diorama) = dio.loop != nothing

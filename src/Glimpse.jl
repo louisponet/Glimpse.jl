@@ -3,6 +3,10 @@ module Glimpse
 using Reexport
 @reexport using GeometryTypes
 @reexport using ColorTypes
+
+using AbstractPlotting # I'd like to get away from this
+const AP = AbstractPlotting
+
 using FixedPointNumbers
 using ModernGL
 using Quaternions

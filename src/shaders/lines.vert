@@ -21,5 +21,5 @@ out VertexData{
 void main(void)
 {
     VertexOut.mColor = color;
-    gl_Position = projview*modelmat * vec4(vertices, 1.0);
+    gl_Position = projview * modelmat * vec4(vertices, 1.0);
 }
