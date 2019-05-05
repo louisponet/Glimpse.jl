@@ -199,7 +199,7 @@ end
 
 Base.@kwdef struct Text <: ComponentData
 	str      ::String = "test"
-	font_size::Int    = 50
+	font_size::Int    = 1
 	font     = AP.defaultfont()
 	align    ::Symbol = :right
 end

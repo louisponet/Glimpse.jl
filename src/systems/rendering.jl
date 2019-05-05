@@ -680,14 +680,16 @@ function update(renderer::System{TextRenderer})
 	bind(fbo.attachments[1])
     bind(iofbo)
     draw(iofbo)
+    set_uniform(prog, :projview, persp_mat)
 	set_uniform(prog, :glyph_texture, (0, color_attachment(fbo, 1)))
 	for e in valid_entities(spat, text, col)
 		# if !has_entity(vao, e)
 		# @show persp_mat*Vec4f0(spat[e].position..., 1.0f0)
-		t_p = persp_mat*Vec4f0(spat[e].position..., 1.0f0)
-		set_uniform(prog, :start_pos, Vec2f0(t_p[1], t_p[2]))
+		# t_p = persp_mat*Vec4f0(spat[e].position..., 1.0f0)
+		set_uniform(prog, :start_pos, spat[e].position)
 		set_uniform(prog, :color, col[e].color)
 		for verts in to_gl_text(text[e])
+			# @show (persp_mat, ).* verts
 			b = Buffer(verts)
 			vao = VertexArray([BufferAttachmentInfo(:offsets_uv,
 															  GLint(0),

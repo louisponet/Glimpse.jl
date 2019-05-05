@@ -69,7 +69,7 @@ function Base.setindex!(A::GappedVector{T}, v, i::Int) where T
 				handled = true
 				break
 			elseif i == startid - 1 # grow left
-				insert!(bvec, i, conv_v)
+				insert!(bvec, 1, conv_v)
 				startid -= 1
 				handled = true
 				break
