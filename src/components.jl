@@ -59,11 +59,11 @@ end
 
 Base.@kwdef struct Vao{P <: ProgramKind} <: ComponentData
 	vertexarray::VertexArray
-	meshID     ::Int
 	visible    ::Bool = true
 end
 programkind(::Vao{P}) where {P} = P
-
+GLA.bind(vao::Vao) = GLA.bind(vao.vertexarray)
+GLA.draw(vao::Vao) = GLA.draw(vao.vertexarray)
 # NON rendering Components
 struct Dynamic <: ComponentData end
 Base.@kwdef struct Spatial <: ComponentData

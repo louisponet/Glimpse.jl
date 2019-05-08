@@ -353,3 +353,14 @@ end
 
 
 struct TextPass <: RenderPassKind end
+
+struct FontStorage <: Singleton
+	atlas       ::AP.TextureAtlas
+	storage_fbo ::GLA.FrameBuffer #All Glyphs should be stored in the first color attachment
+end
+
+function FontStorage()
+	atlas = AP.get_texture_atlas()
+	fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data])
+	return FontStorage(atlas, fbo)
+end

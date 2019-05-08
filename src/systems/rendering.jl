@@ -117,9 +117,9 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultProgram,
 			    buffers = generate_buffers(prog.program, m[e].mesh)
 		    end
 		    if K == LineProgram
-			    vao[e] = Vao{K}(VertexArray(buffers, 11), e, true)
+			    vao[e] = Vao{K}(VertexArray(buffers, 11), true)
 		    else
-			    vao[e] = Vao{K}(VertexArray(buffers, faces(m[e].mesh) .- GLint(1)), e, true)
+			    vao[e] = Vao{K}(VertexArray(buffers, faces(m[e].mesh) .- GLint(1)), true)
 		    end
 	    end
 	end
@@ -186,7 +186,7 @@ function update(uploader::System{Uploader{K}}) where {K <: Union{DefaultInstance
 			end
 			tprog = iprog.program
 			tmesh = smesh[t_es[1]].mesh
-		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), 1, true))
+		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), true))
 		    for e in t_es
 			    ivao.data[e] = length(ivao.shared)
 		    end
@@ -232,7 +232,6 @@ function find_contiguous_bounds(indices)
 end
 
 function update(sys::System{UniformUploader})
-
 	uc = singleton(sys, UpdatedComponents)
 	dvao = shared_component(sys, Vao{DefaultInstancedProgram})
 	pvao = shared_component(sys, Vao{PeelingInstancedProgram})
@@ -372,8 +371,8 @@ function update(renderer::System{DefaultRenderer})
     
 	for vao in ivao.shared
 		if vao.visible
-			GLA.bind(vao.vertexarray)
-			GLA.draw(vao.vertexarray)
+			GLA.bind(vao)
+			GLA.draw(vao)
 		end
 	end
 
@@ -385,8 +384,8 @@ function update(renderer::System{DefaultRenderer})
 		evao   = vao[e]
 		if evao.visible
 			ufunc_default(e)
-			GLA.bind(evao.vertexarray)
-			GLA.draw(evao.vertexarray)
+			GLA.bind(evao)
+			GLA.draw(evao)
 		end
 	end
 
@@ -398,11 +397,10 @@ function update(renderer::System{DefaultRenderer})
 		evao   = line_vao[e]
 		if evao.visible
 			ufunc_lines(e)
-			GLA.bind(evao.vertexarray)
-			GLA.draw(evao.vertexarray)
+			GLA.bind(evao)
+			GLA.draw(evao)
 		end
 	end
-
 end
 
 rem1(x, y) = (x - 1) % y + 1
@@ -495,8 +493,8 @@ function update(renderer::System{DepthPeelingRenderer})
 			evao   = vao[i]
 			if evao.visible
 				ufunc(i)
-				GLA.bind(evao.vertexarray)
-				GLA.draw(evao.vertexarray)
+				GLA.bind(evao)
+				GLA.draw(evao)
 			end
 		end
 	end
@@ -504,8 +502,8 @@ function update(renderer::System{DepthPeelingRenderer})
 	function renderall_instanced()
 		for evao in ivao.shared
 			if evao.visible
-				GLA.bind(evao.vertexarray)
-				GLA.draw(evao.vertexarray)
+				GLA.bind(evao)
+				GLA.draw(evao)
 			end
 		end
 	end
@@ -597,72 +595,78 @@ function update(renderer::System{DepthPeelingRenderer})
     set_uniform(compositing_program, :color_texture, (0, color_attachment(colorblender, 1)))
     bind(fullscreenvao)
     draw(fullscreenvao)
-    glFlush()
+    # glFlush()
 end
 
-struct TextRenderer <: AbstractRenderSystem end
-text_render_system(dio) = System{TextRenderer}(dio, (Spatial, Text, UniformColor, Camera3D, Vao{TextProgram}), (RenderProgram{TextProgram}, RenderTarget{IOTarget}, RenderPass{TextPass}))
+struct TextUploader <: SystemKind end
+text_uploader_system(dio) = System{TextUploader}(dio, (Text, Vao{TextProgram}), (RenderProgram{TextProgram}, FontStorage)) 
 
-function to_gl_text(string, textsize, font, align=:right)
-    atlas           = AP.get_texture_atlas()
+function update_indices!(sys::System{TextUploader})
+	comp(T) = component(sys, T)
+	text = comp(Text)
+	vao  = comp(Vao{TextProgram})
+	sys.indices = [setdiff(valid_entities(text), valid_entities(vao))]
+end
+
+
+function update(sys::System{TextUploader})
+	comp(T) = component(sys, T)
+	text = comp(Text)
+	vao  = comp(Vao{TextProgram})
+	prog = singleton(sys, RenderProgram{TextProgram})
+	for e in sys.indices[1]
+		space_o_wh, uv_offset_width  = to_gl_text(text[e], singleton(sys, FontStorage))
+		vao[e] = Vao{TextProgram}(VertexArray([generate_buffers(prog.program,
+		                                                        GEOMETRY_DIVISOR,
+		                                                        uv=Vec2f0.([(0, 1),
+		                                                                    (0, 0),
+		                                                                    (1, 1),
+		                                                                    (1,0)]));
+                                               generate_buffers(prog.program,
+                                                                GLint(1),
+                                                                space_o_wh      = space_o_wh,
+                                                                uv_offset_width = uv_offset_width)],
+                                               collect(0:3), GL_TRIANGLE_STRIP, length(text[e].str)), true)
+	end
+end
+
+to_gl_text(t::Text, storage::FontStorage) = to_gl_text(t.str, t.font_size, t.font, t.align, storage)
+
+function to_gl_text(string::AbstractString, textsize::Int, font::Vector{Ptr{AP.FreeType.FT_FaceRec}}, align::Symbol, storage::FontStorage )
+    atlas           = storage.atlas
     rscale          = Float32(textsize)
     chars           = Vector{Char}(string)
     scale           = Vec2f0.(AP.glyph_scale!.(Ref(atlas), chars, (font,), rscale))
     positions2d     = AP.calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
     aoffset         = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, align)
-    aoffsetn        = AP.to_ndim(Point3f0, aoffset, 0f0)
     uv_offset_width = AP.glyph_uv_width!.(Ref(atlas), chars, (font,))
-
-    positions = map(positions2d) do p
-        AP.to_ndim(Point{3, Float32}, p, 0f0) .+ aoffsetn
+    out_uv_offset_width= Vec4f0[]
+    for uv in uv_offset_width
+	    push!(out_uv_offset_width, Vec4f0(uv[1], uv[2], uv[3] - uv[1], uv[4] - uv[2]))
     end
-
-	out = Vector{Vec4f0}[]
-	for (p, uv_o_w, sc) in zip(positions, uv_offset_width, scale)
-		push!(out,[Vec4f0(p[1], p[2] + sc[2]    , uv_o_w[1], uv_o_w[2]),
-	             Vec4f0(p[1], p[2]            , uv_o_w[1], uv_o_w[4]),
-	             Vec4f0(p[1]+sc[1], p[2]+sc[2], uv_o_w[3], uv_o_w[2]),
-	             Vec4f0(p[1]+sc[1], p[2]      , uv_o_w[3], uv_o_w[4])])
+    out_pos_scale = Vec4f0[]
+    for (p, sc) in zip(positions2d .+ (aoffset,), scale)
+	    push!(out_pos_scale, Vec4f0(p[1], p[2], sc[1], sc[2]))
     end
-    return out
+    return out_pos_scale, out_uv_offset_width
 end
-# to_gl_text(t::Text) = to_gl_text(t.str, Vec3f0(500, 500, 0), t.font_size, t.font, t.align)
-to_gl_text(t::Text) = to_gl_text(t.str, t.font_size, t.font, t.align)
 
-function to_gl_text(string, startpos::Vec3f0, textsize, font, align) where {N, T}
-    atlas           = AP.get_texture_atlas()
-    rscale          = Float32(textsize)
-    chars           = Vector{Char}(string)
-    scale           = Vec2f0.(AP.glyph_scale!.(Ref(atlas), chars, (font,), rscale))
-    positions2d     = AP.calc_position(string, Point2f0(0), rscale, font, atlas)
-    # font is Vector{FreeType.NativeFont} so we need to protec
-    aoffset         = AP.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, align)
-    aoffsetn        = AP.to_ndim(Point{3, Float32}, aoffset, 0f0)
-    uv_offset_width = AP.glyph_uv_width!.(Ref(atlas), chars, (font,))
+struct TextRenderer <: AbstractRenderSystem end
+text_render_system(dio) = System{TextRenderer}(dio, (Spatial, UniformColor, Camera3D, Vao{TextProgram}), (RenderProgram{TextProgram}, RenderTarget{IOTarget}, FontStorage))
 
-    positions = map(positions2d) do p
-        pn          =AP.to_ndim(Point{3, Float32}, p, 0f0) .+ aoffsetn
-        pn .+ startpos
-    end
-	out = Vector{Vec4f0}[]
-	for (p, uv_o_w, sc) in zip(positions, uv_offset_width, scale)
-		push!(out,[Vec4f0(p[1], p[2] + sc[2]  , uv_o_w[1], uv_o_w[2]),
-	             Vec4f0(p[1], p[2]            , uv_o_w[1], uv_o_w[4]),
-	             Vec4f0(p[1]+sc[1], p[2]+sc[2], uv_o_w[3], uv_o_w[2]),
-	             Vec4f0(p[1]+sc[1], p[2]      , uv_o_w[3], uv_o_w[4])])
-    end
-    out
+function update_indices!(sys::System{TextRenderer})
+	comp(T) = component(sys, T)
+	sys.indices = [valid_entities(comp(Vao{TextProgram}), comp(Spatial), comp(UniformColor))]
 end
 
 function update(renderer::System{TextRenderer})
 	comp(T)   = component(renderer, T)
 	spat      = comp(Spatial)
-	text      = comp(Text)
 	col       = comp(UniformColor)
 	prog      = singleton(renderer, RenderProgram{TextProgram})
 	cam       = comp(Camera3D)
-	# vao       = comp(Vao{TextProgram})
+	vao       = comp(Vao{TextProgram})
 	iofbo     = singleton(renderer, RenderTarget{IOTarget})
 	persp_mat = cam[valid_entities(cam)[1]].projview
 	wh = size(iofbo)
@@ -671,33 +675,21 @@ function update(renderer::System{TextRenderer})
 	glEnable(GL_BLEND)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-	atlas = AP.get_texture_atlas()
-	fbo = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data])
-	GLA.unbind(fbo)
+	glyph_fbo = singleton(renderer, FontStorage).storage_fbo
+	bind(color_attachment(glyph_fbo, 1))
+    bind(iofbo)
+    draw(iofbo)
 
 	bind(prog)
 	set_uniform(prog, :canvas_dims, Vec2f0(wh))
-	bind(fbo.attachments[1])
-    bind(iofbo)
-    draw(iofbo)
     set_uniform(prog, :projview, persp_mat)
-	set_uniform(prog, :glyph_texture, (0, color_attachment(fbo, 1)))
-	for e in valid_entities(spat, text, col)
-		# if !has_entity(vao, e)
-		# @show persp_mat*Vec4f0(spat[e].position..., 1.0f0)
-		# t_p = persp_mat*Vec4f0(spat[e].position..., 1.0f0)
+	set_uniform(prog, :glyph_texture, (0, color_attachment(glyph_fbo, 1)))
+	for e in renderer.indices[1]
 		set_uniform(prog, :start_pos, spat[e].position)
 		set_uniform(prog, :color, col[e].color)
-		for verts in to_gl_text(text[e])
-			# @show (persp_mat, ).* verts
-			b = Buffer(verts)
-			vao = VertexArray([BufferAttachmentInfo(:offsets_uv,
-															  GLint(0),
-															  b,
-															  GEOMETRY_DIVISOR)], 5)
-			bind(vao)
-			draw(vao)
-		end
+		bind(vao[e])
+		# @show vao[e].vertexarray.indices
+		draw(vao[e])
 	end
 	# unbind(prog)
 end

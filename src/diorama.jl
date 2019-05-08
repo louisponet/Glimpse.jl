@@ -19,9 +19,10 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     line_prog          = RenderProgram{LineProgram}(GLA.Program(line_shaders()))
     text_prog          = RenderProgram{TextProgram}(GLA.Program(text_shaders()))
     updated_components = UpdatedComponents(DataType[])
+    font_storage       = FontStorage()
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog], System[])
+	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog, font_storage], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
     						FunctionGeometry,
@@ -67,6 +68,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             peeling_uploader_system(dio),
 			             peeling_instanced_uploader_system(dio),
                          uniform_uploader_system(dio),
+                         text_uploader_system(dio),
 			             camera_system(dio),
 			             default_render_system(dio),
 			             depth_peeling_render_system(dio),
@@ -164,7 +166,7 @@ set_background_color!(dio::Diorama, color) = canvas_command(dio, c -> set_backgr
 #       _\/\\\______________\///\\\___________/\\\______\//\\\__  
 #        _\/\\\\\\\\\\\\\\\____\////\\\\\\\\\_\///\\\\\\\\\\\/___ 
 #         _\///////////////________\/////////____\///////////_____
-  
+
 function Base.empty!(dio::Diorama)
 	for component in dio.components
 		empty!(component)

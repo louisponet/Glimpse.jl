@@ -161,7 +161,7 @@ function generate_buffers(program::Program, divisor::GLint; name_buffers...)
 end
 #----------------GeometryTypes-------------------------#
 
-# const INSTANCED_MESHES = Dict{Symbol, BasicMesh}()
+# const INSTANCEpD_MESHES = Dict{Symbol, BasicMesh}()
 #
 # struct InstancedAttributeMesh{D, T, FD, FT, AT <: NamedTuple} <: AbstractGlimpseMesh
 #     basic      ::BasicMesh{D, T, FD, FT}
