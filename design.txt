@@ -1,0 +1,21 @@
+#### Entities - Components
+
+Entities can only have state, i.e. components. However the components are stored in arrays that are as contiguous as possible. 
+The GappedVector tries to acieve the clarity of having indexed based entities, with as contiguous as possible arrays to loop over. I.e. entities have the same index in each component array, but if they don't have that Component, an out of bounds error will be thrown. GappedVectors are a set of vectors with and start indices that specify which entity index coincides with the first index of that particular vector. 
+
+Entities can not have any behavior as such. However Components/ComponentData structures can define QOL functions to access their data, do simple mutations and operations. ComponentData structures should be kept small and concise, with only simple functions that act on them.
+
+#### Systems
+
+A System defines a certain behavior with, or action that needs to be performed on entities that have the components that the System cares about. The System itself cannot maintain any state but is allowed to change state from entities. The only state that Systems can have is state that alters their inner working or behavior (e.g. settings). 
+
+Requirements for a system is that they have a field with the SystemData, a combination of Components and Singletons that define the state and data that they work with, and can be accessed by the function `system_data(<:System)`. This is done such that extra functionality can be added to work with the SystemData without having to extend these functions manually to the SubTypes of System. Each System must have an `update(<:System)` function. 
+
+#### Singletons
+
+A Singleton is some state that is not tied to entities, rather it allows for communication between systems, and handles some general state that needs to be maintained for the ECS to work as a whole. One example of this is the IOTarget <: RenderTarget. This is essentially the IO FrameBuffer that gets passed to every Render System, with the image of the previous render passes, and onto which the render system will render it's part of the scene. Another is the Canvas which is ultimately the window from GLFW.
+
+#### Diorama
+
+A Diorama is essentially an Entity Component System manager. It holds all the Entities, Components Singletons and Systems. It handles creating and adding new entities, what the order of the systems is, it basically binds everything together. 
+

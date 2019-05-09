@@ -232,21 +232,22 @@ unbind(v::FullscreenVao) = unbind(v.vao)
 const ProgramDict = Dict{Symbol, Program}
 
 
-struct IOTarget         <: RenderTargetKind end
-struct ColorBlendTarget <: RenderTargetKind end
-struct PeelTarget       <: RenderTargetKind end
+struct IOTarget          <: RenderTargetKind end
+struct ColorBlendTarget  <: RenderTargetKind end
+struct PeelTarget        <: RenderTargetKind end
+struct MousePickerTarget <: RenderTargetKind end
 
 struct RenderTarget{R <: RenderTargetKind} <: Singleton
-	target::Union{FrameBuffer, Canvas}
-	background::RGBAf0
+	target     ::Union{FrameBuffer, Canvas}
+	background ::RGBAf0
 end
-bind(r::RenderTarget, args...)   = bind(r.target, args...)
-draw(r::RenderTarget)   = draw(r.target)
-clear!(r::RenderTarget, c=r.background) = clear!(r.target, c)
-Base.size(r::RenderTarget)   = size(r.target)
+bind(r::RenderTarget, args...)             = bind(r.target, args...)
+draw(r::RenderTarget)                      = draw(r.target)
+clear!(r::RenderTarget, c=r.background)    = clear!(r.target, c)
+Base.size(r::RenderTarget)                 = size(r.target)
 depth_attachment(r::RenderTarget, args...) = depth_attachment(r.target, args...)
 color_attachment(r::RenderTarget, args...) = color_attachment(r.target, args...)
-GLA.free!(r::RenderTarget) = free!(r.target)
+GLA.free!(r::RenderTarget)                 = free!(r.target)
 
 const RenderTargetDict  = Dict{Symbol, RenderTarget}
 
@@ -322,35 +323,34 @@ end
 
 
 mutable struct TimingData <: Singleton
-	time  ::Float64
-	dtime ::Float64
-	frames::Int
-	preferred_fps::Float64
-	reversed ::Bool
+	time          ::Float64
+	dtime         ::Float64
+	frames        ::Int
+	preferred_fps ::Float64
+	reversed      ::Bool
 end
 
 struct RenderProgram{P <: ProgramKind} <: Singleton
 	program::GLA.Program	
 end
 
-GLA.bind(p::RenderProgram) = bind(p.program)
+GLA.bind(p::RenderProgram)                 = bind(p.program)
 GLA.set_uniform(p::RenderProgram, args...) = set_uniform(p.program, args...)
 
 struct UpdatedComponents <: Singleton
 	components::Vector{DataType}
 end
 
-Base.empty!(uc::UpdatedComponents) = empty!(uc.components)
+Base.empty!(uc::UpdatedComponents)                               = empty!(uc.components)
 Base.push!(uc::UpdatedComponents, t::T) where {T<:ComponentData} = push!(uc.components, T)
-Base.push!(uc::UpdatedComponents, t::DataType) = push!(uc.components, t)
-Base.iterate(uc::UpdatedComponents, r...) = iterate(uc.components, r...)
+Base.push!(uc::UpdatedComponents, t::DataType)                   = push!(uc.components, t)
+Base.iterate(uc::UpdatedComponents, r...)                        = iterate(uc.components, r...)
 
 function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:ComponentData}
 	if !in(T, uc.components)
 		push!(uc, T)
 	end
 end
-
 
 struct TextPass <: RenderPassKind end
 
@@ -364,3 +364,4 @@ function FontStorage()
 	fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data])
 	return FontStorage(atlas, fbo)
 end
+

@@ -204,6 +204,10 @@ Base.@kwdef struct Text <: ComponentData
 	align    ::Symbol = :right
 end
 	
+struct Selectable <: ComponentData end
+
+
+
 
 
 

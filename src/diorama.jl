@@ -112,6 +112,7 @@ function renderloop(dio)
 	    begin
 	    	while !should_close(canvas)
 			    clear!(canvas)
+			    @show singleton(dio, Canvas).callbacks[:mouse_buttons]
 			    iofbo = singleton(dio, RenderTarget{IOTarget})
 			    bind(iofbo)
 			    draw(iofbo)

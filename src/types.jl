@@ -48,7 +48,9 @@ mutable struct System{Kind <: SystemKind} #DT has the components datatypes
 	engaged ::Bool
 	indices ::Vector{Vector{Int}}
 	function System{Kind}(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}, engaged=true) where Kind
-		return new{Kind}(c, req, singletons, engaged, Vector{Int}[])
+		t_ = new{Kind}(c, req, singletons, engaged, Vector{Int}[])
+		update_indices!(t_)
+		return t_
 	end
 end
 
