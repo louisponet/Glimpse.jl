@@ -41,18 +41,6 @@ end
 
 abstract type System end
 
-mutable struct SystemData #DT has the components datatypes
-	components::Vector{AbstractComponent}
-	requested_components # so that new components can be added as well
-	singletons::Vector{Singleton}
-	engaged ::Bool
-	indices ::Vector{Vector{Int}}
-	function SystemData(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}, engaged=true)
-		t_ = new(c, req, singletons, engaged, Vector{Int}[])
-		return t_
-	end
-end
-
 abstract type AbstractGlimpseMesh end
 
 const INSTANCED_MESHES = Dict{Type, AbstractGlimpseMesh}()
@@ -67,7 +55,6 @@ struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
     attributes ::AT
     basic      ::BM
 end
-
 
 mutable struct Diorama
     name       ::Symbol
@@ -89,10 +76,10 @@ mutable struct Diorama
     end
 end
 
-
 include("components.jl")
 include("singletons.jl")
 include("meshes.jl")
+include("system.jl")
 include("diorama.jl")
 
 

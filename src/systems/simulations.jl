@@ -1,3 +1,18 @@
+abstract type SimulationSystem <: System end
+
+struct Timer <: SimulationSystem
+	data ::SystemData
+
+	Timer(dio::Diorama) = new(SystemData(dio, (), (TimingData,)))
+end 
+
+function update(timer::Timer)
+	sd = system_data(timer).singletons[1]
+	nt         = time()
+	sd.dtime   = sd.reversed ? - nt + sd.time : nt - sd.time
+	sd.time    = nt
+	sd.frames += 1
+end
 
 Base.@kwdef struct Spring <: ComponentData
 	center::Point3f0 = zero(Point3f0)
