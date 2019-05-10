@@ -1,8 +1,10 @@
+import GLAbstraction: set_uniform, color_attachment, depth_attachment
+
 struct UniformCalculator <: System
 	data::SystemData
+
+	UniformCalculator(dio::Diorama) = new(SystemData(dio, (Spatial, Shape, ModelMat, Dynamic, Camera3D), (UpdatedComponents,)))
 end
-UniformCalculator(dio::Diorama) = UniformCalculator(SystemData(dio, (Spatial, Shape, ModelMat, Dynamic, Camera3D), (UpdatedComponents,)))
-system_data(u::UniformCalculator) = u.data
 
 function update_indices!(sys::UniformCalculator)
 	val_es(x...)  = valid_entities(sys, x...)
@@ -67,6 +69,7 @@ function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultP
 		end
 	end
 end
+
 function set_entity_uniforms_func(render_program::RenderProgram{LineProgram}, system::System)
     prog = render_program.program
     comp(T)  = component(system, T)
@@ -84,8 +87,6 @@ struct Uploader{P <: ProgramKind} <: System
 end
 Uploader(::Type{P}, dio::Diorama) where {P<:ProgramKind} = 
 	Uploader{P}(SystemData(dio, (Mesh, BufferColor, Vao{P}, ProgramTag{P}), (RenderProgram{P},)))
-
-system_data(u::Uploader) = u.data
 
 DefaultUploader(dio::Diorama) = Uploader(DefaultProgram, dio)
 PeelingUploader(dio::Diorama) = Uploader(PeelingProgram, dio)
@@ -200,12 +201,12 @@ end
 
 struct UniformUploader <: System
 	data ::SystemData
+
+	UniformUploader(dio::Diorama) = new(SystemData(dio, (Vao{DefaultInstancedProgram},
+                                                         Vao{PeelingInstancedProgram},
+                                                         ModelMat),
+                                                        (UpdatedComponents,)))
 end
-UniformUploader(dio::Diorama) = UniformUploader(SystemData(dio, (Vao{DefaultInstancedProgram},
-                                                                 Vao{PeelingInstancedProgram},
-                                                                 ModelMat),
-                                                                (UpdatedComponents,)))
-system_data(u::UniformUploader) = u.data
 
 function update_indices!(sys::UniformUploader)
 	mat_entities = valid_entities(component(sys, ModelMat))
@@ -275,29 +276,32 @@ end
 
 #TODO we could actually make the uploader system after having defined what kind of rendersystems are there
 abstract type AbstractRenderSystem  <: System   end
+
 struct DefaultRenderer <: AbstractRenderSystem
 	data ::SystemData
+
+	function DefaultRenderer(dio::Diorama)
+		components = (Vao{DefaultProgram},
+				      Vao{DefaultInstancedProgram},
+				      Vao{LineProgram},
+				      ProgramTag{DefaultProgram},
+				      ProgramTag{DefaultInstancedProgram},
+				      ProgramTag{LineProgram},
+				      Spatial,
+				      Material,
+				      ModelMat,
+				      Color,
+				      Shape,
+				      PointLight,
+				      Line,
+				      Camera3D)
+	    singletons = (RenderTarget{IOTarget},
+     			      RenderProgram{DefaultProgram},
+     			      RenderProgram{DefaultInstancedProgram},
+     			      RenderProgram{LineProgram})
+		return new(SystemData(dio, components, singletons))
+	end
 end
-DefaultRenderer(dio::Diorama) =
-	DefaultRenderer(SystemData(dio, (Vao{DefaultProgram},
-								     Vao{DefaultInstancedProgram},
-								     Vao{LineProgram},
-								     ProgramTag{DefaultProgram},
-								     ProgramTag{DefaultInstancedProgram},
-								     ProgramTag{LineProgram},
-								     Spatial,
-								     Material,
-								     ModelMat,
-								     Color,
-								     Shape,
-								     PointLight,
-								     Line,
-								     Camera3D), (RenderPass{DefaultPass},
-								     			  RenderTarget{IOTarget},
-								     			  RenderProgram{DefaultProgram},
-								     			  RenderProgram{DefaultInstancedProgram},
-								     			  RenderProgram{LineProgram})))
-system_data(r::DefaultRenderer) = r.data
 
 function set_uniform(program::GLA.Program, spatial, camera::Camera3D)
     set_uniform(program, :projview, camera.projview)
@@ -412,27 +416,56 @@ function update(renderer::DefaultRenderer)
 	end
 end
 
+struct ColorBlendTarget  <: RenderTargetKind end
+struct PeelTarget        <: RenderTargetKind end
 
+#can't the colorblender be the IOTarget?
 struct DepthPeelingRenderer <: AbstractRenderSystem
-	data ::SystemData
+	data          ::SystemData
+	peel1_target  ::RenderTarget{PeelTarget}
+	peel2_target  ::RenderTarget{PeelTarget}
+	blender_target::RenderTarget{ColorBlendTarget}
+	peel_comp_program::GLA.Program
+	blend_program    ::GLA.Program
+	comp_program     ::GLA.Program
+	num_passes ::Int
+
+	function DepthPeelingRenderer(dio::Diorama, num_passes=5)
+		components = (Vao{PeelingProgram},
+		              Vao{PeelingInstancedProgram},
+		              ProgramTag{PeelingProgram},
+		              ProgramTag{PeelingInstancedProgram},
+		              ModelMat,
+		              Spatial,
+		              Material,
+		              Shape,
+		              Color,
+		              PointLight,
+		              Camera3D,)
+	    singletons = (RenderTarget{IOTarget},
+	  			      FullscreenVao,
+	  			      RenderProgram{PeelingProgram},
+	  			      RenderProgram{PeelingInstancedProgram})
+
+		data       = SystemData(dio, components, singletons)
+		wh         = size(dio)
+		background = background_color(dio)
+
+	    peel_comp_prog      = Program(peeling_compositing_shaders())
+	    comp_prog           = Program(compositing_shaders())
+	    blend_prog          = Program(blending_shaders())
+
+	    color_blender, peel1, peel2 = [FrameBuffer(values(wh), (RGBA{Float32}, GLA.Depth{Float32}), true) for i= 1:3]
+        return new(data,
+                   RenderTarget{PeelTarget}(peel1, background),
+                   RenderTarget{PeelTarget}(peel2, background),
+                   RenderTarget{ColorBlendTarget}(color_blender, background),
+                   peel_comp_prog,    
+                   blend_prog,
+                   comp_prog,
+                   num_passes)
+    end
 end
-DepthPeelingRenderer(dio::Diorama) =
-	DepthPeelingRenderer(SystemData(dio, (Vao{PeelingProgram},
-								          Vao{PeelingInstancedProgram},
-								          ProgramTag{PeelingProgram},
-								          ProgramTag{PeelingInstancedProgram},
-								          ModelMat,
-								          Spatial,
-								          Material,
-								          Shape,
-								          Color,
-								          PointLight,
-								          Camera3D,), (RenderPass{DepthPeelingPass},
-								          				RenderTarget{IOTarget},
-								          				FullscreenVao,
-								          				RenderProgram{PeelingProgram},
-								          				RenderProgram{PeelingInstancedProgram})))
-system_data(d::DepthPeelingRenderer) = d.data
 
 function update_indices!(sys::DepthPeelingRenderer)
 	comp(T)  = component(sys, T)
@@ -466,22 +499,24 @@ function update(renderer::DepthPeelingRenderer)
 
 	light    = comp(PointLight)
 	camera   = comp(Camera3D)
-	rp       = singletons(renderer)[1]
 
-	peel_comp_program   = rp.programs[:peel_comp]
-    blending_program    = rp.programs[:blending]
-    compositing_program = rp.programs[:composite]
+	peel_comp_program   = renderer.peel_comp_program
+    blending_program    = renderer.blend_program
+    compositing_program = renderer.comp_program
 
-    colorblender        = rp.targets[:colorblender]
-    peeling_targets     = [rp.targets[:peel1], rp.targets[:peel2]]
+    colorblender        = renderer.blender_target
+    peeling_targets     = [renderer.peel1_target, renderer.peel2_target]
     iofbo               = singleton(renderer, RenderTarget{IOTarget})
     fullscreenvao       = singleton(renderer, FullscreenVao)
 
     bind(colorblender)
     draw(colorblender)
     clear!(colorblender)
-    canvas_width  = Float32(size(colorblender)[1])
-	canvas_height = Float32(size(colorblender)[2])
+    canvas_width, canvas_height = Float32.(size(iofbo))
+
+    resize!(colorblender, (canvas_width, canvas_height))
+    resize!(peeling_targets[1], (canvas_width, canvas_height))
+    resize!(peeling_targets[2], (canvas_width, canvas_height))
 
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
@@ -548,7 +583,7 @@ function update(renderer::DepthPeelingRenderer)
     end
 
 	#start peeling passes
-    for layer=1:rp.options.num_passes
+    for layer=1:renderer.num_passes
         currid  = rem1(layer, 2)
         currfbo = peeling_targets[currid]
         previd  =  3 - currid
@@ -612,9 +647,10 @@ end
 
 struct TextUploader <: System
 	data ::SystemData
+
+	TextUploader(dio::Diorama) =
+		new(SystemData(dio, (Text, Vao{TextProgram}), (RenderProgram{TextProgram}, FontStorage)))
 end
-TextUploader(dio::Diorama) = TextUploader(SystemData(dio, (Text, Vao{TextProgram}), (RenderProgram{TextProgram}, FontStorage)))
-system_data(t::TextUploader) = t.data
 
 function update_indices!(sys::TextUploader)
 	comp(T) = component(sys, T)
@@ -653,7 +689,7 @@ function to_gl_text(string::AbstractString, textsize::Int, font::Vector{Ptr{AP.F
     chars           = Vector{Char}(string)
     scale           = Vec2f0.(AP.glyph_scale!.(Ref(atlas), chars, (font,), rscale))
     positions2d     = AP.calc_position(string, Point2f0(0), rscale, font, atlas)
-    # font is Vector{FreeType.NativeFont} so we need to protec
+
     aoffset         = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, align)
     uv_offset_width = AP.glyph_uv_width!.(Ref(atlas), chars, (font,))
     out_uv_offset_width= Vec4f0[]
@@ -669,9 +705,13 @@ end
 
 struct TextRenderer <: AbstractRenderSystem
 	data ::SystemData
+
+	function TextRenderer(dio::Diorama)
+		components = (Spatial, UniformColor, Camera3D, Vao{TextProgram})
+		singletons = (RenderProgram{TextProgram}, RenderTarget{IOTarget}, FontStorage)
+		new(SystemData(dio, components, singletons))
+	end
 end
-TextRenderer(dio::Diorama) = TextRenderer(SystemData(dio, (Spatial, UniformColor, Camera3D, Vao{TextProgram}), (RenderProgram{TextProgram}, RenderTarget{IOTarget}, FontStorage)))
-system_data(t::TextRenderer) = t.data
 
 function update_indices!(sys::TextRenderer)
 	comp(T) = component(sys, T)
@@ -688,8 +728,7 @@ function update(renderer::TextRenderer)
 	iofbo     = singleton(renderer, RenderTarget{IOTarget})
 	persp_mat = cam[valid_entities(cam)[1]].projview
 	wh = size(iofbo)
-	# glEnable(GL_DEPTH_TEST)
-	# glDepthFunc(GL_ALWAYS)
+
 	glEnable(GL_BLEND)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
@@ -706,28 +745,25 @@ function update(renderer::TextRenderer)
 		set_uniform(prog, :start_pos, spat[e].position)
 		set_uniform(prog, :color, col[e].color)
 		bind(vao[e])
-		# @show vao[e].vertexarray.indices
 		draw(vao[e])
 	end
-	# unbind(prog)
 end
 
 struct FinalRenderer <: AbstractRenderSystem
-	data ::SystemData
-end
-FinalRenderer(dio::Diorama) = FinalRenderer(SystemData(dio, (), (RenderPass{FinalPass}, Canvas, RenderTarget{IOTarget}, FullscreenVao)))
+	data                ::SystemData
+	compositing_program ::GLA.Program
 
-system_data(f::FinalRenderer) = f.data
+    FinalRenderer(dio::Diorama) = new(SystemData(dio, (), (Canvas, RenderTarget{IOTarget}, FullscreenVao)),
+                                      Program(compositing_shaders()))
+end
 
 function update(sys::FinalRenderer)
-    rp                  = singleton(sys, RenderPass{FinalPass})
-    compositing_program = main_program(rp)
+    compositing_program = sys.compositing_program
     canvas              = singleton(sys, Canvas)
     vao                 = singleton(sys, FullscreenVao)
     iofbo               = singleton(sys, RenderTarget{IOTarget})
     bind(canvas)
     draw(canvas)
-    # clear!(canvas)
     bind(compositing_program)
     set_uniform(compositing_program, :color_texture, (0, color_attachment(iofbo.target, 1)))
     bind(vao)

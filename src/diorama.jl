@@ -6,10 +6,6 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	c                  = Canvas(name; kwargs...)
 	wh                 = size(c)
 	io_fbo             = RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
-	default_pass       = default_renderpass()
-	# depth_peeling_pass = create_transparancy_pass(wh, RGBAf0(RGB(c.background),0.0f0), 5)
-	depth_peeling_pass = create_transparancy_pass(wh, c.background, 5)
-	fp                 = final_pass()
 	# text_pass          = text_pass()
 	fullscreenvao      = FullscreenVao()
     def_prog           = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
@@ -22,7 +18,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     font_storage       = FontStorage()
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [default_pass, depth_peeling_pass, fp, timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog, font_storage], System[])
+	dio = Diorama(name, Entity[], AbstractComponent[], [timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog, font_storage], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
     						FunctionGeometry,
@@ -78,7 +74,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 
 
 	new_entity!(dio, separate = [Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)), PointLight(), UniformColor(RGBA{Float32}(1.0))])
-	new_entity!(dio, separate = [assemble_camera3d(pixelsize(dio)...)...])
+	new_entity!(dio, separate = [assemble_camera3d(size(dio)...)...])
 	return dio
 end
 
@@ -152,9 +148,9 @@ function makecurrentdio(x)
     currentdio[] = x
 end
 
-windowsize(dio::Diorama) = canvas_command(dio, c -> windowsize(c), x -> (0,0))
-pixelsize(dio::Diorama)  = (windowsize(dio)...,)
+Base.size(dio::Diorama)  = canvas_command(dio, c -> windowsize(c), x -> (0,0))
 set_background_color!(dio::Diorama, color) = canvas_command(dio, c -> set_background_color!(c, color))
+background_color(dio::Diorama) = canvas_command(dio, c -> c.background)
 
 
 # __/\\\\\\\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\\\___        

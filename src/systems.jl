@@ -3,7 +3,6 @@ include("systems/special_systems.jl")
 include("systems/camera.jl")
 
 # Constructors
-# System{kind}(components::Tuple) where {kind} = System{kind, (eltype.(components)...,)}(components)
 function SystemData(dio::Diorama, comp_names::NTuple, singleton_names)
 	comps = AbstractComponent[]
 	for cn in comp_names
@@ -15,7 +14,9 @@ function SystemData(dio::Diorama, comp_names::NTuple, singleton_names)
 	end
 	return SystemData(comps, comp_names, singls)
 end
+
 isengaged(data::SystemData) = data.engaged
+
 isengaged(sys::System) = isengaged(system_data(sys))
 
 # Access
@@ -54,18 +55,22 @@ singletons(sys::SystemData) = sys.singletons
 singletons(sys::System, args...) = singletons(system_data(sys), args...)
 singletons(sys::System) = singletons(system_data(sys))
 
+update(sys::S) where {S<:System} = "Please implement an update method for system $S"
+
 update_indices!(sys::System) = nothing
+
+#default accessor
+system_data(sys::System) = sys.data
 
 #DEFAULT SYSTEMS
 indices(sys::System) = system_data(sys).indices
 
-
 abstract type SimulationSystem <: System end
 struct Timer <: SimulationSystem
 	data ::SystemData
+
+	Timer(dio::Diorama) = new(SystemData(dio, (), (TimingData,)))
 end 
-Timer(dio::Diorama) = Timer(SystemData(dio, (), (TimingData,)))
-system_data(timer::Timer) = timer.data
 
 function update(timer::Timer)
 	sd = system_data(timer).singletons[1]
@@ -77,9 +82,9 @@ end
 
 struct Sleeper <: SimulationSystem
 	data ::SystemData
+
+	Sleeper(dio::Diorama) = new(SystemData(dio, (), (TimingData, Canvas)))
 end 
-Sleeper(dio::Diorama)         = Sleeper(SystemData(dio, (), (TimingData, Canvas)))
-system_data(sleeper::Sleeper) = sleeper.data
 
 function update(sleeper::Sleeper)
 	swapbuffers(singleton(sleeper, Canvas))
@@ -94,25 +99,24 @@ end
 
 struct Resizer <: System
 	data ::SystemData
+
+	Resizer(dio::Diorama) = new(SystemData(dio, (), (Canvas, RenderTarget)))
 end
-Resizer(dio::Diorama)     = Resizer(SystemData(dio, (), (Canvas, RenderTarget{IOTarget}, RenderPass)))
-system_data(sys::Resizer) = sys.data
 
 function update(sys::Resizer)
 	c   = singleton(sys, Canvas)
 	fwh = callback_value(c, :framebuffer_size)
 	resize!(c, fwh)
-	resize!(singleton(sys, RenderTarget{IOTarget}).target, fwh)
-	for rp in singletons(sys, RenderPass)
-		resize_targets(rp, fwh)
+	for rt in singletons(sys, RenderTarget)
+		resize!(rt, fwh)
 	end
 end
 
 struct Mesher <: System
 	data ::SystemData
+
+	Mesher(dio::Diorama) = new(SystemData(dio, (Geometry, Color, Mesh, Grid), ()))
 end
-Mesher(dio::Diorama) = Mesher(SystemData(dio, (Geometry, Color, Mesh, Grid), ()))
-system_data(sys::Mesher) = sys.data
 
 function update_indices!(sys::Mesher)
 	comp(T)  = component(sys, T)

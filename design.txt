@@ -7,7 +7,7 @@ Entities can not have any behavior as such. However Components/ComponentData str
 
 #### Systems
 
-A System defines a certain behavior with, or action that needs to be performed on entities that have the components that the System cares about. The System itself cannot maintain any state but is allowed to change state from entities. The only state that Systems can have is state that alters their inner working or behavior (e.g. settings). 
+A System defines a certain behavior with, or action that needs to be performed on entities that have the components that the System cares about. The System itself cannot maintain any state but is allowed to change state from entities. The only state that Systems can have is state that alters or is used in their inner working or behavior (e.g. settings). No other system should ever be allowed to touch another system's state. 
 
 Requirements for a system is that they have a field with the SystemData, a combination of Components and Singletons that define the state and data that they work with, and can be accessed by the function `system_data(<:System)`. This is done such that extra functionality can be added to work with the SystemData without having to extend these functions manually to the SubTypes of System. Each System must have an `update(<:System)` function. 
 
