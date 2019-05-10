@@ -4,12 +4,15 @@ import GLFW: MOUSE_BUTTON_1, MOUSE_BUTTON_2, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, 
 const WASD_KEYS = Int.([KEY_W, KEY_A, KEY_S, KEY_D])
 
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
-abstract type InteractiveSystem <: SystemKind end
-struct Camera <: InteractiveSystem end
+abstract type InteractiveSystem <: System end
+struct Camera <: InteractiveSystem
+	data::SystemData
+end
+Camera(dio::Diorama) = Camera(SystemData(dio, (Spatial, Camera3D,), (Canvas,)))
 
-camera_system(dio::Diorama) = System{Camera}(dio, (Spatial, Camera3D,), (Canvas,))
+system_data(c::Camera) = c.data
 
-function update(updater::System{Camera})
+function update(updater::Camera)
 	camera  = component(updater, Camera3D)
 	spatial = component(updater, Spatial)
 	if isempty(component(updater,Camera3D))

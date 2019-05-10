@@ -1,11 +1,10 @@
-#%%
 # This example is basically the same as the instanced_depth peel but now we are also adding an osscilation system to it.
 using Glimpse
 const Gl = Glimpse
 begin
 dio = Diorama(background=RGBAf0(0.0,0.0,0.0,1.0));
 Gl.add_shared_component!(dio, Gl.Spring)
-Gl.insert_system_before!(dio, Gl.UniformCalculator, Gl.oscillator_system(dio))
+Gl.insert_system_before!(dio, Gl.UniformCalculator, Gl.Oscillator(dio))
 spherepoint(r, theta, phi) = r*Point3f0(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
 nspheres = 2000
 radii    = Iterators.cycle(range(1f0, 200f0, length=div(nspheres,40)))
@@ -30,4 +29,3 @@ end
 Gl.update_system_indices!(dio)
 Gl.renderloop(dio)
 end
-#%%

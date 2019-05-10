@@ -4,7 +4,7 @@ include("systems/camera.jl")
 
 # Constructors
 # System{kind}(components::Tuple) where {kind} = System{kind, (eltype.(components)...,)}(components)
-function System{kind}(dio::Diorama, comp_names::NTuple, singleton_names) where {kind}
+function SystemData(dio::Diorama, comp_names::NTuple, singleton_names)
 	comps = AbstractComponent[]
 	for cn in comp_names
 		append!(comps, components(dio, cn))
@@ -13,57 +13,77 @@ function System{kind}(dio::Diorama, comp_names::NTuple, singleton_names) where {
 	for sn in singleton_names
 		append!(singls, singletons(dio, sn))
 	end
-	return System{kind}(comps, comp_names, singls)
+	return SystemData(comps, comp_names, singls)
 end
+isengaged(data::SystemData) = data.engaged
+isengaged(sys::System) = isengaged(system_data(sys))
 
 # Access
-function component(sys::System{Kind} where Kind, ::Type{T})::Component{T} where {T <: ComponentData}
+function component(sys::SystemData, ::Type{T})::Component{T} where {T <: ComponentData}
 	comp = getfirst(x -> eltype(x) <: T && isa(x, Component), sys.components)
 	@assert comp != nothing "Component $T not found in system's components"
 	return comp
 end
+component(sys::System, args...) = component(system_data(sys), args...)
 
-function shared_component(sys::System{Kind} where Kind, ::Type{T})::SharedComponent{T} where {T <: ComponentData}
+valid_entities(sys::System, comps::Type{<:ComponentData}...) = valid_entities(component.((sys,), comps)...)
+
+function shared_component(sys::SystemData, ::Type{T})::SharedComponent{T} where {T <: ComponentData}
 	comp = getfirst(x -> eltype(x) <: T && isa(x, SharedComponent), sys.components)
 	@assert comp != nothing "SharedComponent $T not found in system's components"
 	return comp
 end
+shared_component(sys::System, args...) = shared_component(system_data(sys), args...)
 
-function Base.getindex(sys::System{Kind} where Kind, ::Type{T})::T where {T <: Singleton}
+function Base.getindex(sys::SystemData where Kind, ::Type{T})::T where {T <: Singleton}
 	singleton = getfirst(x -> typeof(x) <: T, sys.singletons)
 	@assert singleton != nothing "Singleton $T not found in system's singletons"
 	return singleton
 end
-singleton(sys::System, ::Type{T}) where {T <: Singleton}  = sys[T]
+Base.getindex(sys::System, args...) = Base.getindex(system_data(sys), args...)
 
-function singletons(sys::System, ::Type{T})::Vector{T} where {T <: Singleton}
+singleton(sys::SystemData, ::Type{T}) where {T <: Singleton}  = sys[T]
+singleton(sys::System, args...) = singleton(system_data(sys), args...)
+
+function singletons(sys::SystemData, ::Type{T})::Vector{T} where {T <: Singleton}
 	singlids = findall(x -> typeof(x) <: T, sys.singletons)
 	@assert singlids != nothing "No Singletons of type $T were not found, please add it first"
 	return sys.singletons[singlids]
 end
+singletons(sys::SystemData) = sys.singletons
+singletons(sys::System, args...) = singletons(system_data(sys), args...)
+singletons(sys::System) = singletons(system_data(sys))
 
 update_indices!(sys::System) = nothing
 
 #DEFAULT SYSTEMS
-abstract type SimulationSystem <: SystemKind end
-struct Timer <: SimulationSystem end 
+indices(sys::System) = system_data(sys).indices
 
-timer_system(dio::Diorama) = System{Timer}(dio, (), (TimingData,))
 
-function update(timer::System{Timer})
-	sd = timer.singletons[1]
+abstract type SimulationSystem <: System end
+struct Timer <: SimulationSystem
+	data ::SystemData
+end 
+Timer(dio::Diorama) = Timer(SystemData(dio, (), (TimingData,)))
+system_data(timer::Timer) = timer.data
+
+function update(timer::Timer)
+	sd = system_data(timer).singletons[1]
 	nt         = time()
 	sd.dtime   = sd.reversed ? - nt + sd.time : nt - sd.time
 	sd.time    = nt
 	sd.frames += 1
 end
 
-struct Sleeper <: SimulationSystem end 
-sleeper_system(dio::Diorama) = System{Sleeper}(dio, (), (TimingData, Canvas))
+struct Sleeper <: SimulationSystem
+	data ::SystemData
+end 
+Sleeper(dio::Diorama)         = Sleeper(SystemData(dio, (), (TimingData, Canvas)))
+system_data(sleeper::Sleeper) = sleeper.data
 
-function update(sleeper::System{Sleeper})
+function update(sleeper::Sleeper)
 	swapbuffers(singleton(sleeper, Canvas))
-	sd         = sleeper.singletons[1]
+	sd         = singletons(sleeper)[1]
 	curtime    = time()
 	sleep_time = sd.preferred_fps - (curtime - sd.time)
     st         = sleep_time - 0.002
@@ -72,9 +92,13 @@ function update(sleeper::System{Sleeper})
     end
 end
 
-struct Resizer <: SystemKind end
-resizer_system(dio::Diorama) = System{Resizer}(dio, (), (Canvas, RenderTarget{IOTarget}, RenderPass))
-function update(sys::System{Resizer})
+struct Resizer <: System
+	data ::SystemData
+end
+Resizer(dio::Diorama)     = Resizer(SystemData(dio, (), (Canvas, RenderTarget{IOTarget}, RenderPass)))
+system_data(sys::Resizer) = sys.data
+
+function update(sys::Resizer)
 	c   = singleton(sys, Canvas)
 	fwh = callback_value(c, :framebuffer_size)
 	resize!(c, fwh)
@@ -84,10 +108,13 @@ function update(sys::System{Resizer})
 	end
 end
 
-struct Mesher <: SystemKind end
-mesher_system(dio) = System{Mesher}(dio, (Geometry, Color, Mesh, Grid), ())
+struct Mesher <: System
+	data ::SystemData
+end
+Mesher(dio::Diorama) = Mesher(SystemData(dio, (Geometry, Color, Mesh, Grid), ()))
+system_data(sys::Mesher) = sys.data
 
-function update_indices!(sys::System{Mesher})
+function update_indices!(sys::Mesher)
 	comp(T)  = component(sys, T)
 	scomp(T) = shared_component(sys, T)
 	polygon  = comp(PolygonGeometry)
@@ -108,12 +135,12 @@ function update_indices!(sys::System{Mesher})
 			push!(tids, setdiff(valid_entities(com), valid_entities(meshcomp)))
 		end
 	end
-	sys.indices = [tids; [setdiff(valid_entities(funcgeometry, grid), meshed_entities),
-	                      setdiff(valid_entities(densgeometry, grid), meshed_entities)]]
+	sys.data.indices = [tids; [setdiff(valid_entities(funcgeometry, grid), meshed_entities),
+	                           setdiff(valid_entities(densgeometry, grid), meshed_entities)]]
  end
 
-function update(sys::System{Mesher})
-	if all(isempty.(sys.indices))
+function update(sys::Mesher)
+	if all(isempty.(indices(sys)))
 		return
 	end
 	comp(T)  = component(sys, T)
@@ -131,7 +158,7 @@ function update(sys::System{Mesher})
 	id_counter = 1
 	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file, vgeom), (spolygon, sfile)))
 		for com in geomcomps
-			for e in sys.indices[id_counter]
+			for e in indices(sys)[id_counter]
 				meshcomp[e] = Mesh(BasicMesh(com[e].geometry))
 			end
 			id_counter += 1
@@ -158,13 +185,13 @@ function update(sys::System{Mesher})
 		mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
 	end
 
-	for e in sys.indices[id_counter] 
+	for e in indices(sys)[id_counter] 
 		values        = funcgeometry[e].geometry.(grid[e].points)
 		calc_mesh(values, funcgeometry[e].iso, e)
 		id_counter += 1
 	end
 
-	for e in sys.indices[id_counter]
+	for e in indices(sys)[id_counter]
 		calc_mesh(densgeometry[e].geometry, densgeometry[e].iso, e)
 	end
 end

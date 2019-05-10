@@ -39,22 +39,19 @@ struct Entity #we will create a name component #maybe it's not so bad that these
 	id::Int
 end
 
-abstract type SystemKind end
+abstract type System end
 
-mutable struct System{Kind <: SystemKind} #DT has the components datatypes
+mutable struct SystemData #DT has the components datatypes
 	components::Vector{AbstractComponent}
 	requested_components # so that new components can be added as well
 	singletons::Vector{Singleton}
 	engaged ::Bool
 	indices ::Vector{Vector{Int}}
-	function System{Kind}(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}, engaged=true) where Kind
-		t_ = new{Kind}(c, req, singletons, engaged, Vector{Int}[])
-		update_indices!(t_)
+	function SystemData(c::Vector{AbstractComponent}, req, singletons::Vector{Singleton}, engaged=true)
+		t_ = new(c, req, singletons, engaged, Vector{Int}[])
 		return t_
 	end
 end
-
-Base.eltype(sys::System{Kind}) where {Kind <: SystemKind} = Kind
 
 abstract type AbstractGlimpseMesh end
 

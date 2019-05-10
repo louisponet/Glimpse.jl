@@ -22,8 +22,7 @@ for i = 1:nspheres
 	                              Gl.Shape(),
 	                              Gl.UniformColor(color),
 	                              progtag], shared=Gl.ComponentData[sph_geom]);
+Gl.update_system_indices!(dio)
 end
-Gl.new_entity!(dio, separate = [Gl.PointLight(), Gl.UniformColor(RGBA{Float32}(1.0))]);
-camid = Gl.new_entity!(dio, separate = [Gl.assemble_camera3d(Point3f0(Gl.perspective_defaults()[:eyepos]), Vec3f0(0))...]);
-dio.loop = @async Gl.renderloop(dio)
+Gl.renderloop(dio)
 #%%

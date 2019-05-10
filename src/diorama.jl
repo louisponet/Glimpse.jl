@@ -58,23 +58,23 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     							    Vao{PeelingInstancedProgram},
     							    Grid])
 
-	add_system!.((dio,),[timer_system(dio),
-						 resizer_system(dio),
-                         mesher_system(dio),
-                         uniform_calculator_system(dio),
-			             default_uploader_system(dio),
-			             default_instanced_uploader_system(dio),
-			             lines_uploader_system(dio),
-			             peeling_uploader_system(dio),
-			             peeling_instanced_uploader_system(dio),
-                         uniform_uploader_system(dio),
-                         text_uploader_system(dio),
-			             camera_system(dio),
-			             default_render_system(dio),
-			             depth_peeling_render_system(dio),
-			             text_render_system(dio),
-			             final_render_system(dio),
-			             sleeper_system(dio)])
+	add_system!.((dio,),[Timer(dio),
+						 Resizer(dio),
+                         Mesher(dio),
+                         UniformCalculator(dio),
+			             DefaultUploader(dio),
+			             DefaultInstancedUploader(dio),
+			             LinesUploader(dio),
+			             PeelingUploader(dio),
+			             PeelingInstancedUploader(dio),
+                         UniformUploader(dio),
+                         TextUploader(dio),
+			             Camera(dio),
+			             DefaultRenderer(dio),
+			             DepthPeelingRenderer(dio),
+			             TextRenderer(dio),
+			             FinalRenderer(dio),
+			             Sleeper(dio)])
 
 
 	new_entity!(dio, separate = [Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)), PointLight(), UniformColor(RGBA{Float32}(1.0))])
@@ -112,7 +112,6 @@ function renderloop(dio)
 	    begin
 	    	while !should_close(canvas)
 			    clear!(canvas)
-			    @show singleton(dio, Canvas).callbacks[:mouse_buttons]
 			    iofbo = singleton(dio, RenderTarget{IOTarget})
 			    bind(iofbo)
 			    draw(iofbo)
@@ -222,9 +221,9 @@ singleton(dio::Diorama, ::Type{T}) where {T <: Singleton} = getfirst(x -> isa(x,
 
 function add_component_to_systems(dio, comp::AbstractComponent{T}) where T
 	for sys in dio.systems
-		for rc in sys.requested_components
+		for rc in sys.data.requested_components
 			if T <: rc
-				push!(sys.components, comp)
+				push!(sys.data.components, comp)
 				return
 			end
 		end
@@ -244,29 +243,29 @@ function add_shared_component!(dio::Diorama, ::Type{T}) where {T <: ComponentDat
 	add_component_to_systems(dio, comp)
 end
 
-system(dio::Diorama, ::Type{T}) where {T <: SystemKind} =
-	getfirst(x -> eltype(x) <: T, dio.systems)
+system(dio::Diorama, ::Type{T}) where {T <: System} =
+	getfirst(x -> x <: T, dio.systems)
 
 add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
 
 insert_system!(dio::Diorama, i::Int, sys::System) = insert!(dio.systems, i, sys)
 
-function insert_system_after!(dio::Diorama, ::Type{T}, sys::System) where {T<:SystemKind}
-	id = findfirst(x -> eltype(x) <: T, dio.systems)
+function insert_system_after!(dio::Diorama, ::Type{T}, sys::System) where {T<:System}
+	id = findfirst(x -> isa(x, T), dio.systems)
 	if id != nothing
 		insert!(dio.systems, id + 1, sys)
 	end
 end
 
-function insert_system_before!(dio::Diorama, ::Type{T}, sys::System) where {T<:SystemKind}
-	id = findfirst(x -> eltype(x) <: T, dio.systems)
+function insert_system_before!(dio::Diorama, ::Type{T}, sys::System) where {T<:System}
+	id = findfirst(x -> isa(x, T), dio.systems)
 	if id != nothing
 		insert!(dio.systems, id - 1, sys)
 	end
 end
 
-function remove_system!(dio::Diorama, ::Type{T}) where {T <: SystemKind}
-	sysids = findall(x -> eltype(x) <: T, dio.systems)
+function remove_system!(dio::Diorama, ::Type{T}) where {T <: System}
+	sysids = findall(x -> isa(x, T), dio.systems)
 	deleteat!(dio.systems, sysids)
 end
 	
@@ -367,15 +366,15 @@ function has_components(e::Entity, components::Vector{<:Component})
 	return c == length(component_ids)
 end
 
-engaged_systems(dio) = filter(x->x.engaged, dio.systems)
+engaged_systems(dio) = filter(x -> isengaged(x), dio.systems)
 
 function update_system_indices!(dio::Diorama)
 	for j = 1:2
-	for i=1:length(dio.systems) - 1
-		update(dio.systems[i])
-		update_indices!(dio.systems[i+1])
+		for i=1:length(dio.systems) - 1
+			update(dio.systems[i])
+			update_indices!(dio.systems[i+1])
+		end
 	end
-end
 end
 
 

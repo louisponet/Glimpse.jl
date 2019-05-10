@@ -5,27 +5,30 @@ Base.@kwdef struct Spring <: ComponentData
 	damping::Float32 = 0.0001f0
 end
 
-struct Oscillator <: SystemKind end
+struct Oscillator <: System
+	data ::SystemData
+end
+Oscillator(dio::Diorama) = Oscillator(SystemData(dio, (Spatial, Spring), (TimingData, UpdatedComponents)))
 
-oscillator_system(dio) = System{Oscillator}(dio, (Spatial, Spring), (TimingData, UpdatedComponents))
+system_data(o::Oscillator) = o.data
 
-function update_indices!(sys::System{Oscillator})
+function update_indices!(sys::Oscillator)
 	sp_es  = valid_entities(component(sys, Spatial))
 	spring = shared_component(sys, Spring)
 	tids   = Vector{Int}[]
 	for spr in spring.shared
 		push!(tids,  shared_entities(spring, spr) ∩ sp_es)
 	end
-	sys.indices = tids
+	sys.data.indices = tids
 end
 
-function update(sys::System{Oscillator})
+function update(sys::Oscillator)
 	spat   = component(sys, Spatial)
 	spring = shared_component(sys, Spring)
 	td     = singleton(sys, TimingData)
 	dt     = td.dtime
 	for (is, spr) in enumerate(spring.shared)
-		Threads.@threads for e in sys.indices[is] 
+		Threads.@threads for e in indices(sys)[is] 
 			e_spat   = spat[e]
 			v_prev   = e_spat.velocity
 			new_v    = v_prev - (e_spat.position - spr.center) * spr.k - v_prev * spr.damping
@@ -43,10 +46,13 @@ struct Rotation <: ComponentData
 end
 # RotationComponent(id) = Component(id, Rotation)
 
-struct Rotator <: SystemKind end
-rotator_system(dio) = System{Rotator}(dio, (Spatial, Rotation), (TimingData,))
+struct Rotator <: System
+	data ::SystemData
+end
+Rotator(dio::Diorama) = Rotator(SystemData(dio, (Spatial, Rotation), (TimingData,)))
+system_data(r::Rotator) = r.data
 
-function update(sys::System{Rotator})
+function update(sys::Rotator)
 	rotation  = component(sys, Rotation)
 	spatial   = component(sys, Spatial)
 	dt        = Float32(singleton(sys,TimingData).dtime)
@@ -61,10 +67,12 @@ function update(sys::System{Rotator})
 	end
 end
 
-struct Mover <: SystemKind end
-mover_system(dio) = System{Mover}(dio, (Spatial,), (TimingData,))
+struct Mover <: System
+	data::SystemData
+end
+Mover(dio::Diorama) = Mover(SystemData(dio, (Spatial,), (TimingData,)))
 
-function update(sys::System{Mover})
+function update(sys::Mover)
 	spatial   = component(sys, Spatial)
 	dt        = 0.1f0*Float32(singleton(sys, TimingData).dtime)
 	for i in valid_entities(spatial)
