@@ -38,6 +38,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    ModelMat,
 		                    Line,
 		                    Text,
+		                    Selectable,
+		                    AABB,
 		                    ProgramTag{DefaultProgram},
 		                    ProgramTag{DefaultInstancedProgram},
 		                    ProgramTag{PeelingProgram},
@@ -57,6 +59,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	add_system!.((dio,),[Timer(dio),
 						 Resizer(dio),
                          Mesher(dio),
+                         AABBGenerator(dio),
                          UniformCalculator(dio),
 			             DefaultUploader(dio),
 			             DefaultInstancedUploader(dio),
@@ -73,8 +76,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             Sleeper(dio)])
 
 
-	new_entity!(dio, separate = [Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)), PointLight(), UniformColor(RGBA{Float32}(1.0))])
-	new_entity!(dio, separate = [assemble_camera3d(size(dio)...)...])
+	add_entity!(dio, separate = [Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)), PointLight(), UniformColor(RGBA{Float32}(1.0))])
+	add_entity!(dio, separate = [assemble_camera3d(size(dio)...)...])
 	return dio
 end
 
@@ -274,7 +277,7 @@ function add_to_components!(id, datas, components)
 	end
 end
 
-function new_entity!(dio::Diorama; separate::Vector{<:ComponentData}=ComponentData[], shared::Vector{<: ComponentData}=ComponentData[])
+function add_entity!(dio::Diorama; separate::Vector{<:ComponentData}=ComponentData[], shared::Vector{<: ComponentData}=ComponentData[])
 	entity_id  = length(dio.entities) + 1
 
 	names      = typeof.(separate)

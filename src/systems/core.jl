@@ -31,3 +31,42 @@ function update(sys::Resizer)
 		resize!(rt, fwh)
 	end
 end
+
+# Mouse Picking Stuff
+Base.@kwdef struct Selectable <: ComponentData
+	selected::Bool = false
+end
+
+struct AABB <: ComponentData
+	origin  ::Vec3f0
+	diagonal::Vec3f0
+end
+
+struct AABBGenerator <: System
+	data ::SystemData
+
+	AABBGenerator(dio::Diorama) =
+		new(SystemData(dio, (Geometry, AABB, Selectable), ()))
+end
+
+function update_indices!(sys::AABBGenerator)
+	sys.data.indices = [setdiff(valid_entities(sys, PolygonGeometry, Selectable), valid_entities(sys, AABB))]
+end
+
+function update(sys::AABBGenerator)
+	poly = component(sys, PolygonGeometry)
+	aabb = component(sys, AABB)
+	for e in indices(sys)[1]
+		t_rect = GeometryTypes.AABB(poly[e].geometry)
+		aabb[1] = AABB(t_rect.origin, t_rect.widths)
+	end
+end
+
+
+
+
+
+
+
+
+

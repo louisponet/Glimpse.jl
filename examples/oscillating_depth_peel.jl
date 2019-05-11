@@ -18,7 +18,7 @@ sph_geom = Gl.PolygonGeometry(Gl.Sphere(Point3f0(0.0), 1f0))
 spring   = Gl.Spring()
 for i = 1:nspheres
 	color = cs[mod1(i, 2)] 
-	Gl.new_entity!(dio, separate=[Gl.Spatial(position=ps[i]),
+	Gl.add_entity!(dio, separate=[Gl.Spatial(position=ps[i]),
 	                              Gl.Material(),
 	                              Gl.Shape(),
 	                              Gl.UniformColor(color),
