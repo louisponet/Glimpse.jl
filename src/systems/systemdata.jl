@@ -21,7 +21,8 @@ function SystemData(dio::Diorama, comp_names::NTuple, singleton_names)
 	return SystemData(comps, comp_names, singls)
 end
 
-isengaged(data::SystemData) = data.engaged
+isengaged(data::SystemData)  = data.engaged
+disengage!(data::SystemData) = data.engaged = false
 
 # Access
 function component(sys::SystemData, ::Type{T})::Component{T} where {T <: ComponentData}

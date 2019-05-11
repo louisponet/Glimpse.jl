@@ -154,8 +154,10 @@ nativewindow(c::Canvas) = c.native_window
 
 Base.size(canvas::Canvas)  = size(canvas.area)
 
-Base.resize!(c::Canvas, wh::NTuple{2, Int}, resize_window=false) =
+function Base.resize!(c::Canvas, wh::NTuple{2, Int}, resize_window=false)
 	resize!(GLA.context_framebuffer(), wh)
+	c.area = Area(0.0, 0.0, Float64.(wh)...)
+end
 
 """
 On OSX retina screens, the window size is different from the

@@ -105,11 +105,12 @@ function update(renderer::DepthPeelingRenderer)
     bind(colorblender)
     draw(colorblender)
     clear!(colorblender)
+    #TODO change this nonsense
     canvas_width, canvas_height = Float32.(size(iofbo))
 
-    resize!(colorblender, (canvas_width, canvas_height))
-    resize!(peeling_targets[1], (canvas_width, canvas_height))
-    resize!(peeling_targets[2], (canvas_width, canvas_height))
+    resize!(colorblender, (Int(canvas_width), Int(canvas_height)))
+    resize!(peeling_targets[1], (Int(canvas_width), Int(canvas_height)))
+    resize!(peeling_targets[2], (Int(canvas_width), Int(canvas_height)))
 
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)

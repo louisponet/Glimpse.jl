@@ -2,6 +2,7 @@ include("systems/systemdata.jl")
 
 # Shared System Behavior
 isengaged(sys::System)          = isengaged(system_data(sys))
+disengage!(sys::System)          = disengage!(system_data(sys))
 component(sys::System, args...) = component(system_data(sys), args...)
 
 valid_entities(sys::System, comps::Type{<:ComponentData}...) = valid_entities(component.((sys,), comps)...)

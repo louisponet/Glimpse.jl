@@ -61,6 +61,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
                          Mesher(dio),
                          AABBGenerator(dio),
                          UniformCalculator(dio),
+                         MousePicker(dio),
 			             DefaultUploader(dio),
 			             DefaultInstancedUploader(dio),
 			             LinesUploader(dio),
@@ -243,7 +244,7 @@ function add_shared_component!(dio::Diorama, ::Type{T}) where {T <: ComponentDat
 end
 
 system(dio::Diorama, ::Type{T}) where {T <: System} =
-	getfirst(x -> x <: T, dio.systems)
+	getfirst(x -> isa(x, T), dio.systems)
 
 add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
 
@@ -374,6 +375,12 @@ function update_system_indices!(dio::Diorama)
 			update_indices!(dio.systems[i+1])
 		end
 	end
+	# for sys in dio.systems
+	# 	if isempty(indices(sys)) || all(isempty.(indices(sys)))
+	# 		@show "ping"
+	# 		disengage!(sys)
+	# 	end
+	# end
 end
 
 
