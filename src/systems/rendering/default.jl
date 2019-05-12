@@ -86,6 +86,7 @@ function update(renderer::DefaultRenderer)
 	fbo           = singleton(renderer, RenderTarget{IOTarget})
 	bind(fbo)
 	draw(fbo)
+	glDisable(GL_BLEND)
 	glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
 

@@ -95,10 +95,10 @@ function update(uploader::Uploader{K}) where {K <: Union{DefaultInstancedProgram
 			specpows  = Vector{Float32}(undef, length(t_es))
 
 			for (i, e) in enumerate(t_es)
+				ucolors[i]   = ucolor[e].color
 				modelmats[i] = modelmat[e].modelmat
 				specints[i]  = material[e].specint
 				specpows[i]  = material[e].specpow
-				ucolors[i]   = ucolor[e].color
 			end
 			tprog = iprog.program
 			tmesh = smesh[t_es[1]].mesh
@@ -110,25 +110,25 @@ function update(uploader::Uploader{K}) where {K <: Union{DefaultInstancedProgram
 	end
 end
 
-struct UniformUploader <: System
+struct UniformUploader{P<:ProgramKind} <: System
 	data ::SystemData
 
-	UniformUploader(dio::Diorama) = new(SystemData(dio, (Vao{DefaultInstancedProgram},
-                                                         Vao{PeelingInstancedProgram},
-                                                         ModelMat),
-                                                        (UpdatedComponents,)))
+	function UniformUploader{P}(dio::Diorama) where {P<:ProgramKind}
+		components = (Vao{P}, ModelMat, Selectable, UniformColor)
+		new{P}(SystemData(dio, components, (UpdatedComponents,)))
+	end
 end
 
-function update_indices!(sys::UniformUploader)
-	mat_entities = valid_entities(component(sys, ModelMat))
-	dvao         = shared_component(sys, Vao{DefaultInstancedProgram})
-	pvao         = shared_component(sys, Vao{PeelingInstancedProgram})
+function update_indices!(sys::UniformUploader{P}) where {P<:ProgramKind}
+	mat_entities = valid_entities(sys, ModelMat)
+	sel_col_entities = valid_entities(sys, UniformColor, Selectable)
+	vao         = shared_component(sys, Vao{P})
 	tids = Vector{Int}[]
-	for v in dvao.shared 
-		push!(tids, shared_entities(dvao, v) ∩ mat_entities)
+	for v in vao.shared 
+		push!(tids, shared_entities(vao, v) ∩ mat_entities)
 	end
-	for v in pvao.shared 
-		push!(tids, shared_entities(pvao, v) ∩ mat_entities)
+	for v in vao.shared 
+		push!(tids, shared_entities(vao, v) ∩ sel_col_entities)
 	end
 	sys.data.indices = tids                       
 end
@@ -150,35 +150,54 @@ function find_contiguous_bounds(indices)
 	return ranges
 end
 
-function update(sys::UniformUploader)
+function update(sys::UniformUploader{P}) where {P<:ProgramKind}
 	uc = singleton(sys, UpdatedComponents)
-	dvao = shared_component(sys, Vao{DefaultInstancedProgram})
-	pvao = shared_component(sys, Vao{PeelingInstancedProgram})
+	vao = shared_component(sys, Vao{P})
 
 	mat = component(sys, ModelMat)
 	matsize = sizeof(eltype(mat))
-	indices_id = 1
+	idoffset = 0
 	if ModelMat in uc.components
-		upload = instanced_vao -> begin
-			for v in instanced_vao.shared
-				eids = indices(sys)[indices_id]
-				contiguous_ranges = find_contiguous_bounds(eids)
-				offset = 0
-				if !isempty(eids)
-					binfo = GLA.bufferinfo(v.vertexarray, :modelmat)
-					if binfo != nothing
-						GLA.bind(binfo.buffer)
-						for r in contiguous_ranges
-							s = length(r) * matsize
-							glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(mat, r[1]))
-							offset += s
-						end
-						GLA.unbind(binfo.buffer)
+		for (i, v) in enumerate(vao.shared)
+			eids = indices(sys)[i]
+			contiguous_ranges = find_contiguous_bounds(eids)
+			offset = 0
+			if !isempty(eids)
+				binfo = GLA.bufferinfo(v.vertexarray, :modelmat)
+				if binfo != nothing
+					GLA.bind(binfo.buffer)
+					for r in contiguous_ranges
+						s = length(r) * matsize
+						glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(mat, r[1]))
+						offset += s
 					end
+					GLA.unbind(binfo.buffer)
+				end
+			end
+			idoffset += 1
+		end
+	end
+
+	col = component(sys, UniformColor)
+	colsize = sizeof(eltype(col))
+	#TODO Optimization: Color of all selectable entities is updated at the same time.
+	if Selectable in uc.components
+		for (i, v) in enumerate(vao.shared)
+			eids = indices(sys)[i+idoffset]
+			contiguous_ranges = find_contiguous_bounds(eids)
+			offset = 0
+			if !isempty(eids)
+				binfo = GLA.bufferinfo(v.vertexarray, :color)
+				if binfo != nothing
+					GLA.bind(binfo.buffer)
+					for r in contiguous_ranges
+						s = length(r) * colsize
+						glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(col, r[1]))
+						offset += s
+					end
+					GLA.unbind(binfo.buffer)
 				end
 			end
 		end
-		upload(dvao)
-		upload(pvao)
 	end
 end

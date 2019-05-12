@@ -187,6 +187,11 @@ end
 #----------------------GLFW----------------------------#
 destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
 
+const WASD_KEYS  = Int.([KEY_W, KEY_A, KEY_S, KEY_D])
+const SHIFT_KEYS = Int.([GLFW.KEY_LEFT_SHIFT, GLFW.KEY_RIGHT_SHIFT])
+const CTRL_KEYS  = Int.([GLFW.KEY_LEFT_CONTROL, GLFW.KEY_RIGHT_CONTROL])
+
+
 #Colorutils
 import ColorTypes: RGBA, Colorant, RGB
 ColorTypes.RGBA(x::T) where T<:Real = RGBA{T}(x,x,x,x)

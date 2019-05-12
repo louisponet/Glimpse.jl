@@ -50,6 +50,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    Vao{LineProgram},
 		                    Vao{TextProgram}])
     add_shared_component!.((dio,), [PolygonGeometry,
+    							    AABB,
     								FileGeometry,
     							    Mesh,
 							        Vao{DefaultInstancedProgram},
@@ -67,7 +68,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             LinesUploader(dio),
 			             PeelingUploader(dio),
 			             PeelingInstancedUploader(dio),
-                         UniformUploader(dio),
+                         UniformUploader{DefaultInstancedProgram}(dio),
+                         UniformUploader{PeelingInstancedProgram}(dio),
                          TextUploader(dio),
 			             Camera(dio),
 			             DefaultRenderer(dio),

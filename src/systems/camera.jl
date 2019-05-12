@@ -1,7 +1,6 @@
 import GLFW: MOUSE_BUTTON_1, MOUSE_BUTTON_2, KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, PRESS
 # import GeometryTypes: Vec, Mat
 
-const WASD_KEYS = Int.([KEY_W, KEY_A, KEY_S, KEY_D])
 
 #I think it would be nice to have an array flags::Vector{Symbol}, that way settings can be set
 abstract type InteractiveSystem <: System end
