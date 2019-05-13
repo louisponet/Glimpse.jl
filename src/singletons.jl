@@ -26,41 +26,11 @@ new_canvas_id() = (canvas_id_counter[] = mod1(canvas_id_counter[] + 1, 255); can
 
 Base.size(area::Area) = (area.w, area.h)
 
-#TODO Framebuffer context
-#TODO canvas should be able to be a drawing target too
-#
-"""
-Standard window hints for creating a plain context without any multisampling
-or extra buffers beside the color buffer
-"""
-function default_window_hints()
-	[
-		(GLFW.SAMPLES,      0),
-		(GLFW.DEPTH_BITS,   32),
-
-		(GLFW.ALPHA_BITS,   8),
-		(GLFW.RED_BITS,     8),
-		(GLFW.GREEN_BITS,   8),
-		(GLFW.BLUE_BITS,    8),
-
-		(GLFW.STENCIL_BITS, 0),
-		(GLFW.AUX_BUFFERS,  0)
-	]
-end
-
-function canvas_fbo(area::Area, depthformat::Type{<:GLA.DepthFormat} = GLA.Depth{Float32}, color = RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
-    fbo = GLA.FrameBuffer((area.w, area.h), (RGBA{N0f8}, depthformat))
-    clear!(fbo, color)
-    return fbo
-end
-
-standard_screen_resolution() =  GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
-
 function Canvas(name=:Glimpse; kwargs...)
 	id = new_canvas_id() 
     defaults = mergepop!(canvas_defaults(), kwargs)
 
-    window_hints = default_window_hints()
+    window_hints  = GLFW_DEFAULT_WINDOW_HINTS
     context_hints = GLFW.standard_context_hints(defaults[:major], defaults[:minor])
 
     area = defaults[:area]
@@ -75,18 +45,12 @@ function Canvas(name=:Glimpse; kwargs...)
                      focus        = defaults[:focus],
                      fullscreen   = defaults[:fullscreen],
                      monitor      = defaults[:monitor])
+
     GLFW.SwapInterval(0) # deactivating vsync seems to make everything quite a bit smoother
 
     background = defaults[:background]
-    if typeof(background) <: RGBA
-        glClearColor(background.r, background.g, background.b, background.alpha)
-    elseif typeof(background) <: RGB
-        glClearColor(background.r, background.g, background.b, GLfloat(1))
-        background = RGBA(background)
-    end
-    glClear(GL_COLOR_BUFFER_BIT)
 
-    callbacks = defaults[:callbacks]
+    callbacks  = defaults[:callbacks]
     callback_dict = register_callbacks(nw, callbacks)
 
 	c = Canvas(name, id, area, nw, background, callback_dict)
@@ -97,8 +61,6 @@ function Canvas(name=:Glimpse; kwargs...)
 end
 
 function make_current(c::Canvas)
-	# if GLFW.GetCurrentContext() != c.native_window
-	# end
 	GLFW.SetWindowShouldClose(c.native_window, false)
 	GLFW.ShowWindow(c.native_window)
     GLFW.MakeContextCurrent(c.native_window)
@@ -148,7 +110,7 @@ end
 
 bind(c::Canvas, target=GL_FRAMEBUFFER)  = glBindFramebuffer(target, 0)
 
-draw(c::Canvas)         = nothing
+draw(c::Canvas) = nothing
 
 nativewindow(c::Canvas) = c.native_window
 
@@ -159,44 +121,19 @@ function Base.resize!(c::Canvas, wh::NTuple{2, Int}, resize_window=false)
 	c.area = Area(0.0, 0.0, Float64.(wh)...)
 end
 
-"""
-On OSX retina screens, the window size is different from the
-pixel size of the actual framebuffer. With this function we
-can find out the scaling factor.
-"""
-function scaling_factor(window::Vec{2, Int}, fb::Vec{2, Int})
-    (window[1] == 0 || window[2] == 0) && return Vec{2, Float64}(1.0)
-    Vec{2, Float64}(fb) ./ Vec{2, Float64}(window)
-end
-function scaling_factor(c::Canvas)
-    w, fb = GLFW.GetWindowSize(c.native_window), GLFW.GetFramebufferSize(c.native_window)
-    scaling_factor(Vec{2, Int}(w...), Vec{2, Int}(fb...))
-end
-
-"""
-Correct OSX scaling issue and move the 0,0 coordinate to left bottom.
-"""
-function corrected_coordinates(
-        window_size::Vec{2,Int},
-        framebuffer_width::Vec{2,Int},
-        mouse_position::Vec{2,Float64}
-    )
-    s = scaling_factor(window_size.value, framebuffer_width.value)
-    Vec{2,Float64}(mouse_position[1], window_size.value[2] - mouse_position[2]) .* s
-end
-
 callback_value(c::Canvas, cb::Symbol) = c.callbacks[cb][]
-callback(c::Canvas, cb::Symbol)       = c.callbacks[cb]
+
+callback(c::Canvas, cb::Symbol) = c.callbacks[cb]
 
 windowsize(canvas::Canvas) = GLFW.GetWindowSize(nativewindow(canvas))
 
-set_background_color!(canvas::Canvas, color::Colorant)  = canvas.background = convert(RGBA{Float32}, color)
-set_background_color!(canvas::Canvas, color::NTuple)    = canvas.background = convert(RGBA{Float32}, color)
+set_background_color!(canvas::Canvas, color::Colorant) = canvas.background = convert(RGBA{Float32}, color)
+set_background_color!(canvas::Canvas, color::NTuple)   = canvas.background = convert(RGBA{Float32}, color)
 
 
 #---------------------DEFAULTS-------------------#
 
-canvas_defaults() = SymAnyDict(:area       => Area(0, 0, standard_screen_resolution()...),
+canvas_defaults() = SymAnyDict(:area       => Area(0, 0, glfw_standard_screen_resolution()...),
                            	   :background => RGBA(1.0f0),
                            	   :depth      => GLA.Depth{Float32},
                            	   :callbacks  => standard_callbacks(),
@@ -210,13 +147,19 @@ canvas_defaults() = SymAnyDict(:area       => Area(0, 0, standard_screen_resolut
                            	   :fullscreen => false,
                            	   :monitor    => nothing)
 
-#Do we really need the context if it is already in frambuffer and program?
-
 struct FullscreenVao <: Singleton
 	vao::VertexArray
 end
 
-FullscreenVao()          = FullscreenVao(fullscreen_vertexarray())
+FullscreenVao() =
+	FullscreenVao(VertexArray([BufferAttachmentInfo(:position,
+                                                    GLint(0),
+                                                    Buffer(fullscreen_pos),
+                                                    GEOMETRY_DIVISOR),
+                               BufferAttachmentInfo(:uv,
+                                                    GLint(1),
+                                                    Buffer(fullscreen_uv),
+                                                    GEOMETRY_DIVISOR)], GL_TRIANGLE_STRIP))
 
 bind(v::FullscreenVao)   = bind(v.vao)
 
@@ -224,7 +167,8 @@ draw(v::FullscreenVao)   = draw(v.vao)
 
 unbind(v::FullscreenVao) = unbind(v.vao)
 
-struct IOTarget          <: RenderTargetKind end
+# I'm not sure this is nice design idk
+struct IOTarget <: RenderTargetKind end
 
 struct RenderTarget{R <: RenderTargetKind} <: Singleton
 	target     ::Union{FrameBuffer, Canvas}
@@ -233,17 +177,17 @@ end
 
 bind(r::RenderTarget, args...) = bind(r.target, args...)
 
-draw(r::RenderTarget)          = draw(r.target)
+draw(r::RenderTarget) = draw(r.target)
 
-clear!(r::RenderTarget, c=r.background)    = clear!(r.target, c)
+clear!(r::RenderTarget, c=r.background) = clear!(r.target, c)
 
-Base.size(r::RenderTarget)                 = size(r.target)
+Base.size(r::RenderTarget) = size(r.target)
 
 GLA.depth_attachment(r::RenderTarget, args...) = GLA.depth_attachment(r.target, args...)
 
 GLA.color_attachment(r::RenderTarget, args...) = GLA.color_attachment(r.target, args...)
 
-GLA.free!(r::RenderTarget)                 = free!(r.target)
+GLA.free!(r::RenderTarget) = free!(r.target)
 
 Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
 
@@ -259,16 +203,19 @@ struct RenderProgram{P <: ProgramKind} <: Singleton
 	program::GLA.Program	
 end
 
-bind(p::RenderProgram)                     = bind(p.program)
+bind(p::RenderProgram) = bind(p.program)
+
+unbind(p::RenderProgram) = unbind(p.program)
+
 GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
 
 struct UpdatedComponents <: Singleton
 	components::Vector{DataType}
 end
 
-Base.empty!(uc::UpdatedComponents)                               = empty!(uc.components)
+Base.empty!(uc::UpdatedComponents) = empty!(uc.components)
 
-Base.iterate(uc::UpdatedComponents, r...)                        = iterate(uc.components, r...)
+Base.iterate(uc::UpdatedComponents, r...) = iterate(uc.components, r...)
 
 Base.push!(uc::UpdatedComponents, t::T) where {T<:ComponentData} = push!(uc.components, T)
 Base.push!(uc::UpdatedComponents, t::DataType)                   = push!(uc.components, t)

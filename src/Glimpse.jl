@@ -29,9 +29,6 @@ include("maths/matrices.jl")
 include("maths/vecmath.jl")
 include("callbacks.jl")
 include("shader.jl")
-export default_shaders, default_instanced_shaders, transparency_shaders, peeling_shaders, compositing_shaders,
-       peeling_instanced_shaders
-export windowsize, pixelsize, present
 include("geometries.jl")
 include("marching_cubes.jl")
 export RGBAf0
@@ -39,15 +36,6 @@ export RGBAf0
 
 
 #package exports, types & enums
-export Screen, Scene, MeshRenderable, InstancedMeshRenderable, Camera, Diorama, Area, PointLight, RenderPass, Pipeline
-export pixel, orthographic, perspective
-export context_renderpass, default_renderpass, windowsize
-
-#package exports, functions
-export destroy!, expose, reload, close
-export add!, center!, darken!, lighten!, set_background_color!
-        
-export translate
 
 #package exports, default geometries
 

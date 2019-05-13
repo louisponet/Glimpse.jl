@@ -34,7 +34,7 @@ struct DepthPeelingRenderer <: AbstractRenderSystem
 		              Shape,
 		              Color,
 		              PointLight,
-		              Camera3D,)
+		              Camera3D)
 	    singletons = (RenderTarget{IOTarget},
 	  			      FullscreenVao,
 	  			      RenderProgram{PeelingProgram},
@@ -75,6 +75,18 @@ function update_indices!(sys::DepthPeelingRenderer)
 end
 
 function update(renderer::DepthPeelingRenderer)
+	if isempty(indices(renderer))
+		return
+	end
+	allempty = true
+	for i in indices(renderer)
+		if !isempty(i)
+			allempty = false
+		end
+	end
+	if allempty
+		return
+	end
 	rem1(x, y) = (x - 1) % y + 1
 	comp(T)  = component(renderer, T)
 	scomp(T) = shared_component(renderer, T)

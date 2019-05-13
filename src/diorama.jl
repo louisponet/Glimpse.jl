@@ -71,7 +71,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
                          UniformUploader{DefaultInstancedProgram}(dio),
                          UniformUploader{PeelingInstancedProgram}(dio),
                          TextUploader(dio),
-			             Camera(dio),
+			             CameraOperator(dio),
 			             DefaultRenderer(dio),
 			             DepthPeelingRenderer(dio),
 			             TextRenderer(dio),

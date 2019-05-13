@@ -129,7 +129,7 @@ function Camera3D(width_pixels::Integer, height_pixels::Integer; eyepos = -10*Y_
     right = normalize(cross(lookat - eyepos, up))
 
     viewm = lookatmat(eyepos, lookat, up)
-    projm = projmat(perspective, width_pixels, height_pixels, near, far, fov)
+    projm = projmatpersp(width_pixels, height_pixels, near, far, fov)
     return Camera3D(lookat=lookat, up=up, right=right, fov=fov, near=near, far=far, view=viewm, proj=projm, projview=projm * viewm) 
 end
 

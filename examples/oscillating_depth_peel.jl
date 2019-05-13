@@ -23,6 +23,7 @@ for i = 1:nspheres
 	                              Gl.Shape(),
 	                              Gl.UniformColor(color),
 	                              Gl.Dynamic(),
+	                              Gl.Selectable(),
 	                              progtag], shared=Gl.ComponentData[sph_geom, spring]);
 end
 

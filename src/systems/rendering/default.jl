@@ -55,6 +55,18 @@ end
 
 #maybe this should be splitted into a couple of systems
 function update(renderer::DefaultRenderer)
+	if isempty(indices(renderer))
+		return
+	end
+	allempty = true
+	for i in indices(renderer)
+		if !isempty(i)
+			allempty = false
+		end
+	end
+	if allempty
+		return
+	end
 	comp(T)  = component(renderer, T)
 	scomp(T) = shared_component(renderer, T)
 

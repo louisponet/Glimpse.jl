@@ -3,23 +3,15 @@ import GLAbstraction: textureformat_from_type_sym, getfirst, gluniform, clear!
 
 #----------------GLAbstraction-------------------------#
 default_framebuffer(fb_size) = FrameBuffer(fb_size, DepthStencil{GLAbstraction.Float24, N0f8}, RGBA{N0f8}, Vec{2, GLushort}, RGBA{N0f8})
+
 clear!(fbo::FrameBuffer, color::RGBA) = clear!(fbo, (color.r, color.g, color.b, color.alpha))
 
 const fullscreen_pos = [Vec3f0(-1, 1, 0), Vec3f0(-1, -1, 0),
                         Vec3f0(1, 1, 0) , Vec3f0(1, -1, 0)]
+
 const fullscreen_uv = [Vec2f0(0, 1), Vec2f0(0, 0),
                        Vec2f0(1, 1), Vec2f0(1, 0)]
 
-fullscreen_vertexarray() =
-    VertexArray([BufferAttachmentInfo(:position,
-                                      GLint(0),
-                                      Buffer(fullscreen_pos),
-                                      GEOMETRY_DIVISOR),
-                 BufferAttachmentInfo(:uv,
-                                      GLint(1),
-                                      Buffer(fullscreen_uv),
-                                      GEOMETRY_DIVISOR)],
-                 5)
 
 #REVIEW: not used
 function glenum2julia(x::UInt32)
@@ -58,6 +50,7 @@ function mergepop!(d1, d2)
     d2 = [d...]
     return t
 end
+
 Base.ndims(::Type{<:Colorant}) = 1
 Base.size(::Type{<:Number}) = 1
 
@@ -69,6 +62,7 @@ end
 function uniformfunc(typ::DataType, dims::Tuple{Int})
     Symbol(string("glUniform", first(dims), GLAbstraction.opengl_postfix(typ)))
 end
+
 function uniformfunc(typ::DataType, dims::Tuple{Int, Int})
     M, N = dims
     Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)", opengl_postfix(typ)))
@@ -185,12 +179,29 @@ end
 
 
 #----------------------GLFW----------------------------#
-destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
+glfw_destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
 
-const WASD_KEYS  = Int.([KEY_W, KEY_A, KEY_S, KEY_D])
+const WASD_KEYS  = Int.([GLFW.KEY_W, GLFW.KEY_A, GLFW.KEY_S, GLFW.KEY_D])
 const SHIFT_KEYS = Int.([GLFW.KEY_LEFT_SHIFT, GLFW.KEY_RIGHT_SHIFT])
 const CTRL_KEYS  = Int.([GLFW.KEY_LEFT_CONTROL, GLFW.KEY_RIGHT_CONTROL])
 
+"""
+Standard window hints for creating a plain context without any multisampling
+or extra buffers beside the color buffer
+"""
+const GLFW_DEFAULT_WINDOW_HINTS = [(GLFW.SAMPLES,      0),
+		                           (GLFW.DEPTH_BITS,   32),
+
+		                           (GLFW.ALPHA_BITS,   8),
+		                           (GLFW.RED_BITS,     8),
+		                           (GLFW.GREEN_BITS,   8),
+		                           (GLFW.BLUE_BITS,    8),
+
+		                           (GLFW.STENCIL_BITS, 0),
+		                           (GLFW.AUX_BUFFERS,  0)]
+
+glfw_standard_screen_resolution() =
+	GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
 
 #Colorutils
 import ColorTypes: RGBA, Colorant, RGB
