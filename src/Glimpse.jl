@@ -7,7 +7,6 @@ using Reexport
 using AbstractPlotting # I'd like to get away from this
 const AP = AbstractPlotting
 
-using FixedPointNumbers
 using ModernGL
 using Quaternions
 Base.length(::Type{<:RGBA}) = 4
@@ -17,8 +16,7 @@ const GLA = GLAbstraction
 using LinearAlgebra
 using GLFW
 using Observables
-@reexport using Setfield
-
+using Parameters
 # using TimerOutputs
 # const to = TimerOutput()
 

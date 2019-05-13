@@ -49,42 +49,43 @@ function shared_entities(c::SharedComponent{T}, dat::T) where T
 end
 
 ==(c1::T, c2::T) where {T <: ComponentData} = all(getfield.((c1,), fieldnames(T)) .== getfield.((c2,), fieldnames(T)))
+
 # DEFAULT COMPONENTS
-
-
 abstract type ProgramKind end
 
-struct ProgramTag{P <: ProgramKind} <: ComponentData
-end
+struct ProgramTag{P <: ProgramKind} <: ComponentData end
 
-Base.@kwdef struct Vao{P <: ProgramKind} <: ComponentData
+@with_kw struct Vao{P <: ProgramKind} <: ComponentData
 	vertexarray::VertexArray
 	visible    ::Bool = true
 end
 programkind(::Vao{P}) where {P} = P
+
 GLA.bind(vao::Vao) = GLA.bind(vao.vertexarray)
+
 GLA.draw(vao::Vao) = GLA.draw(vao.vertexarray)
+
 # NON rendering Components
 struct Dynamic <: ComponentData end
-Base.@kwdef struct Spatial <: ComponentData
+@with_kw struct Spatial <: ComponentData
 	position::Point3f0 = zero(Point3f0)
 	velocity::Vec3f0   = zero(Vec3f0)
 end
 
-Base.@kwdef struct Shape <: ComponentData
+@with_kw struct Shape <: ComponentData
 	scale::Float32 = 1f0
 end
 
-Base.@kwdef struct ModelMat <: ComponentData
+@with_kw struct ModelMat <: ComponentData
 	modelmat::Mat4f0 = Eye4f0()
 end
 
-Base.@kwdef struct Material <: ComponentData
+@with_kw struct Material <: ComponentData
 	specpow ::Float32 = 0.8f0
 	specint ::Float32 = 0.8f0
 end
 
-Base.@kwdef struct PointLight <: ComponentData
+@with_kw struct PointLight <: ComponentData
     diffuse ::Float32  = 0.5f0
     specular::Float32  = 0.5f0
     ambient ::Float32  = 0.5f0
@@ -101,7 +102,7 @@ const X_AXIS = Vec3f0(1.0f0, 0.0  , 0.0)
 const Y_AXIS = Vec3f0(0.0,   1.0f0, 0.0)
 const Z_AXIS = Vec3f0(0.0,   0.0  , 1.0f0)
 
-Base.@kwdef struct Camera3D <: ComponentData
+@with_kw struct Camera3D <: ComponentData
     lookat ::Vec3f0  = zero(Vec3f0)
     up     ::Vec3f0  = Z_AXIS 
     right  ::Vec3f0  = X_AXIS 
@@ -197,7 +198,7 @@ struct Line <: ComponentData
 	miter    ::Float32
 end
 
-Base.@kwdef struct Text <: ComponentData
+@with_kw struct Text <: ComponentData
 	str      ::String = "test"
 	font_size::Int    = 1
 	font     = AP.defaultfont()

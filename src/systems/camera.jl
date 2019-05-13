@@ -74,7 +74,7 @@ function update(updater::CameraOperator)
 	    new_up       = unitup(u_forward, new_right)
 	    new_view     = lookatmat(new_pos, new_lookat, new_up)
 	    new_projview = new_proj * new_view
-		spatial[i]   = @set spat.position = new_pos
+		spatial[i]   = Spatial(new_pos, spatial[i].velocity)
 		overwrite!(camera, Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
 		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed,
 		                            new_mouse_pos, cam.scroll_dx, new_scroll_dy), i)
