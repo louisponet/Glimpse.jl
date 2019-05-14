@@ -32,7 +32,7 @@ function update(sys::Resizer)
 end
 
 # Mouse Picking Stuff
-Base.@kwdef struct Selectable <: ComponentData
+@with_kw struct Selectable <: ComponentData
 	selected::Bool = false
 	color_modifier ::Float32 = 1.3f0
 end

@@ -40,6 +40,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    Text,
 		                    Selectable,
 		                    AABB,
+		                    GuiText,
 		                    ProgramTag{DefaultProgram},
 		                    ProgramTag{DefaultInstancedProgram},
 		                    ProgramTag{PeelingProgram},
@@ -75,6 +76,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             DefaultRenderer(dio),
 			             DepthPeelingRenderer(dio),
 			             TextRenderer(dio),
+			             GuiRenderer(dio),
 			             FinalRenderer(dio),
 			             Sleeper(dio)])
 

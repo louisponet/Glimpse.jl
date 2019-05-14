@@ -17,6 +17,10 @@ using LinearAlgebra
 using GLFW
 using Observables
 using Parameters
+
+using CImGui
+using CImGui.GLFWBackend
+using CImGui.OpenGLBackend
 # using TimerOutputs
 # const to = TimerOutput()
 
