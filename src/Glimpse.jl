@@ -10,6 +10,7 @@ const AP = AbstractPlotting
 using ModernGL
 using Quaternions
 Base.length(::Type{<:RGBA}) = 4
+
 using GLAbstraction
 const GLA = GLAbstraction
 
@@ -21,8 +22,10 @@ using Parameters
 using CImGui
 using CImGui.GLFWBackend
 using CImGui.OpenGLBackend
-# using TimerOutputs
-# const to = TimerOutput()
+const Gui = CImGui
+
+using TimerOutputs
+const to = TimerOutput()
 
 include("extensions.jl")
 include("types.jl")

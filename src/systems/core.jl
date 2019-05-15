@@ -2,13 +2,18 @@
 struct Sleeper <: System
 	data ::SystemData
 
-	Sleeper(dio::Diorama) = new(SystemData(dio, (), (TimingData, Canvas)))
+	Sleeper(dio::Diorama) = new(SystemData(dio, (), (TimingData, Canvas, GuiFuncs)))
 end 
 
 function update(sleeper::Sleeper)
 	swapbuffers(singleton(sleeper, Canvas))
 	sd         = singletons(sleeper)[1]
 	curtime    = time()
+	dt = (curtime - sd.time)
+
+
+	gui_funcs = singleton(sleeper, GuiFuncs)
+	push!(gui_funcs.funcs, () -> Gui.Text("Test from sleeping"))
 	sleep_time = sd.preferred_fps - (curtime - sd.time)
     st         = sleep_time - 0.002
     while (time() - curtime) < st

@@ -4,16 +4,30 @@ struct CanvasContext <: GLA.AbstractContext
 	id::Int
 end
 
+#TODO think about contexts
 mutable struct Canvas <: Singleton
     name          ::Symbol
     id            ::Int
     area          ::Area
     native_window ::GLFW.Window
+    imgui_context ::UInt
     background    ::Colorant{Float32, 4}
     callbacks     ::Dict{Symbol, Any}
 	context       ::CanvasContext
 	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
-		obj = new(name, id, area, nw, background, callback_dict, CanvasContext(id))
+
+		ctx = convert(UInt, CImGui.GetCurrentContext())
+		if ctx == 0
+			ctx = convert(UInt, CImGui.CreateContext())
+		else
+			CImGui.DestroyContext(CImGui.GetCurrentContext())
+			ctx = convert(UInt, CImGui.CreateContext())
+		end
+		ImGui_ImplGlfw_InitForOpenGL(nw, true)
+		ImGui_ImplOpenGL3_Init(420)
+
+		obj = new(name, id, area, nw, ctx, background, callback_dict, CanvasContext(id))
+
 		finalizer(free!, obj)
 		return obj
 	end

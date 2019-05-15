@@ -6,41 +6,61 @@ struct GuiText <: ComponentData
 	text::String
 end
 
+struct GuiFuncs <: Singleton
+	funcs::Vector{Function}
+end
+GuiFuncs() = GuiFuncs(Function[]) 
+
 struct GuiRenderer <: AbstractRenderSystem
 	data       ::SystemData
 
-	function GuiRenderer(dio::Diorama)
-		w = nativewindow(singleton(dio, Canvas))
-		ctx = convert(UInt, CImGui.GetCurrentContext())
-		if ctx == 0
-			ctx = convert(UInt, CImGui.CreateContext())
-		else
-			CImGui.DestroyContext(CImGui.GetCurrentContext())
-			ctx = convert(UInt, CImGui.CreateContext())
-		end
-		ImGui_ImplGlfw_InitForOpenGL(w, true)
-		ImGui_ImplOpenGL3_Init(420)
-		return new(SystemData(dio, (GuiText,), ()))
-	end
+	GuiRenderer(dio::Diorama) = new(SystemData(dio, (ComponentData, ), (Singleton, )))
 end
 
 function update_indices!(sys::GuiRenderer)
 	sys.data.indices = [valid_entities(sys, GuiText)]
 end
 
+
 function update(renderer::GuiRenderer)
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
-    CImGui.NewFrame()
+    Gui.NewFrame()
 	ci_text = component(renderer, GuiText)
-    # CImGui.Begin("Another Window")  # pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+
+	Gui.Begin("User Text")
+    Gui.SetWindowFontScale(2.0f0)
     for e in indices(renderer)[1]
-        CImGui.Text(ci_text[e].text)
+        Gui.Text(ci_text[e].text)
     end
-    # CImGui.End()
-    CImGui.Render()
-    ImGui_ImplOpenGL3_RenderDrawData(CImGui.GetDrawData())
+	Gui.End()
+
+	# Submitted Gui Funcs
+	fs = singleton(renderer, GuiFuncs).funcs
+	for f in fs
+		f()
+	end
+	empty!(fs)
+
+	# Components Debug
+	Gui.Begin("Components")
+    Gui.SetWindowFontScale(2.0f0)
+	for c in filter(x -> !isempty(x), renderer.data.components)
+		if Gui.TreeNode(replace("$(eltype(c))", "Glimpse." => ""))
+			eids = valid_entities(c)
+			if length(eids) < 5
+				for e in eids
+					if Gui.TreeNode("$e")
+						Gui.Text("$(c[e])")
+						Gui.TreePop()
+					end
+				end
+			end
+			Gui.TreePop()
+		end
+	end
+	Gui.End()
+	###
+    Gui.Render()
+    ImGui_ImplOpenGL3_RenderDrawData(Gui.GetDrawData())
 end
-
-
-

@@ -16,9 +16,10 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
     text_prog          = RenderProgram{TextProgram}(GLA.Program(text_shaders()))
     updated_components = UpdatedComponents(DataType[])
     font_storage       = FontStorage()
+    gui_funcs          = GuiFuncs()
 
 	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [timing, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog, font_storage], System[])
+	dio = Diorama(name, Entity[], AbstractComponent[], [timing, gui_funcs, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog, font_storage], System[])
     add_component!.((dio,),[PolygonGeometry,
     						FileGeometry,
     						FunctionGeometry,
