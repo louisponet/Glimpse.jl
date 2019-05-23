@@ -134,6 +134,17 @@ function Camera3D(width_pixels::Integer, height_pixels::Integer; eyepos = -10*Y_
     return Camera3D(lookat=lookat, up=up, right=right, fov=fov, near=near, far=far, view=viewm, proj=projm, projview=projm * viewm) 
 end
 
+function Camera3D(old_cam::Camera3D, new_pos::Point3f0, new_lookat::Point3f0, u_forward::Vec3f0=unitforward(new_pos, new_lookat))
+	new_right    = unitright(u_forward, old_cam.up)
+	new_up       = unitup(u_forward, new_right)
+	new_view     = lookatmat(new_pos, new_lookat, new_up)
+	new_projview = old_cam.proj * new_view
+
+    return Camera3D(new_lookat, new_up, new_right, old_cam.fov, old_cam.near, old_cam.far, new_view,
+	                            old_cam.proj, new_projview, old_cam.rotation_speed, old_cam.translation_speed,
+	                            old_cam.mouse_pos, old_cam.scroll_dx, old_cam.scroll_dy)
+end
+
 # Meshing and the like
 struct Mesh <: ComponentData
 	mesh
@@ -203,5 +214,6 @@ end
 	font_size::Int    = 1
 	font     = AP.defaultfont()
 	align    ::Symbol = :right
+	offset   ::Vec3f0= zero(Vec3f0)
 end
 	

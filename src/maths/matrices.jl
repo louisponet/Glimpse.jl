@@ -152,7 +152,7 @@ the component of `up` that is perpendicular to the vector pointing
 from `eyeposition` to `lookatmat` will be used.  All inputs must be
 supplied as 3-vectors.
 """
-function lookatmat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+function lookatmat(eyePos::Union{Vec{3, T}, Point{3, T}}, lookAt::Union{Vec{3, T}, Point{3, T}}, up::Union{Vec{3, T}, Point{3, T}}) where T
     zaxis  = normalize(eyePos-lookAt)
     xaxis  = normalize(cross(up,    zaxis))
     yaxis  = normalize(cross(zaxis, xaxis))
@@ -164,7 +164,7 @@ function lookatmat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         T0,       T0,       T0,       T1
     ) * translmat(-eyePos)
 end
-function lookatmat(eyePos, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+function lookatmat(eyePos, lookAt::Union{Vec{3, T}, Point{3, T}}, up::Union{Vec{3, T}, Point{3, T}}) where T
     lookatmat(Vec{3, T}(eyePos), lookAt, up)
 end
 function lookatmat(::Type{T}, eyePos, lookAt::Vec{3}, up::Vec{3}) where T

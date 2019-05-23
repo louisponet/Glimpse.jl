@@ -41,7 +41,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		                    Text,
 		                    Selectable,
 		                    AABB,
-		                    GuiText,
+		                    # GuiText,
 		                    ProgramTag{DefaultProgram},
 		                    ProgramTag{DefaultInstancedProgram},
 		                    ProgramTag{PeelingProgram},
@@ -77,7 +77,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			             DefaultRenderer(dio),
 			             DepthPeelingRenderer(dio),
 			             TextRenderer(dio),
-			             GuiRenderer(dio),
+			             # GuiRenderer(dio),
 			             FinalRenderer(dio),
 			             Sleeper(dio)])
 
@@ -388,6 +388,30 @@ function update_system_indices!(dio::Diorama)
 	# end
 end
 
+function center_cameras(dio::Diorama)
+	spat = component(dio, Spatial)
+	cam = component(dio, Camera3D)
+	lights = component(dio, PointLight)
+	scene_entities = setdiff(valid_entities(spat), valid_entities(cam) ∪ valid_entities(lights))
+	center = zero(Point3f0)
+	e_counter = 0 
+	for e in scene_entities 
+		center += spat[e].position
+		e_counter += 1
+	end
+	center /= e_counter
+
+	for id in valid_entities(spat, cam)
+		c            = cam[id]
+		current_pos  = spat[id].position
+		current_dist = norm(c.lookat - current_pos)
+		# we want to keep the distance to the lookat constant
+		u_forward    = unitforward(current_pos, center)
+		new_pos      = center - current_dist * u_forward
+		spat[id]     = Spatial(new_pos, spat[id].velocity)
+		overwrite!(cam, Camera3D(c, new_pos, center, u_forward), id)
+    end
+end
 
 # function reupload(::Diorama)
 # 	renderables = fi(x -> x.should_upload, dio.renderables)

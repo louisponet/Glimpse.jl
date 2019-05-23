@@ -16,17 +16,17 @@ mutable struct Canvas <: Singleton
 	context       ::CanvasContext
 	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
 
-		ctx = convert(UInt, CImGui.GetCurrentContext())
-		if ctx == 0
-			ctx = convert(UInt, CImGui.CreateContext())
-		else
-			CImGui.DestroyContext(CImGui.GetCurrentContext())
-			ctx = convert(UInt, CImGui.CreateContext())
-		end
-		ImGui_ImplGlfw_InitForOpenGL(nw, true)
-		ImGui_ImplOpenGL3_Init(420)
+		# ctx = convert(UInt, CImGui.GetCurrentContext())
+		# if ctx == 0
+		# 	ctx = convert(UInt, CImGui.CreateContext())
+		# else
+		# 	CImGui.DestroyContext(CImGui.GetCurrentContext())
+		# 	ctx = convert(UInt, CImGui.CreateContext())
+		# end
+		# ImGui_ImplGlfw_InitForOpenGL(nw, true)
+		# ImGui_ImplOpenGL3_Init(420)
 
-		obj = new(name, id, area, nw, ctx, background, callback_dict, CanvasContext(id))
+		obj = new(name, id, area, nw, UInt(0), background, callback_dict, CanvasContext(id))
 
 		finalizer(free!, obj)
 		return obj

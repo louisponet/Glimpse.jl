@@ -39,7 +39,7 @@ end
 
 to_gl_text(t::Text, storage::FontStorage) = to_gl_text(t.str, t.font_size, t.font, t.align, storage)
 
-function to_gl_text(string::AbstractString, textsize::Int, font::Vector{Ptr{AP.FreeType.FT_FaceRec}}, align::Symbol, storage::FontStorage )
+function to_gl_text(string::AbstractString, textsize::Int, font::Vector{Ptr{AP.FreeType.FT_FaceRec}}, align::Symbol, storage::FontStorage)
     atlas           = storage.atlas
     rscale          = Float32(textsize)
     chars           = Vector{Char}(string)
@@ -63,7 +63,7 @@ struct TextRenderer <: AbstractRenderSystem
 	data ::SystemData
 
 	function TextRenderer(dio::Diorama)
-		components = (Spatial, UniformColor, Camera3D, Vao{TextProgram})
+		components = (Spatial, UniformColor, Camera3D, Vao{TextProgram}, Text)
 		singletons = (RenderProgram{TextProgram}, RenderTarget{IOTarget}, FontStorage)
 		new(SystemData(dio, components, singletons))
 	end
@@ -83,10 +83,11 @@ function update(renderer::TextRenderer)
 	vao       = comp(Vao{TextProgram})
 	iofbo     = singleton(renderer, RenderTarget{IOTarget})
 	persp_mat = cam[valid_entities(cam)[1]].projview
+	text      = comp(Text)
 	wh = size(iofbo)
 
-	glEnable(GL_BLEND)
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+	glEnable(GL_DEPTH_TEST)
+	glDepthFunc(GL_LEQUAL)
 
 	glyph_fbo = singleton(renderer, FontStorage).storage_fbo
 	bind(color_attachment(glyph_fbo, 1))
@@ -98,7 +99,7 @@ function update(renderer::TextRenderer)
     set_uniform(prog, :projview, persp_mat)
 	set_uniform(prog, :glyph_texture, (0, color_attachment(glyph_fbo, 1)))
 	for e in indices(renderer)[1]
-		set_uniform(prog, :start_pos, spat[e].position)
+		set_uniform(prog, :start_pos, spat[e].position + text[e].offset)
 		set_uniform(prog, :color, col[e].color)
 		bind(vao[e])
 		draw(vao[e])

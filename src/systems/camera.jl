@@ -34,7 +34,6 @@ function update(updater::CameraOperator)
 	    new_mouse_pos = Vec(x, y)
 	    new_lookat    = cam.lookat
 	    if mouse_button[2] == Int(GLFW.PRESS)
-
 	        if mouse_button[1] == Int(GLFW.MOUSE_BUTTON_1) #rotation
 			    trans1  = translmat(-cam.lookat)
 			    rot1    = rotate(dy * cam.rotation_speed, -cam.right)
@@ -85,36 +84,37 @@ unitforward(position, lookat) = normalize(forward(position, lookat))
 unitright(forward, up)        = normalize(right(forward, up))
 unitup(forward, right)        = normalize(up(forward, right))
 
-forward(position, lookat) = lookat - position
+forward(position, lookat) = Vec3f0(lookat - position)
 right(forward, up)        = cross(forward, up)
 up(forward, right)        = cross(right, forward)
 
 
+
 #maybe it would be better to make the eyepos up etc vectors already vec4 but ok
-function wasd_event(position, cam::Camera3D, button)
+function wasd_event(position::Point3f0, cam::Camera3D, button)
     #ok this is a bit hacky but fine
     # origlen = norm(position)
     new_lookat = cam.lookat
-    if button[1] == Int(KEY_A)
-	    move        = cam.translation_speed * 5 * cam.right
+    if button[1] == Int(GLFW.KEY_A)
+	    move        = Point3f0(cam.translation_speed * 5 * cam.right)
         #the world needs to move in the opposite direction
         position   -= move
         new_lookat -= move
 	end
-    if button[1] == Int(KEY_D)
-	    move        = cam.translation_speed * 5 * cam.right
+    if button[1] == Int(GLFW.KEY_D)
+	    move        = Point3f0(cam.translation_speed * 5 * cam.right)
         position   += move
         new_lookat += move
 	end
-    if button[1] == Int(KEY_W)
-	    move = unitforward(position, cam.lookat) * 5 * cam.translation_speed
+    if button[1] == Int(GLFW.KEY_W)
+	    move = Point3f0(unitforward(position, cam.lookat) * 5 * cam.translation_speed)
         position   += move
         new_lookat += move
 
 	end
-    if button[1] == Int(KEY_S)
+    if button[1] == Int(GLFW.KEY_S)
 
-	    move = unitforward(position, cam.lookat) * 5 * cam.translation_speed
+	    move = Point3f0(unitforward(position, cam.lookat) * 5 * cam.translation_speed)
         position   -= move
         new_lookat -= move
 
