@@ -14,19 +14,21 @@ mutable struct Canvas <: Singleton
     background    ::Colorant{Float32, 4}
     callbacks     ::Dict{Symbol, Any}
 	context       ::CanvasContext
-	function Canvas(name::Symbol, id::Int, area, nw, background, callback_dict)
+	function Canvas(name::Symbol, id::Int, area, nw, background, callbacks)
 
-		# ctx = convert(UInt, CImGui.GetCurrentContext())
-		# if ctx == 0
-		# 	ctx = convert(UInt, CImGui.CreateContext())
-		# else
-		# 	CImGui.DestroyContext(CImGui.GetCurrentContext())
-		# 	ctx = convert(UInt, CImGui.CreateContext())
-		# end
-		# ImGui_ImplGlfw_InitForOpenGL(nw, true)
-		# ImGui_ImplOpenGL3_Init(420)
+		ctx = convert(UInt, CImGui.GetCurrentContext())
+		if ctx == 0
+			ctx = convert(UInt, CImGui.CreateContext())
+		else
+			CImGui.DestroyContext(CImGui.GetCurrentContext())
+			ctx = convert(UInt, CImGui.CreateContext())
+		end
+		ImGui_ImplGlfw_InitForOpenGL(nw, true)
+		ImGui_ImplOpenGL3_Init(420)
 
-		obj = new(name, id, area, nw, UInt(0), background, callback_dict, CanvasContext(id))
+	    callback_dict = register_callbacks(nw, callbacks)
+
+		obj = new(name, id, area, nw, ctx, background, callback_dict, CanvasContext(id))
 
 		finalizer(free!, obj)
 		return obj
@@ -65,9 +67,8 @@ function Canvas(name=:Glimpse; kwargs...)
     background = defaults[:background]
 
     callbacks  = defaults[:callbacks]
-    callback_dict = register_callbacks(nw, callbacks)
 
-	c = Canvas(name, id, area, nw, background, callback_dict)
+	c = Canvas(name, id, area, nw, background, callbacks)
 	if defaults[:visible]
 	    make_current(c)
     end
