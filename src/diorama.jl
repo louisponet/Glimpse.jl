@@ -113,9 +113,10 @@ end
 #TODO move control over this to diorama itself
 function renderloop(dio)
     dio    = dio
+    update_system_indices!(dio)
     canvas_command(dio, canvas ->
 	    begin
-	    	while !should_close(canvas)
+	    	dio.loop = @async while !should_close(canvas)
 			    clear!(canvas)
 			    iofbo = singleton(dio, RenderTarget{IOTarget})
 			    bind(iofbo)
@@ -126,7 +127,7 @@ function renderloop(dio)
 			        update(sys)
 		        end
 		    end
-		    close(dio)
+		    close(canvas)
 			dio.loop = nothing
 		end
 	)
@@ -144,7 +145,9 @@ function reload(dio::Diorama)
 	    end
     )
 end
-close(dio::Diorama) = canvas_command(dio, c -> (close(c); should_close!(c, false)))
+
+close(dio::Diorama) = canvas_command(dio, canvas -> should_close!(canvas, true))
+
 free!(dio::Diorama) = canvas_command(dio, c -> free!(c))
 
 isrendering(dio::Diorama) = dio.loop != nothing
@@ -240,12 +243,14 @@ function add_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData}
 	comp = Component(ncomponents(dio)+1, T)
 	push!(dio.components, comp)
 	add_component_to_systems(dio, comp)
+	return comp
 end
 	
 function add_shared_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData}
 	comp = SharedComponent(ncomponents(dio)+1, T)
 	push!(dio.components, comp)
 	add_component_to_systems(dio, comp)
+	return comp
 end
 
 system(dio::Diorama, ::Type{T}) where {T <: System} =
@@ -286,11 +291,27 @@ end
 function add_entity!(dio::Diorama; separate::Vector{<:ComponentData}=ComponentData[], shared::Vector{<: ComponentData}=ComponentData[])
 	entity_id  = length(dio.entities) + 1
 
-	names      = typeof.(separate)
-	components = component.((dio, ), names)
-	shared_names      = typeof.(shared)
-	shared_components = shared_component.((dio, ), shared_names)
-	@assert !(any(components .== nothing) || any(shared_components .== nothing)) "One or more components in $(names[findall(isequal(nothing), components)]) is not present in the dio yet. TODO add this automatically"
+	names        = typeof.(separate)
+	shared_names = typeof.(shared)
+	found_components        = component.((dio, ), names)
+	found_shared_components = shared_component.((dio, ), shared_names)
+	components = Component[]
+	shared_components = SharedComponent[]
+	for (n, c) in zip(names, found_components)
+		if c === nothing
+			push!(components, add_component!(dio, n))
+		else
+			push!(components, c)
+		end
+	end
+	for (n, c) in zip(shared_names, found_shared_components)
+		if c === nothing
+			push!(shared_components, add_shared_component!(dio, n))
+		else
+			push!(shared_components, c)
+		end
+	end
+
     add_to_components!(entity_id, separate, components)
     add_to_components!(entity_id, shared, shared_components)
 	
