@@ -24,9 +24,3 @@ for i = 1:nspheres
 	                              Gl.Selectable(),
 	                              progtag], shared=Gl.ComponentData[sph_geom, spring]);
 end
-
-Gl.update_system_indices!(dio)
-for sys in Gl.engaged_systems(dio)
-	Gl.update(sys)
-end
-Gl.close(dio)

@@ -35,9 +35,5 @@ Gl.add_entity!(dio, separate=[Gl.Spatial(),
                               ccomp,
                               dcomp,
                               Gl.ProgramTag{Gl.PeelingProgram}()], shared=Gl.ComponentData[grid])
-Gl.update_system_indices!(dio)
-for sys in Gl.engaged_systems(dio)
-	Gl.update(sys)
-end
-Gl.close(dio)
 
+Gl.renderloop(dio); sleep(1); Gl.close(dio); sleep(1)

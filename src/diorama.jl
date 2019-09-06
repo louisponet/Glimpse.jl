@@ -115,8 +115,8 @@ function renderloop(dio)
     dio    = dio
     update_system_indices!(dio)
     canvas_command(dio, canvas ->
-	    begin
-	    	dio.loop = @async while !should_close(canvas)
+	    dio.loop = @async begin
+	    	while !should_close(canvas)
 			    clear!(canvas)
 			    iofbo = singleton(dio, RenderTarget{IOTarget})
 			    bind(iofbo)
