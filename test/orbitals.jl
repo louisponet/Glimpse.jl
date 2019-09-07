@@ -28,7 +28,7 @@ grid  = Gl.Grid([Point3f0(a, b, c) for a=-30:0.3:30, b=-30:0.3:30, c=-30:0.3:30]
 ccomp = Gl.FunctionColor(p -> colorfunc(p, ψ, cscheme))
 dcomp = Gl.FunctionGeometry(p -> densfunc(p, ψ), 0.001f0)
 
-dio = Gl.Diorama(background=RGBAf0(0.0, 0.0, 0.0, 1.0))
+dio = Gl.Diorama(background=RGBAf0(0.0, 0.0, 0.0, 1.0), interactive=true)
 Gl.add_entity!(dio, separate=[Gl.Spatial(),
                               Gl.Material(),
                               Gl.Shape(),

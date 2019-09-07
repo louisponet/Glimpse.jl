@@ -1,6 +1,6 @@
 using Glimpse
 const Gl = Glimpse
-dio = Gl.Diorama(background=RGBAf0(1.0));
+dio = Gl.Diorama(background=RGBAf0(1.0), interactive=true);
 Gl.add_entity!(dio, separate = [Gl.Spatial(),
 								Gl.Shape(),
 								Gl.Material(),

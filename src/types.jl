@@ -66,11 +66,11 @@ mutable struct Diorama
     
     loop       ::Union{Task, Nothing}
     reupload   ::Bool
-    function Diorama(name, entities, components,  singletons, systems; interactive=false, kwargs...)
+    function Diorama(name, entities, components,  singletons, systems; interactive=true, kwargs...)
         dio = new(name, entities, components, singletons, systems, nothing, true)
 
         makecurrentdio(dio)
-        expose(dio; kwargs...)
+    	interactive && expose(dio; kwargs...)
         finalizer(free!, dio)
         return dio
     end

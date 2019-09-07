@@ -1,6 +1,6 @@
 using Glimpse
 const Gl = Glimpse
-dio = Gl.Diorama(background=RGBAf0(0.0,0.0,0.0,1.0));
+dio = Gl.Diorama(background=RGBAf0(0.0,0.0,0.0,1.0), interactive=true);
 Gl.add_shared_component!(dio, Gl.Spring)
 Gl.insert_system_before!(dio, Gl.UniformCalculator, Gl.Oscillator(dio))
 spherepoint(r, theta, phi) = r*Point3f0(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))

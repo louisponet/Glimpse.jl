@@ -105,7 +105,7 @@ end
 
 function expose(dio::Diorama;  kwargs...)
     if dio.loop == nothing
-	    canvas_command(dio, make_current, x -> add_singleton!(dio, Canvas(dio.name; kwargs...))) 
+	    canvas_command(dio, make_current, x -> push!(dio.singletons, Canvas(dio.name; kwargs...))) 
     end
     return dio
 end
@@ -395,18 +395,13 @@ end
 engaged_systems(dio) = filter(x -> isengaged(x), dio.systems)
 
 function update_system_indices!(dio::Diorama)
-	for j = 1:2
-		for i=1:length(dio.systems) - 1
-			update(dio.systems[i])
-			update_indices!(dio.systems[i+1])
-		end
+	for sys in dio.systems
+		update_indices!(sys)
 	end
-	# for sys in dio.systems
-	# 	if isempty(indices(sys)) || all(isempty.(indices(sys)))
-	# 		@show "ping"
-	# 		disengage!(sys)
-	# 	end
-	# end
+	for i=1:length(dio.systems) - 1
+		update(dio.systems[i])
+		update_indices!(dio.systems[i+1])
+	end
 end
 
 function center_cameras(dio::Diorama)

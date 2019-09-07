@@ -31,7 +31,7 @@ function update(sys::Rotator)
 	end
 end
 
-dio =Gl.Diorama(background=RGBAf0(0.0,0.0,0.0,1.0));
+dio =Gl.Diorama(background=RGBAf0(0.0,0.0,0.0,1.0), interactive=true);
 
 # add new component and system to the diorama, alongside with the already present rendering systems/components
 Gl.add_component!(dio, Rotation);
