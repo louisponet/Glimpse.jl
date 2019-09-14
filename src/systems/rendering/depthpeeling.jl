@@ -2,7 +2,7 @@ import GLAbstraction: bind, draw, color_attachment, depth_attachment
 
 struct PeelingCompositeProgram <: ProgramKind end
 struct PeelingProgram          <: ProgramKind end
-struct PeelingInstancedProgram <: ProgramKind end
+struct InstancedPeelingProgram <: ProgramKind end
 
 #can't the colorblender be the IOTarget?
 struct ColorBlendTarget  <: RenderTargetKind end

@@ -12,17 +12,15 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	timing = TimingData(time(),0.0, 0, 1/60, false)
 	m = Manager(Timer(),
 			    PolygonMesher(),
-			    DefaultUploader(),
-			    #DefaultInstancedUploader(),
-			    CameraOperator(),
 			    UniformCalculator(),
+			    DefaultUploader(),
+			    InstancedDefaultUploader(),
+			    CameraOperator(),
 			    DefaultRenderer(),
-			    #InstancedDefaultRenderer(),
+			    InstancedDefaultRenderer(),
 			    FinalRenderer(),
 			    Resizer(),
 			    Sleeper())
-	# for v in (RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background), FullscreenVao(), RenderProgram{DefaultProgram}(GLA.Program(default_shaders())), RenderProgram{DefaultInstancedProgram}(GLA.Program(default_instanced_shaders())), RenderProgram{PeelingProgram}(GLA.Program(peeling_shaders())), RenderProgram{PeelingInstancedProgram}(GLA.Program(peeling_instanced_shaders())), RenderProgram{LineProgram}(GLA.Program(line_shaders())), RenderProgram{TextProgram}(GLA.Program(text_shaders())), UpdatedComponents(DataType[]), FontStorage(), GuiFuncs())
-	# for v in (RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background), FullscreenVao(), UpdatedComponents(DataType[]), FontStorage())
 	for v in (RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background), FullscreenVao(), UpdatedComponents(DataType[]))
 		e = Entity(m)
 		comp_T = typeof(v)

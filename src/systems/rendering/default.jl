@@ -10,7 +10,7 @@ ECS.preferred_component_type(::Type{Vao{DefaultProgram}}) = Component
 # Using the shared uploader system inside uploading.jl
 DefaultUploader() = Uploader{DefaultProgram}()
 
-InstancedDefaultUploader(dio::Diorama) = InstancedUploader(InstancedDefaultProgram, dio)
+InstancedDefaultUploader() = Uploader{InstancedDefaultProgram}()
 
 struct DefaultRenderer <: AbstractRenderSystem end
 

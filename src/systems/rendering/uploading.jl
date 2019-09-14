@@ -4,12 +4,15 @@ struct Uploader{P <: ProgramKind} <: System end
 requested_components(::Uploader{P}) where {P<:Union{DefaultProgram,PeelingProgram}} =
 	(Mesh, BufferColor, Vao{P}, ProgramTag{P}, RenderProgram{P})
 
-requested_components(::Uploader{P}) where {P<:Union{InstancedDefaultProgram,PeelingInstancedProgram}} =
+requested_components(::Uploader{P}) where {P<:Union{InstancedDefaultProgram,InstancedPeelingProgram}} =
 	(Mesh, UniformColor, ModelMat, Material, Vao{P}, ProgramTag{P}, RenderProgram{P})
+
+shaders(::Type{DefaultProgram}) = default_shaders()
+shaders(::Type{PeelingProgram}) = peeling_shaders()
 
 function ECS.prepare(::Uploader{P}, dio::Diorama) where {P<:Union{DefaultProgram,PeelingProgram}}
 	if isempty(dio[RenderProgram{P}])
-		Entity(dio, RenderProgram{P}(Program(default_shaders())))
+		Entity(dio, RenderProgram{P}(Program(shaders(P))))
 	end
 end
 
@@ -56,50 +59,45 @@ end
 # end
 
 
-function ECS.prepare(::Uploader{P}, dio::Diorama) where {P<:Union{InstancedDefaultProgram, PeelingInstancedProgram}}
+shaders(::Type{InstancedDefaultProgram}) = instanced_default_shaders()
+shaders(::Type{InstancedPeelingProgram}) = instanced_peeling_shaders()
+
+
+function ECS.prepare(::Uploader{P}, dio::Diorama) where {P<:Union{InstancedDefaultProgram, InstancedPeelingProgram}}
 	if isempty(dio[RenderProgram{P}])
-		Entity(dio, RenderProgram{P}())
+		Entity(dio, RenderProgram{P}(Program(shaders(P))))
 	end
 end
-#TODO robustness: Assumes that mesh is SharedComponent and also sorted
-#could add sorting to the setup above
-function (::Uploader{P})(m) where {P <: Union{InstancedDefaultProgram, PeelingInstancedProgram}}
+
+function (::Uploader{P})(m) where {P <: Union{InstancedDefaultProgram, InstancedPeelingProgram}}
 	prog = m[RenderProgram{P}][1].program	
 	vao = m[Vao{P}]
-	it = zip(m[Mesh], m[UniformColor], m[ModelMat], m[Material], m[ProgramTag{P}], exclude=vao)
+	mesh = m[Mesh]
+	it = zip(mesh, m[UniformColor], m[ModelMat], m[Material], m[ProgramTag{P}], exclude=(vao,))
 	if isempty(mesh)
 		return
 	end
-	tmesh = mesh[1].mesh #dummy not actually used
-	modelmats = Mat4f0[]
-	ucolors   = RGBAf0[]
-	specints  = Float32[]
-	specpows  = Float32[]
-	ids  = Int[]
 	stor = ECS.storage(vao)
-
-	for (e_mesh, e_color, e_modelmat, e_material, t) in it
-		if e_mesh.mesh === tmesh
-			push!(modelmats, e_modelmat.modelmat)
-			push!(ucolors, e_color.color)
-			push!(specints, e_material.specint)
-			push!(specpows, e_material.specpow)
-			push!(ids, ECS.id(ECS.Entity(it)))
-		else
-			if !isempty(modelmats)
-				tvao = Vao{P}(VertexArray([generate_buffers(prog, tmesh); generate_buffers(prog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(ids)), true)
-				push!(vao.shared, tvao)
-				id = length(vao.shared)
-				for i in ids
-					stor[i, ECS.Reverse()] = id
-				end
+	for tmesh in mesh.shared
+		modelmats = Mat4f0[]
+		ucolors   = RGBAf0[]
+		specints  = Float32[]
+		specpows  = Float32[]
+		ids  = Int[]
+		for (e_mesh, e_color, e_modelmat, e_material, t) in it
+			if e_mesh.mesh === tmesh.mesh
+				push!(modelmats, e_modelmat.modelmat)
+				push!(ucolors, e_color.color)
+				push!(specints, e_material.specint)
+				push!(specpows, e_material.specpow)
+				push!(ids, ECS.id(ECS.Entity(it)))
 			end
-			tmesh = e_mesh.mesh
-			modelmats = [e_modelmat.modelmat]
-			ucolors = [e_color.color]
-			specints = [e_material.specint]
-			specpows = [e_material.specpow]
-			ids = [ECS.id(ECS.Entity(it))]
+			tvao = Vao{P}(VertexArray([generate_buffers(prog, tmesh.mesh); generate_buffers(prog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.mesh.faces .- GLint(1), length(ids)), true)
+			push!(vao.shared, tvao)
+			id = length(vao.shared)
+			for i in ids
+				stor[i, ECS.Reverse()] = id
+			end
 		end
 	end
 end
