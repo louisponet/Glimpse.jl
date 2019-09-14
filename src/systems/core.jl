@@ -39,7 +39,7 @@ requested_components(::Resizer) = (Canvas, RenderTarget{IOTarget})
 
 function (::Resizer)(m)
 	c = m[Canvas][1]
-	fwh = callback_value(c, :framebuffer_size)
+	fwh = c.framebuffer_size
 	resize!(c, fwh)
 	for c in m.components
 		if eltype(c) <: RenderTarget

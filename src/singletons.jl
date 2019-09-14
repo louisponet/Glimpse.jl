@@ -5,16 +5,23 @@ struct CanvasContext <: GLA.AbstractContext
 end
 
 #TODO think about contexts
+#TODO handle resizing properly
 mutable struct Canvas <: ComponentData
-    name          ::Symbol
-    id            ::Int
-    area          ::Area
-    native_window ::GLFW.Window
-    imgui_context ::UInt
-    background    ::Colorant{Float32, 4}
-    callbacks     ::Dict{Symbol, Any}
-	context       ::CanvasContext
-	function Canvas(name::Symbol, id::Int, area, nw, background, callbacks)
+    name             ::Symbol
+    id               ::Int
+    area             ::Area{Int}
+    native_window    ::GLFW.Window
+    imgui_context    ::UInt
+    background       ::Colorant{Float32, 4}
+	context          ::CanvasContext
+	cursor_position  ::NTuple{2, Float64}
+	scroll           ::NTuple{2, Float64}
+	has_focus        ::Bool
+	mouse_buttons    ::NTuple{3, Int}
+	keyboard_buttons ::NTuple{4, Int}
+	framebuffer_size ::NTuple{2, Int}
+
+	function Canvas(name::Symbol, id::Int, area, nw, background)
 
 		ctx = convert(UInt, CImGui.GetCurrentContext())
 		if ctx == 0
@@ -26,9 +33,33 @@ mutable struct Canvas <: ComponentData
 		ImGui_ImplGlfw_InitForOpenGL(nw, true)
 		ImGui_ImplOpenGL3_Init(420)
 
-	    callback_dict = register_callbacks(nw, callbacks)
 
-		obj = new(name, id, area, nw, ctx, background, callback_dict, CanvasContext(id))
+		obj = new(name, id, area, nw, ctx, background, CanvasContext(id),
+			      (0.0,0.0), (0.0,0.0), true, (0,0,0), (0,0,0,0), (0,0))
+
+	    GLFW.SetCursorPosCallback(nw, (nw, x::Cdouble, y::Cdouble) -> begin
+	    	obj.cursor_position = (x, y)
+    	end)
+
+    	GLFW.SetScrollCallback(nw, (nw, xoffset::Cdouble, yoffset::Cdouble) -> begin
+        	obj.scroll = (obj.scroll[1] + xoffset, obj.scroll[2] + yoffset)
+    	end)
+
+    	GLFW.SetWindowFocusCallback(nw, (nw, focus::Bool) -> begin
+    		obj.has_focus = focus
+		end)
+
+		GLFW.SetMouseButtonCallback(nw, (nw, button::GLFW.MouseButton, action::GLFW.Action, mods::Cint) -> begin
+	        obj.mouse_buttons = (Int(button), Int(action), Int(mods))
+	    end)
+
+	    GLFW.SetKeyCallback(nw, (nw, button::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint) -> begin
+	        obj.keyboard_buttons = (Int(button), Int(scancode), Int(action), Int(mods))
+	    end)
+
+	    GLFW.SetFramebufferSizeCallback(nw, (nw, w::Cint, h::Cint) -> begin
+	        obj.framebuffer_size = (Int(w), Int(h))
+	    end)
 
 		finalizer(free!, obj)
 		return obj
@@ -66,9 +97,7 @@ function Canvas(name=:Glimpse; kwargs...)
 
     background = defaults[:background]
 
-    callbacks  = defaults[:callbacks]
-
-	c = Canvas(name, id, area, nw, background, callbacks)
+	c = Canvas(name, id, area, nw, background)
 	if defaults[:visible]
 	    make_current(c)
     end
@@ -131,9 +160,9 @@ nativewindow(c::Canvas) = c.native_window
 
 Base.size(canvas::Canvas)  = size(canvas.area)
 
-function Base.resize!(c::Canvas, wh::NTuple{2, Int}, resize_window=false)
+function Base.resize!(c::Canvas, wh::NTuple{2, Integer}, resize_window=false)
 	resize!(GLA.context_framebuffer(), wh)
-	c.area = Area(0.0, 0.0, Float64.(wh)...)
+	c.area = Area{Int}(0, 0, wh...)
 end
 
 callback_value(c::Canvas, cb::Symbol) = c.callbacks[cb][]
@@ -145,10 +174,9 @@ windowsize(canvas::Canvas) = GLFW.GetWindowSize(nativewindow(canvas))
 set_background_color!(canvas::Canvas, color::Colorant) = canvas.background = convert(RGBA{Float32}, color)
 set_background_color!(canvas::Canvas, color::NTuple)   = canvas.background = convert(RGBA{Float32}, color)
 
-
 #---------------------DEFAULTS-------------------#
 
-canvas_defaults() = SymAnyDict(:area       => Area(0, 0, glfw_standard_screen_resolution()...),
+canvas_defaults() = SymAnyDict(:area       => Area{Int}(0, 0, glfw_standard_screen_resolution()...),
                            	   :background => RGBA(1.0f0),
                            	   :depth      => GLA.Depth{Float32},
                            	   :callbacks  => standard_callbacks(),

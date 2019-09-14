@@ -161,17 +161,6 @@ function entered_window(window::Window, s::Observable{Bool}=Observable(false))
     s
 end
 
-"""
-Takes a window and registers a list of callback functions.
-Returns a dict{Symbol, Signal}(name_of_callback => signal)
-"""
-function register_callbacks(window::Window, callbacks::Vector{Function})
-    tmp = map(callbacks) do f
-        (Symbol(last(split(string(f),"."))), f(window))
-    end
-    Dict{Symbol, Any}(tmp)
-end
-
 #Came from GLWindow/events.jl
 """
 Builds a Set of keys, accounting for released and pressed keys

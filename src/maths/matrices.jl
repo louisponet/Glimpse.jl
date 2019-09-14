@@ -100,7 +100,7 @@ end
          View frustum matrix (4x4).
 """
 function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
-    (right == left || bottom == top || znear == zfar) && return eye(Mat{4,4,T})
+    (right == left || bottom == top || znear == zfar) && return Mat4{T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
     return Mat4{T}(
         T2 * znear / (right - left), T0, T0, T0,
@@ -123,8 +123,10 @@ function projmatpersp(fovy::T, aspect::T, znear::T, zfar::T) where T
     w = T(h * aspect)
     return frustum(-w, w, -h, h, znear, zfar)
 end
+
 projmatpersp(w::Integer, h::Integer, fovy::T, znear::T, zfar::T) where T =
     projmatpersp(fovy, T(w/h), znear, zfar)
+
 function projmatpersp(
         ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
     ) where T
@@ -184,7 +186,7 @@ function projmatortho(left::T, right::T, bottom::T, top::T) where T
 	out[4, 1] = - (right + left) / (right - left)
 	out[4, 2] = - (top + bottom) / (top - bottom)
 	out[4, 4] = 1
-	return Mat4(out')
+	return Mat4{T}(out')
 end
 
 projmatortho(::Type{T}, left::Number, right::Number, bottom::Number, top::Number) where T =
@@ -209,7 +211,7 @@ projmatortho(w::Integer, h::Integer, near::T, far::T) where T =
 """
 function projmatortho(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
 	if right==left || bottom==top || znear==zfar
-		return eye(Mat{4,4,T})
+		return Mat4{T}(I)
 	else
 		out = zeros(T, 4, 4)
 		out[1, 1] =   2 / (right - left)
@@ -219,7 +221,7 @@ function projmatortho(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) w
 		out[4, 2] = - (top + bottom) / (top - bottom)
         out[4, 3] = - (zfar + znear) / (zfar - znear)
         out[4, 4] = 1
-        return Mat4(out')
+        return Mat4{T}(out')
     end
 end
 

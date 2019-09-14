@@ -12,11 +12,11 @@ function (::CameraOperator)(m)
 	canvas_comp=m[Canvas]
 	canvas = canvas_comp[1]
 	pollevents(canvas)
-	x, y                 = Float32.(callback_value(canvas, :cursor_position))
-	mouse_button         = callback_value(canvas, :mouse_buttons)
-	keyboard_button      = callback_value(canvas, :keyboard_buttons)
-    w, h                 = Int32.(size(canvas))
-    scroll_dx, scroll_dy = callback_value(canvas, :scroll)
+	x, y = Float32.(canvas.cursor_position)
+	mouse_button         = canvas.mouse_buttons
+	keyboard_button      = canvas.keyboard_buttons
+    w, h                 = size(canvas)
+    scroll_dx, scroll_dy = Float32.(canvas.scroll)
 
 	for ((sid, spat), (cid, cam)) in zip(enumerate(spatial), enumerate(camera))
 		new_pos = Point3f0(spat.position)
@@ -32,11 +32,11 @@ function (::CameraOperator)(m)
 			    rot2    = rotate(-dx * cam.rotation_speed, cam.up)
 			    trans2  = translmat(cam.lookat)
 			    mat_    = trans2 * rot2 * rot1 * trans1
-			    new_pos = Point3f0((mat_ * Vec4(new_pos..., 1.0f0))[1:3])
+			    new_pos = Point3f0((mat_ * Vec4f0(new_pos..., 1.0f0))[1:3])
 
 	        elseif mouse_button[1] == Int(GLFW.MOUSE_BUTTON_2) #panning
-				rt          = cam.right * dx *0.5* cam.translation_speed
-				ut          = -cam.up   * dy *0.5* cam.translation_speed
+				rt          = cam.right * dx * cam.translation_speed / 2
+				ut          = -cam.up   * dy * cam.translation_speed / 2
 				new_lookat += rt + ut
 				new_pos    += rt + ut
 	        end
@@ -53,8 +53,8 @@ function (::CameraOperator)(m)
 	    end
 
 	    #resize stuff
-	    new_proj = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
-	    #scroll stuff no dx
+	    new_proj = projmatpersp(w, h, cam.fov, cam.near, cam.far) #TODO only perspective
+	    #scroll stuff no dxp
 	    new_forward   = forward(new_pos, new_lookat)
 	    new_scroll_dy = scroll_dy
 	    new_pos      += Point3f0(new_forward * (scroll_dy - cam.scroll_dy) * cam.translation_speed/2)
