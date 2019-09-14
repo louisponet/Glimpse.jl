@@ -1,8 +1,10 @@
 # __precompile__(true)
 module Glimpse
 using Reexport
-@reexport using GeometryTypes
 @reexport using ColorTypes
+
+@reexport using PStdLib.ECS
+@reexport using GeometryTypes
 
 using AbstractPlotting # I'd like to get away from this
 const AP = AbstractPlotting

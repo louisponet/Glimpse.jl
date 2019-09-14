@@ -2,31 +2,23 @@
 
 abstract type InteractiveSystem <: System end
 
-struct CameraOperator <: InteractiveSystem
-	data::SystemData
+struct CameraOperator <: InteractiveSystem end
 
-	CameraOperator(dio::Diorama) = new(SystemData(dio, (Spatial, Camera3D,), (Canvas,)))
-end
+requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
 
-function update(updater::CameraOperator)
-	camera  = component(updater, Camera3D)
-	spatial = component(updater, Spatial)
-	if isempty(component(updater, Camera3D))
-		return
-	end
-
-	canvas = singleton(updater, Canvas)
+function (::CameraOperator)(m)
+	spatial = m[Spatial]
+	camera = m[Camera3D]
+	canvas_comp=m[Canvas]
+	canvas = canvas_comp[1]
 	pollevents(canvas)
-
 	x, y                 = Float32.(callback_value(canvas, :cursor_position))
 	mouse_button         = callback_value(canvas, :mouse_buttons)
 	keyboard_button      = callback_value(canvas, :keyboard_buttons)
     w, h                 = Int32.(size(canvas))
     scroll_dx, scroll_dy = callback_value(canvas, :scroll)
 
-	for i in valid_entities(camera, spatial)
-		cam     = camera[i]
-		spat    = spatial[i]
+	for ((sid, spat), (cid, cam)) in zip(enumerate(spatial), enumerate(camera))
 		new_pos = Point3f0(spat.position)
 		#world orientation/mouse stuff
 	    dx      = x - cam.mouse_pos[1]
@@ -73,10 +65,10 @@ function update(updater::CameraOperator)
 	    new_up       = unitup(u_forward, new_right)
 	    new_view     = lookatmat(new_pos, new_lookat, new_up)
 	    new_projview = new_proj * new_view
-		spatial[i]   = Spatial(new_pos, spatial[i].velocity)
-		overwrite!(camera, Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
+		spatial[sid] = Spatial(new_pos, spat.velocity)
+		camera[cid]  = Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
 		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed,
-		                            new_mouse_pos, cam.scroll_dx, new_scroll_dy), i)
+		                            new_mouse_pos, cam.scroll_dx, new_scroll_dy)
     end
 end
 

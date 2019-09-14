@@ -5,7 +5,7 @@ struct CanvasContext <: GLA.AbstractContext
 end
 
 #TODO think about contexts
-mutable struct Canvas <: Singleton
+mutable struct Canvas <: ComponentData
     name          ::Symbol
     id            ::Int
     area          ::Area
@@ -162,7 +162,7 @@ canvas_defaults() = SymAnyDict(:area       => Area(0, 0, glfw_standard_screen_re
                            	   :fullscreen => false,
                            	   :monitor    => nothing)
 
-struct FullscreenVao <: Singleton
+struct FullscreenVao <: ComponentData
 	vao::VertexArray
 end
 
@@ -185,7 +185,7 @@ unbind(v::FullscreenVao) = unbind(v.vao)
 # I'm not sure this is nice design idk
 struct IOTarget <: RenderTargetKind end
 
-struct RenderTarget{R <: RenderTargetKind} <: Singleton
+struct RenderTarget{R <: RenderTargetKind} <: ComponentData
 	target     ::Union{FrameBuffer, Canvas}
 	background ::RGBAf0
 end
@@ -206,15 +206,15 @@ GLA.free!(r::RenderTarget) = free!(r.target)
 
 Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
 
-mutable struct TimingData <: Singleton
-	time          ::Float64
-	dtime         ::Float64
-	frames        ::Int
-	preferred_fps ::Float64
-	reversed      ::Bool
+@with_kw mutable struct TimingData <: ComponentData
+	time          ::Float64 = time()
+	dtime         ::Float64 = 0.0
+	frames        ::Int     = 0
+	preferred_fps ::Float64 = 60
+	reversed      ::Bool    = false
 end
 
-struct RenderProgram{P <: ProgramKind} <: Singleton
+struct RenderProgram{P <: ProgramKind} <: ComponentData
 	program::GLA.Program	
 end
 
@@ -224,7 +224,7 @@ unbind(p::RenderProgram) = unbind(p.program)
 
 GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
 
-struct UpdatedComponents <: Singleton
+struct UpdatedComponents <: ComponentData
 	components::Vector{DataType}
 end
 
@@ -241,7 +241,7 @@ function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:Component
 	end
 end
 
-struct FontStorage <: Singleton
+struct FontStorage <: ComponentData
 	atlas       ::AP.TextureAtlas
 	storage_fbo ::GLA.FrameBuffer #All Glyphs should be stored in the first color attachment
 end

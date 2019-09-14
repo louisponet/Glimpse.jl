@@ -1,39 +1,54 @@
 # These are all the systems used for the general running of Dioramas
-struct Sleeper <: System
-	data ::SystemData
+struct Timer <: System end
 
-	Sleeper(dio::Diorama) = new(SystemData(dio, (), (TimingData, Canvas, GuiFuncs)))
-end 
+requested_components(::Timer) = (TimingData,)
 
-function update(sleeper::Sleeper)
-	swapbuffers(singleton(sleeper, Canvas))
-	sd         = singletons(sleeper)[1]
+function (::Timer)(m)
+	for t in m[TimingData]
+		nt = time()
+		t.dtime = t.reversed ? - nt + t.time : nt - t.time
+		t.time    = nt
+		t.frames += 1
+	end
+end
+
+struct Sleeper <: System end
+requested_components(::Sleeper) = (TimingData, Canvas)
+
+function ECS.prepare(::Sleeper, d::Diorama)
+	if isempty(d[TimingData])
+		Entity(d, TimingData())
+	end
+end
+
+function (::Sleeper)(m)
+	sd = m[TimingData]
+	swapbuffers(m[Canvas][1])
 	curtime    = time()
-	dt = (curtime - sd.time)
+	dt = (curtime - sd[1].time)
 
-
-	gui_funcs = singleton(sleeper, GuiFuncs)
-	push!(gui_funcs.funcs, () -> Gui.Text("Test from sleeping"))
-	sleep_time = sd.preferred_fps - (curtime - sd.time)
+	sleep_time = 1/sd[1].preferred_fps - (curtime - sd[1].time)
     st         = sleep_time - 0.002
     while (time() - curtime) < st
         sleep(0.001) # sleep for the minimal amount of time
     end
 end
 
-struct Resizer <: System
-	data ::SystemData
+struct Resizer <: System end
+requested_components(::Resizer) = (Canvas, RenderTarget{IOTarget})
 
-	Resizer(dio::Diorama) = new(SystemData(dio, (), (Canvas, RenderTarget)))
-end
-
-function update(sys::Resizer)
-	c   = singleton(sys, Canvas)
+function (::Resizer)(m)
+	c = m[Canvas][1]
 	fwh = callback_value(c, :framebuffer_size)
 	resize!(c, fwh)
-	for rt in singletons(sys, RenderTarget)
-		resize!(rt, fwh)
+	for c in m.components
+		if eltype(c) <: RenderTarget
+			for rt in c
+				resize!(rt, fwh)
+			end
+		end
 	end
+
 end
 
 # Mouse Picking Stuff
@@ -47,47 +62,61 @@ struct AABB <: ComponentData
 	diagonal::Vec3f0
 end
 
-struct AABBGenerator <: System
-	data ::SystemData
+struct AABBGenerator <: System end
 
-	AABBGenerator(dio::Diorama) =
-		new(SystemData(dio, (Geometry, AABB, Selectable), ()))
-end
+requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
-function update_indices!(sys::AABBGenerator)
-	sgeom = shared_component(sys, PolygonGeometry)
-	saabb = shared_component(sys, AABB)
-	sys.data.indices = [setdiff(valid_entities(sys, PolygonGeometry, Selectable), valid_entities(sys, AABB)),
-                        setdiff(valid_entities(sgeom, component(sys, Selectable)), valid_entities(saabb))]
-end
-
-function update(sys::AABBGenerator)
-	poly = component(sys, PolygonGeometry)
-	spoly = shared_component(sys, PolygonGeometry)
-	aabb = component(sys, AABB)
-	saabb = shared_component(sys, AABB)
-	for e in indices(sys)[1]
-		t_rect = GeometryTypes.AABB(poly[e].geometry)
-		aabb[e] = AABB(t_rect.origin, t_rect.widths)
-	end
-	for e in indices(sys)[2]
-		t_rect   = GeometryTypes.AABB(spoly[e].geometry)
-		saabb[e] = AABB(t_rect.origin, t_rect.widths)
+function (::AABBGenerator)(geometry, aabb, selectable)
+	for (geom, bb) in zip(geometry, aabb)
+		for (e, (e_geom, s)) in zip(geom, selectable)
+			rect = GeometryTypes.AABB(e_geom.geometry) 
+			bb[e] = AABB(rect.origin, rect.widths)
+		end
 	end
 end
 
-struct MousePicker <: System
-	data ::SystemData
+struct MousePicker <: System end
 
-	MousePicker(dio::Diorama) =
-		new(SystemData(dio, (Selectable, AABB, Camera3D, Spatial, UniformColor), (Canvas, UpdatedComponents)))
-end
+requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
-function update_indices!(sys::MousePicker)
-	saabb = shared_component(sys, AABB)
-	sys.data.indices = [valid_entities(sys, Camera3D, Spatial),
-	                    valid_entities(sys, AABB, Selectable, Spatial, UniformColor),
-	                    valid_entities(saabb, component(sys, Selectable), component(sys, Spatial), component(sys, UniformColor))]
+function (::MousePicker)(sel, aabb, camera, spat, col, canvas, updated_components)
+	c=canvas[1]
+	mouse_buttons   = callback_value(c, :mouse_buttons)
+	cursor_position = callback_value(c, :cursor_position)
+	keyboard_button = callback_value(c, :keyboard_buttons)
+	wh = size(c)
+	cam = camera[1]
+	camid = Entity(camera, 1)
+	eye = spatial[camid].position
+
+	cam_proj = cam.proj
+	cam_view = cam.view
+
+
+	if keyboard_button[3] == Int(GLFW.PRESS) && keyboard_button[1] ∈ CTRL_KEYS &&
+		mouse_buttons[2] == Int(GLFW.PRESS) && mouse_buttons[1] == Int(GLFW.MOUSE_BUTTON_1)
+		screenspace = (2 * cursor_position[1] / wh[1] - 1,  1-2*cursor_position[2]/wh[2])
+		ray_clip    = Vec4f0(screenspace..., -1.0, 1.0)
+		ray_eye     = Vec4f0((inv(cam_proj) * ray_clip)[1:2]..., -1.0, 0.0)
+		ray_dir     = normalize(Vec3f0((inv(cam_view) * ray_eye)[1:3]...))
+		for ((id, s), e_aabb, e_spat, (idc,e_color)) in zip(enumerate(sel), aabb, spat, col)
+			o_c    = e_color.color
+			mod    = e_color.color_modifier
+			if aabb_ray_intersect(e_aabb, e_spat.position, eye, ray_dir)
+				was_selected = s.selected
+				sel[id] = Selectable(true, s.color_modifier)
+				if !was_selected
+					col[idc] = UniformColor(RGBA(o_c.r * mod, o_c.g * mod, o_c.b * mod, o_c.alpha))
+				end
+			else
+				was_not_selected = s.selected
+				sel[id] = Selectable(false, s.color_modifier)
+				if was_not_selected
+					col[idc] = UniformColor(RGBA(o_c.r / mod, o_c.g / mod, o_c.b / mod, o_c.alpha))
+				end
+			end
+		end
+	end
 end
 
 function aabb_ray_intersect(aabb::AABB, entity_pos::Point3f0, ray_origin::Point3f0, ray_direction::Vec3f0)
@@ -107,75 +136,4 @@ function aabb_ray_intersect(aabb::AABB, entity_pos::Point3f0, ray_origin::Point3
 
 	return tmin < tmax
 end
-
-function update(sys::MousePicker)
-	c   = singleton(sys, Canvas)
-	mouse_buttons   = callback_value(c, :mouse_buttons)
-	cursor_position = callback_value(c, :cursor_position)
-	keyboard_button = callback_value(c, :keyboard_buttons)
-	wh = size(c)
-	camid = indices(sys)[1][1]
-	cam = component(sys, Camera3D)[camid]
-	eye = component(sys, Spatial)[camid].position
-
-	cam_proj = cam.proj
-	cam_view = cam.view
-
-	spat = component(sys, Spatial)
-	aabb = component(sys, AABB)
-	saabb = shared_component(sys, AABB)
-	sel  = component(sys, Selectable)
-	col  = component(sys, UniformColor)
-
-	if keyboard_button[3] == Int(GLFW.PRESS) && keyboard_button[1] ∈ CTRL_KEYS &&
-		mouse_buttons[2] == Int(GLFW.PRESS) && mouse_buttons[1] == Int(GLFW.MOUSE_BUTTON_1)
-
-		screenspace = (2 * cursor_position[1] / wh[1] - 1,  1-2*cursor_position[2]/wh[2])
-		ray_clip    = Vec4f0(screenspace..., -1.0, 1.0)
-		ray_eye     = Vec4f0((inv(cam_proj) * ray_clip)[1:2]..., -1.0, 0.0)
-		ray_dir     = normalize(Vec3f0((inv(cam_view) * ray_eye)[1:3]...))
-		for (bb, eids) in zip((aabb, saabb), indices(sys)[2:3])
-			for e in eids
-				e_aabb = bb[e]
-				e_spat = spat[e]
-				o_c    = col[e].color
-				mod    = sel[e].color_modifier
-				if aabb_ray_intersect(e_aabb, e_spat.position, eye, ray_dir)
-					was_selected = sel[e].selected
-					sel[e] = Selectable(true, sel[e].color_modifier)
-					if !was_selected
-						col[e] = UniformColor(RGBA(o_c.r * mod, o_c.g * mod, o_c.b * mod, o_c.alpha))
-					end
-				else
-					was_not_selected = sel[e].selected
-					sel[e] = Selectable(false, sel[e].color_modifier)
-					if was_not_selected
-						col[e] = UniformColor(RGBA(o_c.r / mod, o_c.g / mod, o_c.b / mod, o_c.alpha))
-					end
-				end
-			end
-		end
-
-		update_component!(singleton(sys, UpdatedComponents), Selectable)
-		update_component!(singleton(sys, UpdatedComponents), UniformColor)
-
-	end
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

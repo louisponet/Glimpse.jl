@@ -12,34 +12,8 @@ const RED             = RGBAf0(1.0, 0.0, 0.0, 1.0)
 @enum CamKind pixel orthographic perspective
 
 # Gapped Arrays are used in systems
-include("gapped_vector.jl")
-
-abstract type Singleton end
-
 abstract type RenderPassKind end
 abstract type RenderTargetKind end
-
-abstract type ComponentData end
-abstract type AbstractComponent{T <: ComponentData} end
-Base.eltype(::AbstractComponent{T}) where {T <: ComponentData} = T
-
-struct Component{T <: ComponentData} <: AbstractComponent{T}
-	id  ::Int
-	data::GappedVector{T}
-end
-
-struct SharedComponent{T <: ComponentData} <: AbstractComponent{T}
-	id    ::Int
-	data  ::GappedVector{Int} #These are basically the ids
-	shared::Vector{T}
-end
-
-#Should I use DataFrames/Tables?
-struct Entity #we will create a name component #maybe it's not so bad that these are not contiguous?
-	id::Int
-end
-
-abstract type System end
 
 abstract type AbstractGlimpseMesh end
 
@@ -56,18 +30,13 @@ struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
     basic      ::BM
 end
 
-mutable struct Diorama
+mutable struct Diorama <: ECS.AbstractManager
     name       ::Symbol
-
-    entities  ::Vector{Entity}
-    components::Vector{AbstractComponent}
-	singletons::Vector{Singleton}
-    systems   ::Vector{System}
-    
+	manager    ::ECS.Manager
     loop       ::Union{Task, Nothing}
     reupload   ::Bool
-    function Diorama(name, entities, components,  singletons, systems; interactive=true, kwargs...)
-        dio = new(name, entities, components, singletons, systems, nothing, true)
+    function Diorama(name, manager; interactive=true, kwargs...)
+        dio = new(name, manager, nothing, true)
 
         makecurrentdio(dio)
     	interactive && expose(dio; kwargs...)

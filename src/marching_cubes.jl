@@ -12,7 +12,10 @@ function vertex_interp(iso, p1::Point3{T}, p2::Point3{T}, valp1, valp2, tol=1e-5
     end
 end
 
-function marching_cubes(values::Array{T,3}, points::Array{Point3{PT}, 3}, iso, cube_size=1) where {PT <: AbstractFloat, T <: AbstractFloat}
+@inline @Base.propagate_inbounds value(values::Array, points, i, j, k) = values[i,j,k] 
+@inline @Base.propagate_inbounds value(values::Function, points, i, j, k) = values(points[i,j,k])
+
+function marching_cubes(values::Union{Function, Array{T,3}}, points::Array{Point3{PT}, 3}, iso, cube_size=1) where {PT <: AbstractFloat, T <: AbstractFloat}
     iso = T(iso)
     vertices     = Vector{Point3{PT}}()
     indices      = Vector{NTuple{3, Int}}()
@@ -20,15 +23,17 @@ function marching_cubes(values::Array{T,3}, points::Array{Point3{PT}, 3}, iso, c
     ind_pushed   = false
     edge_table,tri_table = get_edge_tri_table()
     i_max,j_max,k_max    = size(points)
+
+	val = (i, j, k) -> value(values, points, i, j, k)
     @inbounds for k=1:cube_size:k_max-1, j=1:cube_size:j_max-1, i=1:cube_size:i_max-1
-        cube_index = values[i,j,k] < iso ? 1 : 0
-        values[i+cube_size,j,k] < iso && (cube_index |= 2)
-        values[i+cube_size,j+cube_size,k] < iso && (cube_index |= 4)
-        values[i,j+cube_size,k] < iso && (cube_index |= 8)
-        values[i,j,k+cube_size] < iso && (cube_index |= 16)
-        values[i+cube_size,j,k+cube_size] < iso && (cube_index |= 32)
-        values[i+cube_size,j+cube_size,k+cube_size] < iso && (cube_index |= 64)
-        values[i,j+cube_size,k+cube_size] < iso && (cube_index |= 128)
+        cube_index = val(i,j,k) < iso ? 1 : 0
+        val(i+cube_size,j,k) < iso && (cube_index |= 2)
+        val(i+cube_size,j+cube_size,k) < iso && (cube_index |= 4)
+        val(i,j+cube_size,k) < iso && (cube_index |= 8)
+        val(i,j,k+cube_size) < iso && (cube_index |= 16)
+        val(i+cube_size,j,k+cube_size) < iso && (cube_index |= 32)
+        val(i+cube_size,j+cube_size,k+cube_size) < iso && (cube_index |= 64)
+        val(i,j+cube_size,k+cube_size) < iso && (cube_index |= 128)
         cube_index += 1
         edge_entry  = edge_table[cube_index]
 
@@ -36,40 +41,41 @@ function marching_cubes(values::Array{T,3}, points::Array{Point3{PT}, 3}, iso, c
             continue
         end
         if edge_entry & 1 == 1
-            vertex_list[1] = vertex_interp(iso,points[i,j,k],points[i+cube_size,j,k],values[i,j,k],values[i+cube_size,j,k])
+            vertex_list[1] = vertex_interp(iso, points[i,j,k], points[i+cube_size,j,k],
+            									val(i, j, k), val(i+cube_size,j,k))
         end
         if edge_entry & 2 == 2
-            vertex_list[2] = vertex_interp(iso,points[i+cube_size,j,k],points[i+cube_size,j+cube_size,k],values[i+cube_size,j,k],values[i+cube_size,j+cube_size,k])
+            vertex_list[2] = vertex_interp(iso,points[i+cube_size,j,k],points[i+cube_size,j+cube_size,k],val(i+cube_size,j,k),val(i+cube_size,j+cube_size,k))
         end
         if edge_entry & 4 == 4
-            vertex_list[3] = vertex_interp(iso,points[i+cube_size,j+cube_size,k],points[i,j+cube_size,k],values[i+cube_size,j+cube_size,k],values[i,j+cube_size,k])
+            vertex_list[3] = vertex_interp(iso,points[i+cube_size,j+cube_size,k],points[i,j+cube_size,k],val(i+cube_size,j+cube_size,k),val(i,j+cube_size,k))
         end
         if edge_entry & 8 == 8
-            vertex_list[4] = vertex_interp(iso,points[i,j+cube_size,k],points[i,j,k],values[i,j+cube_size,k],values[i,j,k])
+            vertex_list[4] = vertex_interp(iso,points[i,j+cube_size,k],points[i,j,k],val(i,j+cube_size,k),val(i,j,k))
         end
         if edge_entry & 16 == 16
-            vertex_list[5] = vertex_interp(iso,points[i,j,k+cube_size],points[i+cube_size,j,k+cube_size],values[i,j,k+cube_size],values[i+cube_size,j,k+cube_size])
+            vertex_list[5] = vertex_interp(iso,points[i,j,k+cube_size],points[i+cube_size,j,k+cube_size],val(i,j,k+cube_size),val(i+cube_size,j,k+cube_size))
         end
         if edge_entry & 32 == 32
-            vertex_list[6] = vertex_interp(iso,points[i+cube_size,j,k+cube_size],points[i+cube_size,j+cube_size,k+cube_size],values[i+cube_size,j,k+cube_size],values[i+cube_size,j+cube_size,k+cube_size])
+            vertex_list[6] = vertex_interp(iso,points[i+cube_size,j,k+cube_size],points[i+cube_size,j+cube_size,k+cube_size],val(i+cube_size,j,k+cube_size),val(i+cube_size,j+cube_size,k+cube_size))
         end
         if edge_entry & 64 == 64
-            vertex_list[7] = vertex_interp(iso,points[i+cube_size,j+cube_size,k+cube_size],points[i,j+cube_size,k+cube_size],values[i+cube_size,j+cube_size,k+cube_size],values[i,j+cube_size,k+cube_size])
+            vertex_list[7] = vertex_interp(iso,points[i+cube_size,j+cube_size,k+cube_size],points[i,j+cube_size,k+cube_size],val(i+cube_size,j+cube_size,k+cube_size),val(i,j+cube_size,k+cube_size))
         end
         if edge_entry & 128 == 128
-            vertex_list[8] = vertex_interp(iso,points[i,j+cube_size,k+cube_size],points[i,j,k+cube_size],values[i,j+cube_size,k+cube_size],values[i,j,k+cube_size])
+            vertex_list[8] = vertex_interp(iso,points[i,j+cube_size,k+cube_size],points[i,j,k+cube_size],val(i,j+cube_size,k+cube_size),val(i,j,k+cube_size))
         end
         if edge_entry & 256 == 256
-            vertex_list[9] = vertex_interp(iso,points[i,j,k],points[i,j,k+cube_size],values[i,j,k],values[i,j,k+cube_size])
+            vertex_list[9] = vertex_interp(iso,points[i,j,k],points[i,j,k+cube_size],val(i,j,k),val(i,j,k+cube_size))
         end
         if edge_entry & 512 == 512
-            vertex_list[10] = vertex_interp(iso,points[i+cube_size,j,k],points[i+cube_size,j,k+cube_size],values[i+cube_size,j,k],values[i+cube_size,j,k+cube_size])
+            vertex_list[10] = vertex_interp(iso,points[i+cube_size,j,k],points[i+cube_size,j,k+cube_size],val(i+cube_size,j,k),val(i+cube_size,j,k+cube_size))
         end
         if edge_entry & 1024 == 1024
-            vertex_list[11] = vertex_interp(iso,points[i+cube_size,j+cube_size,k],points[i+cube_size,j+cube_size,k+cube_size],values[i+cube_size,j+cube_size,k],values[i+cube_size,j+cube_size,k+cube_size])
+            vertex_list[11] = vertex_interp(iso,points[i+cube_size,j+cube_size,k],points[i+cube_size,j+cube_size,k+cube_size],val(i+cube_size,j+cube_size,k),val(i+cube_size,j+cube_size,k+cube_size))
         end
         if edge_entry & 2048 == 2048
-            vertex_list[12] = vertex_interp(iso,points[i,j+cube_size,k],points[i,j+cube_size,k+cube_size],values[i,j+cube_size,k],values[i,j+cube_size,k+cube_size])
+            vertex_list[12] = vertex_interp(iso,points[i,j+cube_size,k],points[i,j+cube_size,k+cube_size],val(i,j+cube_size,k),val(i,j+cube_size,k+cube_size))
         end
 
         table_entry = tri_table[cube_index]

@@ -1,54 +1,14 @@
-import Base.Iterators: Cycle
+using PStdLib.ECS: SharedComponent, Component
 
+import Base.Iterators: Cycle
 import Base: ==
 
-Component(id, ::Type{T}) where {T <: ComponentData}       = Component(id, GappedVector([T[]], Int[]))
-SharedComponent(id, ::Type{T}) where {T <: ComponentData} = SharedComponent(id, GappedVector([Int[]], Int[]), T[])
-
-data(component::AbstractComponent) = component.data
-
-Base.length(::ComponentData)         = 1
-Base.iterate(t::ComponentData)       = (t, nothing)
-
-Base.isempty(c::AbstractComponent)   = isempty(c.data)
-Base.empty!(c::AbstractComponent)    = empty!(c.data)
-
-Base.length(c::AbstractComponent)    = length(c.data)
-Base.size(c::AbstractComponent)      = size(c.data)
-Base.lastindex(c::AbstractComponent) = lastindex(c.data)
-
-Base.getindex(c::Component, i)       = getindex(c.data, i)
-Base.getindex(c::SharedComponent, i) = c.shared[getindex(c.data, i)]
-
-Base.setindex!(c::Component, v, i)   = setindex!(c.data, v, i)
-overwrite!(c::Component, v, i)       = overwrite!(c.data, v, i)
-
-function Base.setindex!(c::SharedComponent,v, i)
-	id = findfirst(isequal(v), c.shared)
-	if id == nothing
-		id = length(c.shared) + 1
-		push!(c.shared, v)
-	end
-	c.data[i] = id
-end
-
-valid_entities(c::AbstractComponent)     = collect(Iterators.flatten(ranges(c.data)))
-valid_entities(cs::AbstractComponent...) = collect(Iterators.flatten(ranges(data.(cs)...)))
-has_entity(c::AbstractComponent, entity) = has_index(c.data, entity)
-Base.pointer(c::AbstractComponent, id::Int) = pointer(c.data, id)
-
+#TODO get rid of this in favor of a correct iterator
 function shared_entities(c::SharedComponent{T}, dat::T) where T
 	ids = Int[]
-	id = findfirst(x -> x == dat, c.shared)
-	for i in eachindex(c.data)
-		if c.data[i] == id
-			push!(ids, i)
-		end
-	end
-	return ids
+	id = findfirst(x -> x == dat, shared_data(c))
+	return findall(x -> x == id, data(c))
 end
-
-==(c1::T, c2::T) where {T <: ComponentData} = all(getfield.((c1,), fieldnames(T)) .== getfield.((c2,), fieldnames(T)))
 
 # DEFAULT COMPONENTS
 abstract type ProgramKind end
@@ -59,6 +19,7 @@ struct ProgramTag{P <: ProgramKind} <: ComponentData end
 	vertexarray::VertexArray
 	visible    ::Bool = true
 end
+
 programkind(::Vao{P}) where {P} = P
 
 GLA.bind(vao::Vao) = GLA.bind(vao.vertexarray)
@@ -150,6 +111,8 @@ struct Mesh <: ComponentData
 	mesh
 end
 
+ECS.preferred_component_type(::Type{Mesh}) = SharedComponent
+
 abstract type Color <: ComponentData end
 
 # one color, will be put as a uniform in the shader
@@ -179,6 +142,8 @@ end
 struct Grid <: ComponentData
 	points::Array{Point3f0, 3}
 end
+ECS.preferred_component_type(::Type{Grid}) = SharedComponent
+
 
 abstract type Geometry <: ComponentData end
 
