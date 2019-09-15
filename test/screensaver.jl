@@ -32,6 +32,7 @@ function update(sys::Rotator)
 end
 
 dio =Gl.Diorama(background=RGBAf0(0.0,0.0,0.0,1.0), interactive=true);
+dio[Gl.TimingData][1].preferred_fps=1
 
 # add new component and system to the diorama, alongside with the already present rendering systems/components
 Gl.add_component!(dio, Rotation);
@@ -40,12 +41,12 @@ Gl.add_system!(dio, Rotator(dio));
 geom = Gl.PolygonGeometry(Sphere(Point3f0(0.0), 1.0f0))
 progtag = Gl.ProgramTag{Gl.PeelingProgram}()
 for i = 1:2
-	Gl.add_entity!(dio, separate=[Gl.UniformColor(rand(RGBAf0)),
+	Entity(dio, Gl.UniformColor(rand(RGBAf0)),
 	                              Gl.Spatial(50*(1 .- rand(Point3f0)), rand(Vec3f0)),
 	                              Gl.Material(),
 	                              Gl.Shape(),
 	                              Rotation(0.2f0, 50*(1 .- rand(Point3f0)), normalize(1 .- rand(Vec3f0))),
 	                              Gl.Dynamic(),
-	                              progtag],
-                        shared=[geom])
+	                              progtag,
+                        geom)
 end

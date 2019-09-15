@@ -29,11 +29,12 @@ ccomp = Gl.FunctionColor(p -> colorfunc(p, ψ, cscheme))
 dcomp = Gl.FunctionGeometry(p -> densfunc(p, ψ), 0.001f0)
 
 dio = Gl.Diorama(background=RGBAf0(0.0, 0.0, 0.0, 1.0), interactive=true)
-Gl.add_entity!(dio, separate=[Gl.Spatial(),
+dio[Gl.TimingData][1].preferred_fps=1
+Entity(dio, Gl.Spatial(),
                               Gl.Material(),
                               Gl.Shape(),
                               ccomp,
                               dcomp,
-                              Gl.ProgramTag{Gl.PeelingProgram}()], shared=Gl.ComponentData[grid])
+                              Gl.ProgramTag{Gl.PeelingProgram}(), grid)
 
 Gl.renderloop(dio); sleep(1); Gl.close(dio); sleep(1)

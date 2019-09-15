@@ -20,6 +20,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			    InstancedDefaultUploader(),
 			    LineUploader(),
 				LineRenderer(),
+				TextUploader(),
+				TextRenderer(),
 			    PeelingUploader(),
 			    InstancedPeelingUploader(),
 			    UniformUploader{InstancedDefaultProgram}(),
@@ -32,6 +34,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			    FinalRenderer(),
 			    Resizer(),
 			    Sleeper())
+
 	for v in (RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background), FullscreenVao(), UpdatedComponents(DataType[]))
 		e = Entity(m)
 		comp_T = typeof(v)
@@ -104,6 +107,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	            UniformColor(RGBA{Float32}(1.0)))
 
 	Entity(m, assemble_camera3d(Int32.(size(c))...)...)
+	Entity(m, timing)
+	ECS.prepare(m)
 	return Diorama(name, m; kwargs...)
 end
 

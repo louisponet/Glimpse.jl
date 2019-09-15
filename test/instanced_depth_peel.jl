@@ -4,6 +4,7 @@ const Gl = Glimpse
 import Glimpse: RGBAf0
 
 dio = Gl.Diorama(background=RGBAf0(0.0,0.0,0.0,1.0), interactive=true);
+dio[Gl.TimingData][1].preferred_fps=1
 spherepoint(r, theta, phi) = r*Point3f0(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
 nspheres = 2 
 radii    = Iterators.cycle(range(1f0, 200f0, length=div(nspheres,1)))
@@ -17,9 +18,9 @@ sph_geom = Gl.PolygonGeometry(Gl.Sphere(Point3f0(0.0), 1f0))
 
 for i = 1:nspheres
 	color = cs[mod1(i, 2)] 
-	Gl.add_entity!(dio, separate=[Gl.Spatial(position=ps[i]),
+	Entity(dio, Gl.Spatial(position=ps[i]),
 	                              Gl.Material(),
 	                              Gl.Shape(),
 	                              Gl.UniformColor(color),
-	                              progtag], shared=Gl.ComponentData[sph_geom]);
+	                              progtag, sph_geom);
 end
