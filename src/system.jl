@@ -15,4 +15,4 @@ include("systems/rendering/uploading.jl")
 include("systems/rendering/final.jl")
 
 # # various simulation systems
-# include("systems/simulations.jl")
+include("systems/simulations.jl")

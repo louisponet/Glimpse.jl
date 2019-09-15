@@ -13,7 +13,7 @@ function (::UniformCalculator)(m)
 	spatial = m[Spatial]
 	shape = m[Shape]
 	for (e, e_spat) in ECS.EntityIterator(spatial)
-		if !in(e, modelmat) || in(e, dyn) || in(e, camera)
+		if !in(e, modelmat) || in(e, dyn) || in(e, camera) || in(Spatial, uc)
 			m_updated = true
 			if in(e, shape)
 				modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))

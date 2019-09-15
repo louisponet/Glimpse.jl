@@ -83,28 +83,9 @@ function (::Uploader{P})(m) where {P <: Union{InstancedDefaultProgram, Instanced
 	end
 end
 
-# struct UniformUploader{P<:ProgramKind} <: System
-# 	data ::SystemData
+struct UniformUploader{P<:ProgramKind} <: System end
 
-# 	function UniformUploader{P}(dio::Diorama) where {P<:ProgramKind}
-# 		components = (Vao{P}, ModelMat, Selectable, UniformColor)
-# 		new{P}(SystemData(dio, components, (UpdatedComponents,)))
-# 	end
-# end
-
-# function update_indices!(sys::UniformUploader{P}) where {P<:ProgramKind}
-# 	mat_entities = valid_entities(sys, ModelMat)
-# 	sel_col_entities = valid_entities(sys, UniformColor, Selectable)
-# 	vao         = shared_component(sys, Vao{P})
-# 	tids = Vector{Int}[]
-# 	for v in vao.shared 
-# 		push!(tids, shared_entities(vao, v) ∩ mat_entities)
-# 	end
-# 	for v in vao.shared 
-# 		push!(tids, shared_entities(vao, v) ∩ sel_col_entities)
-# 	end
-# 	sys.data.indices = tids                       
-# end
+requested_components(::UniformUploader{P}) where {P}= (Vao{P}, ModelMat, Selectable, UniformColor, UpdatedComponents)
 
 # function find_contiguous_bounds(indices)
 # 	ranges = UnitRange[]
@@ -122,13 +103,62 @@ end
 # 	push!(ranges, cur_start:indices[end])
 # 	return ranges
 # end
+function ECS.prepare(::UniformUploader, dio::Diorama)
+	if isempty(dio[UpdatedComponents])
+		Entity(dio, UpdatedComponents())
+	end
+end
 
-# function update(sys::UniformUploader{P}) where {P<:ProgramKind}
-# 	uc = singleton(sys, UpdatedComponents)
-# 	vao = shared_component(sys, Vao{P})
+function (::UniformUploader{P})(m) where {P<:ProgramKind}
+	uc = m[UpdatedComponents][1]
+	vao = m[Vao{P}]
 
-# 	mat = component(sys, ModelMat)
-# 	matsize = sizeof(eltype(mat))
+	mat = m[ModelMat]
+	it1 = zip(vao, mat)
+	matsize = sizeof(eltype(mat))
+	if ModelMat in uc
+		for tvao in vao.shared
+			modelmats = Mat4f0[]
+			for (e_vao, e_modelmat) in it1
+				if e_vao === tvao
+					push!(modelmats, e_modelmat.modelmat)
+				end
+			end
+			if !isempty(modelmats)
+				binfo = GLA.bufferinfo(tvao.vertexarray, :modelmat)
+				if binfo != nothing
+					GLA.bind(binfo.buffer)
+					s = length(modelmats) * matsize
+					glBufferSubData(binfo.buffer.buffertype, 0, s, pointer(modelmats, 1))
+					GLA.unbind(binfo.buffer)
+				end
+			end
+		end
+	end
+
+	it2 = zip(vao, m[UniformColor], m[Selectable])
+	colsize = sizeof(RGBAf0)
+	if Selectable in uc.components
+		for tvao in vao.shard
+			colors = RGBAf0[]
+			for (e_vao, e_color, s) in it2
+				if e_vao === tvao
+					push!(colors, e_color.color)
+				end
+			end
+			if !isempty(colors)
+				binfo = GLA.bufferinfo(tvao.vertexarray, :color)
+				if binfo != nothing
+					GLA.bind(binfo.buffer)
+					s = length(colors) * colsize
+					glBufferSubData(binfo.buffer.buffertype, 0, s, pointer(colors, 1))
+					GLA.unbind(binfo.buffer)
+				end
+			end
+		end
+	end
+end
+# matsize = sizeof(eltype(mat))
 # 	idoffset = 0
 # 	if ModelMat in uc.components
 # 		for (i, v) in enumerate(vao.shared)
