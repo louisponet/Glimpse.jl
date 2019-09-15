@@ -1,6 +1,6 @@
 struct Uploader{P <: ProgramKind} <: System end
 
-requested_components(::Uploader{P}) where {P<:Union{DefaultProgram,PeelingProgram}} =
+requested_components(::Uploader{P}) where {P<:Union{DefaultProgram,PeelingProgram,LineProgram}} =
 	(Mesh, BufferColor, Vao{P}, ProgramTag{P}, RenderProgram{P})
 
 requested_components(::Uploader{P}) where {P<:Union{InstancedDefaultProgram,InstancedPeelingProgram}} =
@@ -9,13 +9,13 @@ requested_components(::Uploader{P}) where {P<:Union{InstancedDefaultProgram,Inst
 shaders(::Type{DefaultProgram}) = default_shaders()
 shaders(::Type{PeelingProgram}) = peeling_shaders()
 
-function ECS.prepare(::Uploader{P}, dio::Diorama) where {P<:Union{DefaultProgram,PeelingProgram}}
+function ECS.prepare(::Uploader{P}, dio::Diorama) where {P<:Union{DefaultProgram,PeelingProgram,LineProgram}}
 	if isempty(dio[RenderProgram{P}])
 		Entity(dio, RenderProgram{P}(Program(shaders(P))))
 	end
 end
 
-function (::Uploader{P})(m) where {P<:Union{DefaultProgram,PeelingProgram}}
+function (::Uploader{P})(m) where {P<:Union{DefaultProgram,PeelingProgram,LineProgram}}
 
 	mesh, bcolor, vao, progtag, prog = m[Mesh], m[BufferColor], m[Vao{P}], m[ProgramTag{P}], m[RenderProgram{P}][1].program
 

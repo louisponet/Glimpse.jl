@@ -18,15 +18,6 @@ requested_components(::DefaultRenderer) =
 	(Vao{DefaultProgram}, RenderProgram{DefaultProgram},
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, RenderTarget{IOTarget})
 
-function ECS.prepare(::DefaultRenderer, dio::Diorama)
-	if isempty(dio[RenderTarget{IOTarget}])
-		Entity(dio, RenderTarget{IOTarget}())
-	end
-	if isempty(dio[RenderProgram{DefaultProgram}])
-		Entity(dio, RenderProgram{DefaultProgram}(Program(default_shaders())))
-	end
-end
-
 function (::DefaultRenderer)(m)
 	fbo  = m[RenderTarget{IOTarget}][1]
 	prog = m[RenderProgram{DefaultProgram}][1]
@@ -107,74 +98,3 @@ function (::InstancedDefaultRenderer)(m)
 		end
 	end
 end
-
-# 	ivao     = scomp(Vao{InstancedDefaultProgram})
-# 	spatial  = comp(Spatial)
-# 	material = comp(Material)
-# 	modelmat = comp(ModelMat)
-# 	shape    = comp(Shape)
-# 	ucolor   = comp(UniformColor)
-# 	prog     = singleton(renderer, RenderProgram{DefaultProgram})
-
-
-# 	iprog         = singleton(renderer, RenderProgram{InstancedDefaultProgram})
-#     ufunc_default = set_entity_uniforms_func(prog, renderer)
-
-# 	light         = comp(PointLight)
-
-# 	line_prog     = singleton(renderer, RenderProgram{LineProgram})
-# 	line_vao      = comp(Vao{LineProgram})
-#     ufunc_lines   = set_entity_uniforms_func(line_prog, renderer)
-
-# 	iprog         = singleton(renderer, RenderProgram{InstancedDefaultProgram})
-#     ufunc_default = set_entity_uniforms_func(prog, renderer)
-
-# 	light         = comp(PointLight)
-# 	camera        = comp(Camera3D)
-
-# 	fbo           = singleton(renderer, RenderTarget{IOTarget})
-# 	bind(fbo)
-# 	draw(fbo)
-# 	glDisable(GL_BLEND)
-# 	glEnable(GL_DEPTH_TEST)
-#     glDepthFunc(GL_LEQUAL)
-
-# 	function set_light_camera_uniforms(prog)
-# 	    for i in indices(renderer)[1]
-# 		    set_uniform(prog, light[i], ucolor[i], spatial[i])
-# 	    end
-# 	    for i in indices(renderer)[2]
-# 		    set_uniform(prog, spatial[i], camera[i])
-# 	    end
-#     end
-# 	#Render instanced-renderables
-# 	bind(iprog)
-#     set_light_camera_uniforms(iprog)
-    
-
-# 	#Render non-instanced renderables
-# 	bind(prog)
-# 	set_light_camera_uniforms(prog)
-
-# 	for e in indices(renderer)[3]
-# 		evao   = vao[e]
-# 		if evao.visible
-# 			ufunc_default(e)
-# 			GLA.bind(evao)
-# 			GLA.draw(evao)
-# 		end
-# 	end
-
-# 	#Render lines
-# 	bind(line_prog)
-# 	set_uniform(line_prog, :Viewport, Vec2f0(size(singleton(renderer, RenderTarget{IOTarget}))))
-# 	set_light_camera_uniforms(line_prog)
-# 	for e in indices(renderer)[4]
-# 		evao   = line_vao[e]
-# 		if evao.visible
-# 			ufunc_lines(e)
-# 			GLA.bind(evao)
-# 			GLA.draw(evao)
-# 		end
-# 	end
-# end

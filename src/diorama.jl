@@ -18,6 +18,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			    UniformCalculator(),
 			    DefaultUploader(),
 			    InstancedDefaultUploader(),
+			    LineUploader(),
+				LineRenderer(),
 			    PeelingUploader(),
 			    InstancedPeelingUploader(),
 			    UniformUploader{InstancedDefaultProgram}(),

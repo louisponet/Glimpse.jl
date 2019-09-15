@@ -1,20 +1,8 @@
 struct TextProgram <: ProgramKind end
 
-# struct TextUploader <: System
-# 	data ::SystemData
-
-# 	TextUploader(dio::Diorama) =
+# struct TextUploader <: System end
 # 		new(SystemData(dio, (Text, Vao{TextProgram}), (RenderProgram{TextProgram}, FontStorage)))
 # end
-
-
-# function update_indices!(sys::TextUploader)
-# 	comp(T) = component(sys, T)
-# 	text = comp(Text)
-# 	vao  = comp(Vao{TextProgram})
-# 	sys.data.indices = [setdiff(valid_entities(text), valid_entities(vao))]
-# end
-
 
 # function update(sys::TextUploader)
 # 	comp(T) = component(sys, T)
