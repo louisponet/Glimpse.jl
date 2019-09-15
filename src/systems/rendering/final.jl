@@ -1,12 +1,18 @@
-struct FinalRenderer <: AbstractRenderSystem
-	compositing_program ::GLA.Program
-    FinalRenderer() = new(Program(compositing_shaders()))
+struct CompositingProgram <: ProgramKind end
+
+struct FinalRenderer <: AbstractRenderSystem end
+
+requested_components(::FinalRenderer) = (Canvas, FullscreenVao, RenderProgram{CompositingProgram}, RenderTarget{IOTarget})
+
+function ECS.prepare(::FinalRenderer, dio::Diorama)
+	if isempty(dio[RenderProgram{CompositingProgram}])
+		Entity(dio, RenderProgram{CompositingProgram}(Program(compositing_shaders())))
+	end
 end
-requested_components(::FinalRenderer) = (Canvas, FullscreenVao, RenderTarget{IOTarget})
 
-function (x::FinalRenderer)(m)
+function (::FinalRenderer)(m)
 
-    compositing_program = x.compositing_program
+    compositing_program = m[RenderProgram{CompositingProgram}][1]
     canvas              = m[Canvas][1]
     vao                 = m[FullscreenVao][1]
     iofbo               = m[RenderTarget{IOTarget}][1]

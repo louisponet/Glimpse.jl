@@ -1,4 +1,3 @@
-
 struct Uploader{P <: ProgramKind} <: System end
 
 requested_components(::Uploader{P}) where {P<:Union{DefaultProgram,PeelingProgram}} =
@@ -40,24 +39,6 @@ function (::Uploader{P})(m) where {P<:Union{DefaultProgram,PeelingProgram}}
 		set_vao(Entity(it2), buffers, e_mesh)
 	end
 end
-
-# function update_indices!(uploader::Uploader{K}) where {K <: Union{InstancedDefaultProgram, PeelingInstancedProgram}}
-# 	comp(T)  = component(uploader, T)
-# 	scomp(T) = shared_component(uploader, T)
-
-# 	smesh    = scomp(Mesh)
-# 	ivao     = scomp(Vao{K})
-# 	iprog    = singleton(uploader, RenderProgram{K})
-# 	iprogtag = comp(ProgramTag{K})
-# 	modelmat = comp(ModelMat)
-# 	material = comp(Material)
-# 	ucolor   = comp(UniformColor)
-# 	uploader.data.indices = [setdiff(valid_entities(iprogtag, smesh, modelmat, material, ucolor), valid_entities(ivao))]
-# 	for m in smesh.shared
-# 		push!(uploader.data.indices, shared_entities(smesh, m) ∩ indices(uploader)[1])
-# 	end
-# end
-
 
 shaders(::Type{InstancedDefaultProgram}) = instanced_default_shaders()
 shaders(::Type{InstancedPeelingProgram}) = instanced_peeling_shaders()

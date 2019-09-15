@@ -15,9 +15,11 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			    UniformCalculator(),
 			    DefaultUploader(),
 			    InstancedDefaultUploader(),
+			    PeelingUploader(),
 			    CameraOperator(),
 			    DefaultRenderer(),
 			    InstancedDefaultRenderer(),
+			    DepthPeelingRenderer(),
 			    FinalRenderer(),
 			    Resizer(),
 			    Sleeper())
