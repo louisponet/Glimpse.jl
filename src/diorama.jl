@@ -13,6 +13,8 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	m = Manager(Timer(),
 			    PolygonMesher(),
 			    Oscillator(),
+			    AABBGenerator(),
+			    MousePicker(),
 			    UniformCalculator(),
 			    DefaultUploader(),
 			    InstancedDefaultUploader(),

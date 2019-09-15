@@ -66,7 +66,8 @@ struct AABBGenerator <: System end
 
 requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
-function (::AABBGenerator)(geometry, aabb, selectable)
+function (::AABBGenerator)(m)
+	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
 	for (geom, bb) in zip(geometry, aabb)
 		for (e, (e_geom, s)) in zip(geom, selectable)
 			rect = GeometryTypes.AABB(e_geom.geometry) 
@@ -79,15 +80,22 @@ struct MousePicker <: System end
 
 requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
-function (::MousePicker)(sel, aabb, camera, spat, col, canvas, updated_components)
+function (::MousePicker)(m)
+	sel = m[Selectable]
+	aabb = m[AABB]
+	camera = m[Camera3D]
+	spat   = m[Spatial]
+	col    =m[UniformColor]
+	canvas = m[Canvas]
+	updated_components = m[UpdatedComponents][1]
 	c=canvas[1]
-	mouse_buttons   = callback_value(c, :mouse_buttons)
-	cursor_position = callback_value(c, :cursor_position)
-	keyboard_button = callback_value(c, :keyboard_buttons)
+	mouse_buttons   = c.mouse_buttons
+	cursor_position = c.cursor_position
+	keyboard_button = c.keyboard_buttons
 	wh = size(c)
 	cam = camera[1]
 	camid = Entity(camera, 1)
-	eye = spatial[camid].position
+	eye = spat[camid].position
 
 	cam_proj = cam.proj
 	cam_view = cam.view
@@ -117,6 +125,7 @@ function (::MousePicker)(sel, aabb, camera, spat, col, canvas, updated_component
 			end
 		end
 	end
+	push!(updated_components.components, UniformColor)
 end
 
 function aabb_ray_intersect(aabb::AABB, entity_pos::Point3f0, ray_origin::Point3f0, ray_direction::Vec3f0)
