@@ -10,7 +10,7 @@ function ECS.prepare(::FinalRenderer, dio::Diorama)
 	end
 end
 
-function (::FinalRenderer)(m)
+function update(::FinalRenderer, m::Manager)
 
     compositing_program = m[RenderProgram{CompositingProgram}][1]
     canvas              = m[Canvas][1]

@@ -18,7 +18,7 @@ requested_components(::DefaultRenderer) =
 	(Vao{DefaultProgram}, RenderProgram{DefaultProgram},
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, RenderTarget{IOTarget})
 
-function (::DefaultRenderer)(m)
+function update(::DefaultRenderer, m::Manager)
 	fbo  = m[RenderTarget{IOTarget}][1]
 	prog = m[RenderProgram{DefaultProgram}][1]
 	bind(fbo)
@@ -74,7 +74,7 @@ requested_components(::InstancedDefaultRenderer) =
 	 PointLight, Spatial, Camera3D, RenderTarget{IOTarget})
 
 #maybe this should be splitted into a couple of systems
-function (::InstancedDefaultRenderer)(m)
+function update(::InstancedDefaultRenderer, m::Manager)
 	fbo  = m[RenderTarget{IOTarget}][1]
 	prog = m[RenderProgram{InstancedDefaultProgram}][1]
 	bind(fbo)

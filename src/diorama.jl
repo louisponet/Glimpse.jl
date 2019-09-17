@@ -1,5 +1,5 @@
 import GLAbstraction: free!
-import PStdLib.ECS: AbstractComponent
+import PStdLib.ECS: AbstractComponent, push_system, insert_system
 ########### Initialization
 
 ECS.manager(dio::Diorama) = dio.manager
@@ -9,9 +9,12 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 	c                  = Canvas(name; kwargs...)
 	wh                 = size(c)
 
-	timing = TimingData(time(),0.0, 0, 1/60, false)
+	timing = TimingData(time(),0.0, 0, 60, false)
 	m = Manager(Timer(),
 			    PolygonMesher(),
+			    DensityMesher(),
+			    FunctionMesher(),
+			    FunctionColorizer(),
 			    Oscillator(),
 			    AABBGenerator(),
 			    MousePicker(),
@@ -31,6 +34,7 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 			    InstancedDefaultRenderer(),
 			    DepthPeelingRenderer(),
 			    InstancedDepthPeelingRenderer(),
+			    GuiRenderer(),
 			    FinalRenderer(),
 			    Resizer(),
 			    Sleeper())
@@ -41,75 +45,15 @@ function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
 		m[comp_T, e] = v
 	end
 	Entity(m, c)
-    # add_component!.((dio,),[PolygonGeometry,
-    # 						FileGeometry,
-    # 						FunctionGeometry,
-    # 						DensityGeometry,
-    # 						VectorGeometry,
-    # 						FunctionColor,
-    # 						DensityColor,
-    # 						BufferColor,
-    # 						Mesh,
-		  #                   Material,
-		  #                   Spatial,
-		  #                   Shape,
-		  #                   UniformColor,
-		  #                   PointLight,
-		  #                   Camera3D,
-		  #                   Dynamic,
-		  #                   ModelMat,
-		  #                   Line,
-		  #                   Text,
-		  #                   Selectable,
-		  #                   AABB,
-		  #                   GuiText,
-		  #                   ProgramTag{DefaultProgram},
-		  #                   ProgramTag{DefaultInstancedProgram},
-		  #                   ProgramTag{PeelingProgram},
-		  #                   ProgramTag{PeelingInstancedProgram},
-		  #                   ProgramTag{LineProgram},
-		  #                   Vao{DefaultProgram},
-		  #                   Vao{PeelingProgram},
-		  #                   Vao{LineProgram},
-		  #                   Vao{TextProgram}])
-    # add_shared_component!.((dio,), [PolygonGeometry,
-    # 							    AABB,
-    # 								FileGeometry,
-    # 							    Mesh,
-				# 			        Vao{DefaultInstancedProgram},
-    # 							    Vao{PeelingInstancedProgram},
-    # 							    Grid])
-
-	# add_system!.((dio,),[Timer(dio),
-	# 					 Resizer(dio),
- #                         Mesher(dio),
- #                         AABBGenerator(dio),
- #                         UniformCalculator(dio),
- #                         MousePicker(dio),
-	# 		             DefaultUploader(dio),
-	# 		             DefaultInstancedUploader(dio),
-	# 		             LinesUploader(dio),
-	# 		             PeelingUploader(dio),
-	# 		             PeelingInstancedUploader(dio),
- #                         UniformUploader{DefaultInstancedProgram}(dio),
- #                         UniformUploader{PeelingInstancedProgram}(dio),
- #                         TextUploader(dio),
-	# 		             CameraOperator(dio),
-	# 		             DefaultRenderer(dio),
-	# 		             DepthPeelingRenderer(dio),
-	# 		             TextRenderer(dio),
-	# 		             GuiRenderer(dio),
-	# 		             FinalRenderer(dio),
-	# 		             Sleeper(dio)])
-
 	Entity(m, Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)),
 	            PointLight(),
 	            UniformColor(RGBA{Float32}(1.0)))
 
 	Entity(m, assemble_camera3d(Int32.(size(c))...)...)
 	Entity(m, timing)
-	ECS.prepare(m)
-	return Diorama(name, m; kwargs...)
+	t = Diorama(name, m; kwargs...)
+	ECS.prepare(t)
+	return t
 end
 
 
@@ -139,10 +83,12 @@ end
 #TODO move control over this to diorama itself
 function renderloop(dio)
     dio    = dio
+    ECS.prepare(dio)
     canvas_command(dio, canvas ->
 	    # dio.loop = @async begin
 	    begin
 	    	while !should_close(canvas)
+				pollevents(canvas)
 			    clear!(canvas)
 			    iofbo = dio[RenderTarget{IOTarget}][1]
 			    bind(iofbo)
@@ -216,3 +162,9 @@ function center_cameras(dio::Diorama)
 		overwrite!(cam, Camera3D(c, new_pos, center, u_forward), id)
     end
 end
+
+push_system(dio::Diorama, s::System) =
+	(dio.manager = push_system(dio.manager, s); ECS.prepare(dio))
+	
+insert_system(dio::Diorama, id::Integer, s::System) =
+	(dio.manager = insert_system(dio.manager, id, s); ECS.prepare(dio))

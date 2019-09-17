@@ -15,7 +15,7 @@ function ECS.prepare(::Uploader{P}, dio::Diorama) where {P<:Union{DefaultProgram
 	end
 end
 
-function (::Uploader{P})(m) where {P<:Union{DefaultProgram,PeelingProgram,LineProgram}}
+function update(::Uploader{P}, m::Manager) where {P<:Union{DefaultProgram,PeelingProgram,LineProgram}}
 
 	mesh, bcolor, vao, progtag, prog = m[Mesh], m[BufferColor], m[Vao{P}], m[ProgramTag{P}], m[RenderProgram{P}][1].program
 
@@ -50,7 +50,7 @@ function ECS.prepare(::Uploader{P}, dio::Diorama) where {P<:Union{InstancedDefau
 	end
 end
 
-function (::Uploader{P})(m) where {P <: Union{InstancedDefaultProgram, InstancedPeelingProgram}}
+function update(::Uploader{P}, m::Manager) where {P <: Union{InstancedDefaultProgram, InstancedPeelingProgram}}
 	prog = m[RenderProgram{P}][1].program	
 	vao = m[Vao{P}]
 	mesh = m[Mesh]
@@ -109,7 +109,7 @@ function ECS.prepare(::UniformUploader, dio::Diorama)
 	end
 end
 
-function (::UniformUploader{P})(m) where {P<:ProgramKind}
+function update(::UniformUploader{P}, m::Manager) where {P<:ProgramKind}
 	uc = m[UpdatedComponents][1]
 	vao = m[Vao{P}]
 

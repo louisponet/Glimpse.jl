@@ -60,7 +60,7 @@ function ECS.prepare(::Union{DepthPeelingRenderer, InstancedDepthPeelingRenderer
 end
 
 
-function (renderer::DepthPeelingRenderer)(m)
+function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
 	glDisableCullFace()
 	vao = m[Vao{PeelingProgram}]
 	if isempty(vao)
@@ -247,7 +247,7 @@ function (renderer::DepthPeelingRenderer)(m)
     # glFlush()
 end
 
-function (renderer::InstancedDepthPeelingRenderer)(m)
+function update(renderer::InstancedDepthPeelingRenderer, m::ECS.AbstractManager)
 	glDisableCullFace()
 	vao = m[Vao{InstancedPeelingProgram}]
 	if isempty(vao)

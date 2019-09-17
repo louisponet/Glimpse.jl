@@ -126,8 +126,9 @@ struct BufferColor <: Color
 end
 	
 # color function, mesher uses it to throw in points and get out colors
-struct FunctionColor{F} <: Color 
-	color::F
+#TODO super slow
+struct FunctionColor <: Color 
+	color::Function
 end
 
 struct DensityColor <: Color 

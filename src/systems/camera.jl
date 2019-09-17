@@ -6,12 +6,11 @@ struct CameraOperator <: InteractiveSystem end
 
 requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
 
-function (::CameraOperator)(m)
+function update(::CameraOperator, m::Manager)
 	spatial = m[Spatial]
 	camera = m[Camera3D]
 	canvas_comp=m[Canvas]
 	canvas = canvas_comp[1]
-	pollevents(canvas)
 	x, y = Float32.(canvas.cursor_position)
 	mouse_button         = canvas.mouse_buttons
 	keyboard_button      = canvas.keyboard_buttons

@@ -21,7 +21,7 @@ requested_components(::LineRenderer) =
 	(Vao{LineProgram}, RenderProgram{LineProgram},
 	 ModelMat, Material, PointLight, Spatial, Camera3D, RenderTarget{IOTarget}, Line)
 
-function (::LineRenderer)(m)
+function update(::LineRenderer, m::Manager)
 	fbo  = m[RenderTarget{IOTarget}][1]
 	prog = m[RenderProgram{LineProgram}][1]
 	bind(fbo)

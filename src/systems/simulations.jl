@@ -11,7 +11,7 @@ struct Oscillator <: System end
 
 requested_components(::Oscillator) = (Spatial, Spring, UpdatedComponents, TimingData)
 
-function (::Oscillator)(m)
+function update(::Oscillator, m::Manager)
 	spat, spring=m[Spatial], m[Spring]
 	td     = m[TimingData][1] 
 	dt     = td.dtime

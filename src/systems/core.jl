@@ -3,7 +3,7 @@ struct Timer <: System end
 
 requested_components(::Timer) = (TimingData,)
 
-function (::Timer)(m)
+function update(::Timer, m::Manager)
 	for t in m[TimingData]
 		nt = time()
 		t.dtime = t.reversed ? - nt + t.time : nt - t.time
@@ -21,15 +21,15 @@ function ECS.prepare(::Sleeper, d::Diorama)
 	end
 end
 
-function (::Sleeper)(m)
+function update(::Sleeper, m::Manager)
 	sd = m[TimingData]
 	swapbuffers(m[Canvas][1])
 	curtime    = time()
 	dt = (curtime - sd[1].time)
-
-	sleep_time = 1/sd[1].preferred_fps - (curtime - sd[1].time)
+	sleep_time = 1/sd[1].preferred_fps - dt
     st         = sleep_time - 0.002
     while (time() - curtime) < st
+	    # @show (time() - curtime)
         sleep(0.001) # sleep for the minimal amount of time
     end
 end
@@ -37,7 +37,7 @@ end
 struct Resizer <: System end
 requested_components(::Resizer) = (Canvas, RenderTarget{IOTarget})
 
-function (::Resizer)(m)
+function update(::Resizer, m::Manager)
 	c = m[Canvas][1]
 	fwh = c.framebuffer_size
 	resize!(c, fwh)
@@ -66,7 +66,7 @@ struct AABBGenerator <: System end
 
 requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
-function (::AABBGenerator)(m)
+function update(::AABBGenerator, m::Manager)
 	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
 	for (geom, bb) in zip(geometry, aabb)
 		for (e, (e_geom, s)) in zip(geom, selectable)
@@ -80,7 +80,7 @@ struct MousePicker <: System end
 
 requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
-function (::MousePicker)(m)
+function update(::MousePicker, m::Manager)
 	sel = m[Selectable]
 	aabb = m[AABB]
 	camera = m[Camera3D]

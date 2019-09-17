@@ -12,7 +12,7 @@ function ECS.prepare(::TextUploader, dio::Diorama)
 	end
 end
 
-function (::TextUploader)(m)
+function update(::TextUploader, m::Manager)
 	text = m[Text]
 	vao  = m[Vao{TextProgram}]
 	prog = m[RenderProgram{TextProgram}][1]
@@ -64,7 +64,7 @@ requested_components(::TextRenderer) =
 	(Spatial, UniformColor, Camera3D, Vao{TextProgram}, Text,
 		RenderProgram{TextProgram}, RenderTarget{IOTarget}, FontStorage)
 
-function (::TextRenderer)(m)
+function update(::TextRenderer, m::Manager)
 	spat      = m[Spatial]
 	col       = m[UniformColor]
 	prog      = m[RenderProgram{TextProgram}][1]
