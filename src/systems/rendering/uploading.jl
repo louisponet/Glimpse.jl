@@ -138,8 +138,8 @@ function update(::UniformUploader{P}, m::Manager) where {P<:ProgramKind}
 
 	it2 = zip(vao, m[UniformColor], m[Selectable])
 	colsize = sizeof(RGBAf0)
-	if Selectable in uc.components
-		for tvao in vao.shard
+	if UniformColor in uc.components
+		for tvao in vao.shared
 			colors = RGBAf0[]
 			for (e_vao, e_color, s) in it2
 				if e_vao === tvao

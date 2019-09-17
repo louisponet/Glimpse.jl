@@ -68,11 +68,10 @@ requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
 function update(::AABBGenerator, m::Manager)
 	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
-	for (geom, bb) in zip(geometry, aabb)
-		for (e, (e_geom, s)) in zip(geom, selectable)
-			rect = GeometryTypes.AABB(e_geom.geometry) 
-			bb[e] = AABB(rect.origin, rect.widths)
-		end
+	it = zip(geometry, selectable, exclude=(aabb,))
+	for (e_geom, s) in it 
+		rect = GeometryTypes.AABB(e_geom.geometry) 
+		aabb[Entity(it)] = AABB(rect.origin, rect.widths)
 	end
 end
 
@@ -107,9 +106,9 @@ function update(::MousePicker, m::Manager)
 		ray_clip    = Vec4f0(screenspace..., -1.0, 1.0)
 		ray_eye     = Vec4f0((inv(cam_proj) * ray_clip)[1:2]..., -1.0, 0.0)
 		ray_dir     = normalize(Vec3f0((inv(cam_view) * ray_eye)[1:3]...))
-		for ((id, s), e_aabb, e_spat, (idc,e_color)) in zip(enumerate(sel), aabb, spat, col)
+		for ((id, s), e_aabb, e_spat, (idc, e_color)) in zip(enumerate(sel), aabb, spat, enumerate(col))
 			o_c    = e_color.color
-			mod    = e_color.color_modifier
+			mod    = s.color_modifier
 			if aabb_ray_intersect(e_aabb, e_spat.position, eye, ray_dir)
 				was_selected = s.selected
 				sel[id] = Selectable(true, s.color_modifier)
