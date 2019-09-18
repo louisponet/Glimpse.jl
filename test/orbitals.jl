@@ -23,12 +23,10 @@ function colorfunc(p, orb, cscheme)
 		return c::RGBAf0
 	end
 end
-grid  = Gl.Grid([Point3f0(a, b, c) for a=-30:0.3:30, b=-30:0.3:30, c=-30:0.3:30])
+grid  = Gl.Grid([Point3f0(a, b, c) for a=-3:1:3, b=-3:1:3, c=-3:1:3])
 
 ccomp = Gl.FunctionColor(p -> colorfunc(p, ψ, cscheme))
 dcomp = Gl.FunctionGeometry(p -> densfunc(p, ψ), 0.001f0)
-
-dio = Gl.Diorama(background=RGBAf0(0.0, 0.0, 0.0, 1.0), interactive=true)
 Entity(dio, Gl.Spatial(),
                               Gl.Material(),
                               Gl.Shape(),

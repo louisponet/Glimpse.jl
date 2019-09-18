@@ -49,6 +49,6 @@ function update(::FunctionColorizer, m::Manager)
 	colorbuffers = m[BufferColor]
 	it = zip(m[FunctionColor], m[Mesh], exclude=(colorbuffers,))
 	for (e_func, e_mesh) in it
-		colorbuffers[Entity(it)] = e_func.color.(e_mesh.mesh.vertices)
+		colorbuffers[Entity(it)] = BufferColor(e_func.color.(e_mesh.mesh.vertices))
 	end
 end

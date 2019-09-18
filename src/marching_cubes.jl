@@ -15,8 +15,7 @@ end
 @inline @Base.propagate_inbounds value(values::Array, points, i, j, k) = values[i,j,k] 
 @inline @Base.propagate_inbounds value(values::Function, points, i, j, k) = values(points[i,j,k])
 
-function marching_cubes(values::Union{Function, Array{T,3}}, points::Array{Point3{PT}, 3}, iso, cube_size=1) where {PT <: AbstractFloat, T <: AbstractFloat}
-    iso = T(iso)
+function marching_cubes(values::Union{Function, Array}, points::Array{Point3{PT}, 3}, iso, cube_size=1) where {PT<:AbstractFloat}
     vertices     = Vector{Point3{PT}}()
     indices      = Vector{NTuple{3, Int}}()
     vertex_list  = zeros(Point3{PT}, 12)

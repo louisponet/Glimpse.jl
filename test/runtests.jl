@@ -2,8 +2,9 @@ using Glimpse
 const Gl = Glimpse
 using Test
 
+dio = Gl.Diorama(backgroud=Gl.RGBAf0(0.0,0.0,0.0,1.0))
 # write your own tests here
-finalize(dio) = (Gl.ECS.prepare(dio); Gl.ECS.update_systems(dio.manager); sleep(1); Gl.close(dio); sleep(1))
+finalize(dio) = (Gl.ECS.prepare(dio); Gl.ECS.update_systems(dio.manager))
 include_finalize(str) = (include(str); finalize(dio))
 @testset "text"                   begin include_finalize("text.jl")                   end 
 @testset "gui_text"               begin include_finalize("gui_text.jl")               end 
