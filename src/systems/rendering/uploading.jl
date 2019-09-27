@@ -73,6 +73,8 @@ function update(::Uploader{P}, m::Manager) where {P <: Union{InstancedDefaultPro
 				push!(specpows, e_material.specpow)
 				push!(ids, ECS.id(ECS.Entity(it)))
 			end
+		end
+		if !isempty(ids)
 			tvao = Vao{P}(VertexArray([generate_buffers(prog, tmesh.mesh); generate_buffers(prog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.mesh.faces .- GLint(1), length(ids)), true)
 			push!(vao.shared, tvao)
 			id = length(vao.shared)

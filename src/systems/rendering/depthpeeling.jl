@@ -305,7 +305,7 @@ function update(renderer::InstancedDepthPeelingRenderer, m::ECS.AbstractManager)
 
 	renderall_instanced = () -> begin
 		set_light_camera_uniforms(peeling_program)
-		for evao in vao
+		for evao in ECS.shared_data(vao)
 			if evao.visible
 				GLA.bind(evao)
 				GLA.draw(evao)
@@ -326,6 +326,7 @@ function update(renderer::InstancedDepthPeelingRenderer, m::ECS.AbstractManager)
 	render_start(peeling_program, renderall_instanced)
 
 # 	#start peeling passes
+
     for layer=1:renderer.num_passes
         currid  = rem1(layer, 2)
         currfbo = peeling_targets[currid]
@@ -374,5 +375,4 @@ function update(renderer::InstancedDepthPeelingRenderer, m::ECS.AbstractManager)
     set_uniform(compositing_program, :color_texture, (0, color_attachment(colorblender, 1)))
     bind(fullscreenvao)
     draw(fullscreenvao)
-    # glFlush()
 end

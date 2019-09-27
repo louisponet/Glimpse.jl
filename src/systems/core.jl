@@ -114,17 +114,18 @@ function update(::MousePicker, m::Manager)
 				sel[id] = Selectable(true, s.color_modifier)
 				if !was_selected
 					col[idc] = UniformColor(RGBA(o_c.r * mod, o_c.g * mod, o_c.b * mod, o_c.alpha))
+					push!(updated_components.components, UniformColor)
 				end
 			else
 				was_not_selected = s.selected
 				sel[id] = Selectable(false, s.color_modifier)
 				if was_not_selected
 					col[idc] = UniformColor(RGBA(o_c.r / mod, o_c.g / mod, o_c.b / mod, o_c.alpha))
+					push!(updated_components.components, UniformColor)
 				end
 			end
 		end
 	end
-	push!(updated_components.components, UniformColor)
 end
 
 function aabb_ray_intersect(aabb::AABB, entity_pos::Point3f0, ray_origin::Point3f0, ray_direction::Vec3f0)
