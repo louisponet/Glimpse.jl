@@ -22,7 +22,7 @@ function update(::Oscillator, m::Manager)
 		spr = unsafe_load(spr_ptr)
 		v_prev   = e_spat.velocity 
 		new_v    = v_prev - (e_spat.position - spr.center) * spr.k - v_prev * spr.damping
-		unsafe_store!(spat_ptr, Spatial(e_spat.potiion, new_v))
+		unsafe_store!(spat_ptr, Spatial(e_spat.position, new_v))
 	end
 	push!(m[UpdatedComponents][1].components, Spatial)
 end

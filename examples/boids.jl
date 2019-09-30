@@ -105,7 +105,9 @@ function Gl.update(::Boids, m::AbstractManager)
             e2 = Entity(it)
             e1 == e2 && continue
             r = s1.position - s2.position
-            norm(r) > 7 && continue
+            if norm(r) > 7
+                continue
+            end
             if norm(r) < 1
                 added_v += r
             end
@@ -114,7 +116,7 @@ function Gl.update(::Boids, m::AbstractManager)
             tot += 1
         end
         if tot != 0
-            added_v += (avg_pos/tot - s1.position)/400 + (avg_v/tot - s1.velocity)/20
+            added_v += (avg_pos/tot - s1.position)/600 + (avg_v/tot - s1.velocity)/40
         end
         spat[e1] = Spatial(s1.position, normalize(s1.velocity + added_v+0.1(0.5f0-rand(Vec3f0)))*prev_v)
     end
@@ -125,6 +127,6 @@ cube_planes(dio, Vec3(-20.0), Vec3(20.0))
 
 Gl.renderloop(dio)
 for i = -200:200
-    t = Entity(dio, Gl.assemble_sphere(position=Point3f0(10*(0.5-rand(Point3f0))), velocity=8*normalize(0.5f0-rand(Vec3f0)), radius=0.5f0)...)
+    t = Entity(dio, Gl.assemble_sphere(position=Point3f0(10*(0.5-rand(Point3f0))), velocity=8*normalize(0.5f0-rand(Vec3f0)), radius=0.5f0)...,Gl.Spring(k=0.001))
 end
 #%%
