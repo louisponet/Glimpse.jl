@@ -21,9 +21,8 @@ function update(::Oscillator, m::Manager)
 		e_spat = unsafe_load(spat_ptr)
 		spr = unsafe_load(spr_ptr)
 		v_prev   = e_spat.velocity 
-		new_v    = v_prev - (e_spat.position - spr.center) * spr.k - v_prev * spr.damping 
-		new_p    = e_spat.position + v_prev * dt
-		unsafe_store!(spat_ptr, Spatial(new_p, new_v))
+		new_v    = v_prev - (e_spat.position - spr.center) * spr.k - v_prev * spr.damping
+		unsafe_store!(spat_ptr, Spatial(e_spat.potiion, new_v))
 	end
 	push!(m[UpdatedComponents][1].components, Spatial)
 end
@@ -49,18 +48,18 @@ function ECS.update(::Rotator, dio::ECS.AbstractManager)
 		spatial[i] = Spatial(Point3f0(e_rotation.center + nnd + (r - nnd) * cos(theta) + cross(r, n) * sin(theta)), e_spatial.velocity)
 	end
 end
-# struct Mover <: System
-# 	data::SystemData
-# end
-# Mover(dio::Diorama) = Mover(SystemData(dio, (Spatial,), (TimingData,)))
+struct Mover <: System end
 
-# function update(sys::Mover)
-# 	spatial   = component(sys, Spatial)
-# 	dt        = 0.1f0*Float32(singleton(sys, TimingData).dtime)
-# 	for i in valid_entities(spatial)
-# 		spatial[i] = Spatial(spatial[i].position + dt*spatial[i].velocity, Vec3f0(spatial[i].position...))
-# 	end
-# end
+ECS.requested_components(::Mover) = (Spatial, TimingData)
+
+function update(::Mover, m::ECS.AbstractManager)
+    dt = m[TimingData][1].dtime
+    spat = m[Spatial]
+    for (i, e_spat) in enumerate(spat)
+        spat[i] = Spatial(e_spat.position + e_spat.velocity*dt, e_spat.velocity)
+    end
+    push!(m[UpdatedComponents][1].components, Spatial)
+end
 
 
 

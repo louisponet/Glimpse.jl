@@ -9,14 +9,37 @@ assemble_sphere(;position::Point3f0 = zero(Point3f0),
        radius  ::Float32       = 1f0,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
-       program ::RenderProgram{RP}      = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
-       ) where {RP <: RenderPassKind} = (Spatial(position, velocity),
-		                                           PolygonGeometry(Sphere(Point3f0(0.0), 1.0f0)),
-		                                           Upload{RP}(false, true),
-		                                           Material(specint, specpow),
-		                                           UniformColor(color),
-		                                           Shape(radius),
-		                                           program)
+       tag ::ProgramTag    = ProgramTag{DefaultProgram}()
+       ) = (Spatial(position, velocity),
+            PolygonGeometry(Sphere(Point3f0(0.0), radius)),
+            Material(specint, specpow),
+            UniformColor(color),
+            Shape(radius),
+            tag)
+
+function assemble_wire_box(;velocity::Vec3f0        = zero(Vec3f0),
+	   color   ::RGBA{Float32} = RGBAf0(0.0,0.4,0.8, 1.0),
+       left    ::Vec3f0        = Vec3f0(-10),
+       right   ::Vec3f0        = Vec3f0(10),
+       linewidth::Float32      = 2f0,
+       miter ::Float32         = 0.6f0,
+       )
+
+    cellpoints = [zero(Point3f0), zero(Point3f0), Vec3f0(1, 0, 0),
+	                          Point3f0(1, 1, 0), Point3f0(0, 1, 0), zero(Point3f0),
+	                          Point3f0(0, 0, 1), Point3f0(1,0,1), Point3f0(1, 1, 1),
+	                          Point3f0(0, 1, 1), Point3f0(0, 0, 1), Point3f0(0,0,0),
+	                          Point3f0(1,0,0), Point3f0(1,0,1), Point3f0(1, 1, 1),
+	                          Point3f0(1, 1, 0), Point3f0(0,1,0), Point3f0(0, 1, 1), Point3f0(0,1,1)]
+
+    return (ProgramTag{LineProgram}(),
+            BufferColor([color for i = 1:length(cellpoints)]),
+            Spatial(),
+            Line(linewidth, miter),
+            VectorGeometry([left + ((right - left) .* c) for c in cellpoints]))
+end
+
+
 assemble_box(;position::Point3f0 = zero(Point3f0),
 	   velocity::Vec3f0        = zero(Vec3f0),
 	   color   ::RGBA{Float32} = RGBAf0(0.0,0.4,0.8, 1.0),

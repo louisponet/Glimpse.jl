@@ -4,21 +4,22 @@ import PStdLib.ECS: AbstractComponent, push_system, insert_system
 
 ECS.manager(dio::Diorama) = dio.manager
 
-#TODO, make it so args and kwargs get all passed around to pipelines and screens etc
-function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
+function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 	c                  = Canvas(name; kwargs...)
 	wh                 = size(c)
 
 	timing = TimingData(time(),0.0, 0, 60, false)
-	m = Manager(Timer(),
+	m = Manager(Timer(), extra_systems...,
 			    PolygonMesher(),
 			    DensityMesher(),
+			    VectorMesher(),
 			    FunctionMesher(),
 			    FunctionColorizer(),
 			    Oscillator(),
 			    AABBGenerator(),
 			    MousePicker(),
 			    UniformCalculator(),
+			    Mover(),
 			    DefaultUploader(),
 			    InstancedDefaultUploader(),
 			    LineUploader(),
@@ -85,8 +86,7 @@ function renderloop(dio)
     dio    = dio
     ECS.prepare(dio)
     canvas_command(dio, canvas ->
-	    # dio.loop = @async begin
-	    begin
+	    dio.loop = @async begin
 	    	while !should_close(canvas)
 				pollevents(canvas)
 			    clear!(canvas)
@@ -168,3 +168,7 @@ push_system(dio::Diorama, s::System) =
 	
 insert_system(dio::Diorama, id::Integer, s::System) =
 	(dio.manager = insert_system(dio.manager, id, s); ECS.prepare(dio))
+
+
+
+

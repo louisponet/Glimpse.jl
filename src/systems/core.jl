@@ -32,6 +32,8 @@ function update(::Sleeper, m::Manager)
 	    # @show (time() - curtime)
         sleep(0.001) # sleep for the minimal amount of time
     end
+	curtime    = time()
+	dt = (curtime - sd[1].time)
 end
 
 struct Resizer <: System end

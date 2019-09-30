@@ -21,12 +21,12 @@ function update(::Uploader{P}, m::Manager) where {P<:Union{DefaultProgram,Peelin
 
 	set_vao = (e, buffers, e_mesh) -> begin
 	    if P == LineProgram
-		   vao[e] = Vao{P}(VertexArray(buffers, 11), true)
+            vao[e] = Vao{P}(VertexArray(buffers, 11), true)
 	    else
 		    vao[e] = Vao{P}(VertexArray(buffers, faces(e_mesh.mesh) .- GLint(1)), true)
 	    end
     end
-	it1 = zip(mesh, progtag, exclude=(vao,))
+	it1 = zip(mesh, progtag, exclude=(vao,bcolor))
 	for (e_mesh, t) in it1
 		buffers = generate_buffers(prog, e_mesh.mesh)
 		set_vao(Entity(it1), buffers, e_mesh)
@@ -34,6 +34,7 @@ function update(::Uploader{P}, m::Manager) where {P<:Union{DefaultProgram,Peelin
 
 	it2 = zip(mesh, progtag, bcolor, exclude=(vao,))
 	for (e_mesh, t, e_color) in it2
+    	@show Entity(it2)
 		buffers = [generate_buffers(prog, e_mesh.mesh);
 	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e_color.color)]
 		set_vao(Entity(it2), buffers, e_mesh)
@@ -121,6 +122,7 @@ function update(::UniformUploader{P}, m::Manager) where {P<:ProgramKind}
 	if ModelMat in uc
 		for tvao in vao.shared
 			modelmats = Mat4f0[]
+
 			for (e_vao, e_modelmat) in it1
 				if e_vao === tvao
 					push!(modelmats, e_modelmat.modelmat)
@@ -160,49 +162,3 @@ function update(::UniformUploader{P}, m::Manager) where {P<:ProgramKind}
 		end
 	end
 end
-# matsize = sizeof(eltype(mat))
-# 	idoffset = 0
-# 	if ModelMat in uc.components
-# 		for (i, v) in enumerate(vao.shared)
-# 			eids = indices(sys)[i]
-# 			contiguous_ranges = find_contiguous_bounds(eids)
-# 			offset = 0
-# 			if !isempty(eids)
-# 				binfo = GLA.bufferinfo(v.vertexarray, :modelmat)
-# 				if binfo != nothing
-# 					GLA.bind(binfo.buffer)
-# 					for r in contiguous_ranges
-# 						s = length(r) * matsize
-# 						glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(mat, r[1]))
-# 						offset += s
-# 					end
-# 					GLA.unbind(binfo.buffer)
-# 				end
-# 			end
-# 			idoffset += 1
-# 		end
-# 	end
-
-# 	col = component(sys, UniformColor)
-# 	colsize = sizeof(eltype(col))
-# 	#TODO Optimization: Color of all selectable entities is updated at the same time.
-# 	if Selectable in uc.components
-# 		for (i, v) in enumerate(vao.shared)
-# 			eids = indices(sys)[i+idoffset]
-# 			contiguous_ranges = find_contiguous_bounds(eids)
-# 			offset = 0
-# 			if !isempty(eids)
-# 				binfo = GLA.bufferinfo(v.vertexarray, :color)
-# 				if binfo != nothing
-# 					GLA.bind(binfo.buffer)
-# 					for r in contiguous_ranges
-# 						s = length(r) * colsize
-# 						glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(col, r[1]))
-# 						offset += s
-# 					end
-# 					GLA.unbind(binfo.buffer)
-# 				end
-# 			end
-# 		end
-# 	end
-# end

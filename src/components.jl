@@ -170,9 +170,9 @@ struct VectorGeometry <: Geometry
 	geometry::Vector{Point3f0}
 end
 
-struct Line <: ComponentData
-	thickness::Float32
-	miter    ::Float32
+@with_kw struct Line <: ComponentData
+	thickness::Float32 = 2.0f0
+	miter    ::Float32 = 0.6f0
 end
 
 @with_kw struct Text <: ComponentData

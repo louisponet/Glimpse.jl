@@ -4,7 +4,7 @@ using Glimpse
 const Gl = Glimpse
 dio = Gl.Diorama(background=RGBAf0(0.0,0.0,0.0,1.0));
 spherepoint(r, theta, phi) = r*Point3f0(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
-nspheres = 2000
+nspheres = 20000
 radii    = Iterators.cycle(range(1f0, 200f0, length=div(nspheres,40)))
 angs     = Iterators.cycle(range(0, 2pi, length =div(nspheres, 40)))
 angs2    = Iterators.cycle(range(-pi, pi, length=div(nspheres, 60)))

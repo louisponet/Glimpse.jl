@@ -14,10 +14,14 @@ struct VectorMesher <: Mesher end
 
 requested_components(::VectorMesher) = (VectorGeometry, Mesh)
 
-function update(::PolygonMesher, m::Manager)
+geometry_type(::Type{PolygonMesher}) = PolygonGeometry
+geometry_type(::Type{VectorMesher}) = VectorGeometry
+geometry_type(::Type{FileMesher}) = FileGeometry
+
+function update(::Union{M}, m::Manager) where {M<:Mesher}
 	mesh = m[Mesh]
-	it = zip(m[PolygonGeometry], exclude=(mesh,))
-	for (e_geom,) in it 
+	it = zip(m[geometry_type(M)], exclude=(mesh,))
+	for (e_geom,) in it
 		mesh[Entity(it)] = Mesh(BasicMesh(e_geom.geometry))
 	end
 end
