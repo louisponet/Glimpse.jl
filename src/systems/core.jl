@@ -43,9 +43,9 @@ function update(::Resizer, m::Manager)
 	c = m[Canvas][1]
 	fwh = c.framebuffer_size
 	resize!(c, fwh)
-	for c in m.components
-		if eltype(c) <: RenderTarget
-			for rt in c
+	for (c,v) in m.components
+		if c <: RenderTarget
+			for rt in v
 				resize!(rt, fwh)
 			end
 		end
