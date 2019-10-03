@@ -88,8 +88,8 @@ function Canvas(name=:Glimpse; kwargs...)
                      minor        = defaults[:minor],
                      windowhints  = window_hints,
                      contexthints = context_hints,
-                     visible      = defaults[:visible],
-                     focus        = defaults[:focus],
+                     visible      = false,
+                     focus        = false,
                      fullscreen   = defaults[:fullscreen],
                      monitor      = defaults[:monitor])
 
@@ -98,9 +98,6 @@ function Canvas(name=:Glimpse; kwargs...)
     background = defaults[:background]
 
 	c = Canvas(name, id, area, nw, background)
-	if defaults[:visible]
-	    make_current(c)
-    end
     return c
 end
 

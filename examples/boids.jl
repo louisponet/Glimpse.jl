@@ -132,7 +132,7 @@ function Gl.update(::Boids, m::AbstractManager)
 end
 
 dio = Gl.Diorama(Boids(), WallBouncer(), VelocityDrawer(), background=RGBAf0(0.0,0.0,0.0,1.0));
-cube_planes(dio, Vec3(-160.0), Vec3(160.0))
+cube_planes(dio, Vec3(-60.0), Vec3(60.0))
 Gl.renderloop(dio)
 for i = -1000:1000
     t = Entity(dio, Gl.assemble_sphere(position=Point3f0(10*(0.5-rand(Point3f0))), velocity=8*normalize(0.5f0-rand(Vec3f0)), radius=0.5f0)...,Gl.Spring(k=0.0000001))

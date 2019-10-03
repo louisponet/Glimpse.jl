@@ -35,11 +35,10 @@ mutable struct Diorama <: ECS.AbstractManager
 	manager    ::ECS.Manager
     loop       ::Union{Task, Nothing}
     reupload   ::Bool
-    function Diorama(name::Symbol, manager::ECS.Manager; interactive=true, kwargs...)
+    function Diorama(name::Symbol, manager::ECS.Manager; kwargs...)
         dio = new(name, manager, nothing, true)
 
         makecurrentdio(dio)
-    	interactive && expose(dio; kwargs...)
         finalizer(free!, dio)
         return dio
     end

@@ -77,6 +77,7 @@ function expose(dio::Diorama;  kwargs...)
     if dio.loop == nothing
 	    canvas_command(dio, make_current, x -> ECS.Entity(dio, Canvas(dio.name; kwargs...))) 
     end
+    renderloop(dio)
     return dio
 end
 
@@ -116,7 +117,12 @@ function reload(dio::Diorama)
     )
 end
 
-close(dio::Diorama) = canvas_command(dio, canvas -> should_close!(canvas, true))
+function close(dio::Diorama)
+    canvas_command(dio, canvas -> should_close!(canvas, true))
+    if dio.loop === nothing
+        canvas_command(dio, canvas->close(canvas))
+    end
+end
 
 free!(dio::Diorama) = canvas_command(dio, c -> free!(c))
 

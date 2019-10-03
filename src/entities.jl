@@ -17,26 +17,46 @@ assemble_sphere(;position::Point3f0 = zero(Point3f0),
             Shape(radius),
             tag)
 
-function assemble_wire_box(;velocity::Vec3f0        = zero(Vec3f0),
+box_coordinates() = [zero(Point3f0), zero(Point3f0), Vec3f0(1, 0, 0),
+                          Point3f0(1, 1, 0), Point3f0(0, 1, 0), zero(Point3f0),
+                          Point3f0(0, 0, 1), Point3f0(1,0,1), Point3f0(1, 1, 1),
+                          Point3f0(0, 1, 1), Point3f0(0, 0, 1), Point3f0(0,0,0),
+                          Point3f0(1,0,0), Point3f0(1,0,1), Point3f0(1, 1, 1),
+                          Point3f0(1, 1, 0), Point3f0(0,1,0), Point3f0(0, 1, 1), Point3f0(0,1,1)]
+
+function assemble_wire_box(;velocity::Vec3f0 = zero(Vec3f0),
 	   color   ::RGBA{Float32} = RGBAf0(0.0,0.4,0.8, 1.0),
        left    ::Vec3f0        = Vec3f0(-10),
        right   ::Vec3f0        = Vec3f0(10),
        linewidth::Float32      = 2f0,
        miter ::Float32         = 0.6f0,
        )
-
-    cellpoints = [zero(Point3f0), zero(Point3f0), Vec3f0(1, 0, 0),
-	                          Point3f0(1, 1, 0), Point3f0(0, 1, 0), zero(Point3f0),
-	                          Point3f0(0, 0, 1), Point3f0(1,0,1), Point3f0(1, 1, 1),
-	                          Point3f0(0, 1, 1), Point3f0(0, 0, 1), Point3f0(0,0,0),
-	                          Point3f0(1,0,0), Point3f0(1,0,1), Point3f0(1, 1, 1),
-	                          Point3f0(1, 1, 0), Point3f0(0,1,0), Point3f0(0, 1, 1), Point3f0(0,1,1)]
+    coords = box_coordinates()
 
     return (ProgramTag{LineProgram}(),
-            BufferColor([color for i = 1:length(cellpoints)]),
+            BufferColor([color for i = 1:length(coords)]),
             Spatial(),
             Line(linewidth, miter),
-            VectorGeometry([left + ((right - left) .* c) for c in cellpoints]))
+            VectorGeometry([left + ((right - left) .* c) for c in coords]))
+end
+
+function assemble_wire_axis_box(;
+       position::Point3f0      = zero(Point3f0),
+       x::Vec3f0               = Vec3f0(1,0,0),
+       y::Vec3f0               = Vec3f0(0,1,0),
+       z::Vec3f0               = Vec3f0(0,1,0),
+       velocity::Vec3f0        = zero(Vec3f0),
+	   color   ::RGBA{Float32} = RGBAf0(0.0,0.4,0.8, 1.0),
+       linewidth::Float32      = 2f0,
+       miter ::Float32         = 0.6f0,
+       )
+
+    coords = (Mat3([x y z]),) .* box_coordinates()
+    return (ProgramTag{LineProgram}(),
+            BufferColor([color for i = 1:length(coords)]),
+            Spatial(),
+            Line(linewidth, miter),
+            VectorGeometry(coords))
 end
 
 
