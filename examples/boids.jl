@@ -71,8 +71,8 @@ function Gl.update(::VelocityDrawer, m::AbstractManager)
     ucolor = m[Gl.UniformColor]
     vao = m[Gl.Vao{Gl.LineProgram}]
     prog = m[Gl.RenderProgram{Gl.LineProgram}][1].program
-    r = [0;range(0,0.7,length=3)]
     it = zip(spat, ucolor)
+    r = [0;range(0,0.7,length=3)]
     for (s, uc) in it
         e = Entity(it)
         if norm(s.velocity) != 0.0

@@ -88,8 +88,8 @@ function Canvas(name=:Glimpse; kwargs...)
                      minor        = defaults[:minor],
                      windowhints  = window_hints,
                      contexthints = context_hints,
-                     visible      = false,
-                     focus        = false,
+                     visible      = true,
+                     focus        = true,
                      fullscreen   = defaults[:fullscreen],
                      monitor      = defaults[:monitor])
 

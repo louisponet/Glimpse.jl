@@ -34,7 +34,6 @@ function update(::Uploader{P}, m::Manager) where {P<:Union{DefaultProgram,Peelin
 
 	it2 = zip(mesh, progtag, bcolor, exclude=(vao,))
 	for (e_mesh, t, e_color) in it2
-    	@show Entity(it2)
 		buffers = [generate_buffers(prog, e_mesh.mesh);
 	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e_color.color)]
 		set_vao(Entity(it2), buffers, e_mesh)
