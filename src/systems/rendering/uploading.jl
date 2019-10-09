@@ -26,17 +26,17 @@ function update(::Uploader{P}, m::Manager) where {P<:Union{DefaultProgram,Peelin
 		    vao[e] = Vao{P}(VertexArray(buffers, faces(e_mesh.mesh) .- GLint(1)), true)
 	    end
     end
-	it1 = zip(mesh, progtag, exclude=(vao,bcolor))
-	for (e_mesh, t) in it1
+	for e in entities(mesh, progtag, exclude=(vao, bcolor))
+    	e_mesh = mesh[e] 
 		buffers = generate_buffers(prog, e_mesh.mesh)
-		set_vao(Entity(it1), buffers, e_mesh)
+		set_vao(e, buffers, e_mesh)
 	end
 
-	it2 = zip(mesh, progtag, bcolor, exclude=(vao,))
-	for (e_mesh, t, e_color) in it2
+	for e in entities(mesh, progtag, bcolor, exclude=(vao,))
+    	e_mesh = mesh[e] 
 		buffers = [generate_buffers(prog, e_mesh.mesh);
-	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e_color.color)]
-		set_vao(Entity(it2), buffers, e_mesh)
+	               generate_buffers(prog, GEOMETRY_DIVISOR, color=bcolor[e].color)]
+		set_vao(e, buffers, e_mesh)
 	end
 end
 
@@ -52,26 +52,30 @@ end
 
 function update(::Uploader{P}, m::Manager) where {P <: Union{InstancedDefaultProgram, InstancedPeelingProgram}}
 	prog = m[RenderProgram{P}][1].program	
-	vao = m[Vao{P}]
+	vao  = m[Vao{P}]
 	mesh = m[Mesh]
-	it = zip(mesh, m[UniformColor], m[ModelMat], m[Material], m[ProgramTag{P}], exclude=(vao,))
+	it   = entities(mesh, m[UniformColor], m[ModelMat], m[Material], m[ProgramTag{P}], exclude=(vao,))
 	if isempty(mesh)
 		return
 	end
 	stor = ECS.storage(vao)
+	ucolor = m[UniformColor]
+	modelmat = m[ModelMat]
+	material = m[Material]
 	for tmesh in mesh.shared
 		modelmats = Mat4f0[]
 		ucolors   = RGBAf0[]
 		specints  = Float32[]
 		specpows  = Float32[]
 		ids  = Int[]
-		for (e_mesh, e_color, e_modelmat, e_material, t) in it
+		for e in it
+            e_mesh, e_color, e_modelmat, e_material = mesh[e], ucolor[e], modelmat[e],  material[e]
 			if e_mesh.mesh === tmesh.mesh
 				push!(modelmats, e_modelmat.modelmat)
 				push!(ucolors, e_color.color)
 				push!(specints, e_material.specint)
 				push!(specpows, e_material.specpow)
-				push!(ids, ECS.id(ECS.Entity(it)))
+				push!(ids, ECS.id(e))
 			end
 		end
 		if !isempty(ids)
@@ -116,13 +120,14 @@ function update(::UniformUploader{P}, m::Manager) where {P<:ProgramKind}
 	vao = m[Vao{P}]
 
 	mat = m[ModelMat]
-	it1 = zip(vao, mat)
 	matsize = sizeof(eltype(mat))
 	if ModelMat in uc
+    	it1 = entities(vao, mat)
 		for tvao in vao.shared
 			modelmats = Mat4f0[]
 
-			for (e_vao, e_modelmat) in it1
+			for e  in it1
+                e_vao, e_modelmat = vao[e], mat[e]
 				if e_vao === tvao
 					push!(modelmats, e_modelmat.modelmat)
 				end
@@ -138,13 +143,14 @@ function update(::UniformUploader{P}, m::Manager) where {P<:ProgramKind}
 			end
 		end
 	end
-
-	it2 = zip(vao, m[UniformColor], m[Selectable])
-	colsize = sizeof(RGBAf0)
+    ucolor = m[UniformColor]
 	if UniformColor in uc.components
+    	colsize = sizeof(RGBAf0)
+    	it2 = entities(vao, m[UniformColor], m[Selectable])
 		for tvao in vao.shared
 			colors = RGBAf0[]
-			for (e_vao, e_color, s) in it2
+			for e in it2
+    			e_val, e_color, = vao[e], ucolor[e]
 				if e_vao === tvao
 					push!(colors, e_color.color)
 				end

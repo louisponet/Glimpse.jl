@@ -5,14 +5,14 @@ struct UniformCalculator <: System end
 requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
 
 function update(::UniformCalculator, m::Manager)
-	uc = m[UpdatedComponents][1]
+	uc        = m[UpdatedComponents][1]
 	m_updated = false
-	modelmat = m[ModelMat]
-	dyn = m[Dynamic]
-	camera = m[Camera3D]
-	spatial = m[Spatial]
-	shape = m[Shape]
-	for (e, e_spat) in ECS.EntityIterator(spatial)
+	modelmat  = m[ModelMat]
+	dyn       = m[Dynamic]
+	camera    = m[Camera3D]
+	spatial   = m[Spatial]
+	shape     = m[Shape]
+	for e in entities(spatial)
 		if !in(e, modelmat) || in(e, dyn) || in(e, camera) || in(Spatial, uc)
 			m_updated = true
 			if in(e, shape)

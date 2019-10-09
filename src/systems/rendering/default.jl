@@ -30,11 +30,15 @@ function update(::DefaultRenderer, m::Manager)
 	#Render instanced-renderables
 	bind(prog)
 
-    for (l, c, s) in zip(m[PointLight], m[UniformColor], m[Spatial])
-	    set_uniform(prog, l, c, s)
+    light, ucolor, spat, cam, modelmat, material, vao =
+        m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[Vao{DefaultProgram}]
+
+    for e in entities(light, ucolor, spat)
+	    set_uniform(prog, light[e], ucolor[e], spat[e])
     end
-    for (s, c) in zip(m[Spatial], m[Camera3D])
-	    set_uniform(prog, s, c)
+    cam = 
+    for e in entities(spat, cam)
+	    set_uniform(prog, spat[e], cam[e])
     end
 
 	set_model_material = (e_modelmat, e_material) -> begin
@@ -44,11 +48,11 @@ function update(::DefaultRenderer, m::Manager)
 	end
 
 	#Uniform colors
-	it = zip(m[Vao{DefaultProgram}], m[ModelMat], m[Material], m[UniformColor])
-	for (evao, e_modelmat, e_material, e_color) in it
+	for e in entities(vao, modelmat, material, ucolor)
+    	evao = vao[e]
 		if evao.visible
-			set_model_material(e_modelmat, e_material)
-			set_uniform(prog, :uniform_color, e_color.color)
+			set_model_material(modelmat[e], material[e])
+			set_uniform(prog, :uniform_color, ucolor[e].color)
 			set_uniform(prog, :is_uniform, true)
 			GLA.bind(evao)
 			GLA.draw(evao)
@@ -56,10 +60,10 @@ function update(::DefaultRenderer, m::Manager)
 	end
 
 	#Colors inside Vao
-	it2 = zip(m[Vao{DefaultProgram}], m[ModelMat], m[Material], exclude=(m[UniformColor],))
-	for (evao, e_modelmat, e_material) in it2
+	for e in entities(vao, modelmat, material, exclude=(ucolor,))
+    	evao = vao[e]
 		if evao.visible
-			set_model_material(e_modelmat, e_material)
+			set_model_material(modelmat[e], material[e])
 			set_uniform(prog, :is_uniform, false)
 			GLA.bind(evao)
 			GLA.draw(evao)
@@ -85,14 +89,17 @@ function update(::InstancedDefaultRenderer, m::Manager)
 
 	bind(prog)
 
-    for (l, c, s) in zip(m[PointLight], m[UniformColor], m[Spatial])
-	    set_uniform(prog, l, c, s)
+    light, ucolor, spat, cam,  material, vao =
+        m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[Material], m[Vao{InstancedDefaultProgram}]
+
+    for e in entities(light, ucolor, spat)
+	    set_uniform(prog, light[e], ucolor[e], spat[e])
     end
-    for (s, c) in zip(m[Spatial], m[Camera3D])
-	    set_uniform(prog, s, c)
+    for e in entities(spat, cam)
+	    set_uniform(prog, spat[e], cam[e])
     end
-	for evao in m[Vao{InstancedDefaultProgram}].shared
-		if evao.visible
+	for evao in vao.shared
+		@time if evao.visible
 			GLA.bind(evao)
 			GLA.draw(evao)
 		end

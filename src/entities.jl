@@ -9,13 +9,12 @@ assemble_sphere(;position::Point3f0 = zero(Point3f0),
        radius  ::Float32       = 1f0,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
-       tag ::ProgramTag    = ProgramTag{DefaultProgram}()
+       # tag ::ProgramTag    = ProgramTag{DefaultProgram}()
        ) = (Spatial(position, velocity),
             PolygonGeometry(Sphere(Point3f0(0.0), radius)),
             Material(specint, specpow),
             UniformColor(color),
-            Shape(radius),
-            tag)
+            Shape(radius))
 
 box_coordinates() = [zero(Point3f0), zero(Point3f0), Vec3f0(1, 0, 0),
                           Point3f0(1, 1, 0), Point3f0(0, 1, 0), zero(Point3f0),

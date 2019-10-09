@@ -13,6 +13,7 @@ include("systems/rendering/cimgui.jl")
 include("systems/rendering/uniforms.jl")
 include("systems/rendering/uploading.jl")
 include("systems/rendering/final.jl")
+include("systems/rendering/program_tagging.jl")
 
 # # various simulation systems
 include("systems/simulations.jl")

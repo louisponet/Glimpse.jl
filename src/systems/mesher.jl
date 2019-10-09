@@ -20,9 +20,10 @@ geometry_type(::Type{FileMesher}) = FileGeometry
 
 function update(::Union{M}, m::Manager) where {M<:Mesher}
 	mesh = m[Mesh]
-	it = zip(m[geometry_type(M)], exclude=(mesh,))
-	for (e_geom,) in it
-		mesh[Entity(it)] = Mesh(BasicMesh(e_geom.geometry))
+	geom = m[geometry_type(M)]
+	it = entities(geom, exclude=(mesh,))
+	@inbounds for e in it
+		mesh[e] = Mesh(BasicMesh(geom[e].geometry))
 	end
 end
 
@@ -36,12 +37,14 @@ requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
 
 function update(::Union{FunctionMesher, DensityMesher}, m::Manager)
 	mesh = m[Mesh]
-	it = zip(m[FunctionGeometry], m[Grid], exclude=(mesh,))
-	for (e_geom, e_grid) in it
-		points = e_grid.points
-		vertices, ids = marching_cubes(e_geom.geometry, points, e_geom.iso)
+	geom = m[FunctionGeometry]
+	grid = m[Grid]
+	it = entities(geom, grid, exclude=(mesh,))
+	@inbounds for e in it
+		points = grid[e].points
+		vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
 		faces         = [Face{3, GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
-		mesh[Entity(it)] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
+		mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
 	end
 end
 
@@ -51,8 +54,10 @@ requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
 
 function update(::FunctionColorizer, m::Manager)
 	colorbuffers = m[BufferColor]
-	it = zip(m[FunctionColor], m[Mesh], exclude=(colorbuffers,))
-	for (e_func, e_mesh) in it
-		colorbuffers[Entity(it)] = BufferColor(e_func.color.(e_mesh.mesh.vertices))
+	fcolor       = m[FunctionColor]
+	mesh         = m[Mesh]
+	it = entities(fcolor, mesh, exclude=(colorbuffers,))
+	@inbounds for e in it
+		colorbuffers[e] = BufferColor(fcolor[e].color.(mesh[e].mesh.vertices))
 	end
 end

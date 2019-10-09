@@ -31,18 +31,21 @@ function update(::LineRenderer, m::Manager)
     glDepthFunc(GL_LEQUAL)
 
 	bind(prog)
-
-    for (l, c, s) in zip(m[PointLight], m[UniformColor], m[Spatial])
-	    set_uniform(prog, l, c, s)
+    light, ucolor, spat, modelmat, cam =
+        m[PointLight], m[UniformColor], m[Spatial], m[ModelMat], m[Camera3D]
+    for e in entities(light, ucolor, spat)
+	    set_uniform(prog, light[e], ucolor[e], spat[e])
     end
-    for (s, c) in zip(m[Spatial], m[Camera3D])
-	    set_uniform(prog, s, c)
+    for e in entities(spat, cam)
+	    set_uniform(prog, spat[e], cam[e])
     end
 	set_uniform(prog, :Viewport, Vec2f0(size(m[RenderTarget{IOTarget}][1])))
-
-	for (evao, e_modelmat, e_line) in zip(m[Vao{LineProgram}], m[ModelMat], m[Line])
+    vao, modelmat, line = m[Vao{LineProgram}], m[ModelMat], m[Line] 
+	for e in entities(vao, modelmat, line)
+        evao = vao[e]
+        e_line = line[e]
 		if evao.visible
-			set_uniform(prog, :modelmat,   e_modelmat.modelmat)
+			set_uniform(prog, :modelmat,   modelmat[e].modelmat)
 			set_uniform(prog, :thickness,  e_line.thickness)
 			set_uniform(prog, :MiterLimit, e_line.miter)
 			GLA.bind(evao)

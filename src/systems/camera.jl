@@ -17,7 +17,9 @@ function update(::CameraOperator, m::Manager)
     w, h                 = size(canvas)
     scroll_dx, scroll_dy = Float32.(canvas.scroll)
 
-	for ((sid, spat), (cid, cam)) in zip(enumerate(spatial), enumerate(camera))
+	@inbounds for e in entities(spatial, camera)
+    	spat = spatial[e]
+    	cam  = camera[e]
 		new_pos = Point3f0(spat.position)
 		#world orientation/mouse stuff
 	    dx      = x - cam.mouse_pos[1]
@@ -64,8 +66,8 @@ function update(::CameraOperator, m::Manager)
 	    new_up       = unitup(u_forward, new_right)
 	    new_view     = lookatmat(new_pos, new_lookat, new_up)
 	    new_projview = new_proj * new_view
-		spatial[sid] = Spatial(new_pos, spat.velocity)
-		camera[cid]  = Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
+		spatial[e] = Spatial(new_pos, spat.velocity)
+		camera[e]  = Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
 		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed,
 		                            new_mouse_pos, cam.scroll_dx, new_scroll_dy)
     end

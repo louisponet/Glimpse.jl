@@ -18,7 +18,8 @@ function update(::TextUploader, m::Manager)
 	prog = m[RenderProgram{TextProgram}][1]
 	fontstorage = m[FontStorage][1]
 
-	for (e, t) in ECS.EntityIterator(text)
+	for e in entities(text)
+    	t=text[e]
 		space_o_wh, uv_offset_width  = to_gl_text(t, fontstorage)
 		vao[e] = Vao{TextProgram}(VertexArray([generate_buffers(prog.program,
 		                                                        GEOMETRY_DIVISOR,
@@ -30,7 +31,7 @@ function update(::TextUploader, m::Manager)
                                                                 GLint(1),
                                                                 space_o_wh      = space_o_wh,
                                                                 uv_offset_width = uv_offset_width)],
-                                               collect(0:3), GL_TRIANGLE_STRIP, length(text[e].str)), true)
+                                               collect(0:3), GL_TRIANGLE_STRIP, length(t.str)), true)
 	end
 end
 
@@ -56,9 +57,7 @@ function to_gl_text(string::AbstractString, textsize::Int, font::Vector{Ptr{AP.F
     return out_pos_scale, out_uv_offset_width
 end
 
-
 struct TextRenderer <: AbstractRenderSystem end
-# 	data ::SystemData
 
 requested_components(::TextRenderer) =
 	(Spatial, UniformColor, Camera3D, Vao{TextProgram}, Text,
@@ -87,7 +86,8 @@ function update(::TextRenderer, m::Manager)
 	set_uniform(prog, :canvas_dims, Vec2f0(wh))
     set_uniform(prog, :projview, persp_mat)
 	set_uniform(prog, :glyph_texture, (0, color_attachment(glyph_fbo, 1)))
-	for (e_vao, e_spat, e_text, e_col) in zip(vao, spat, text, col)
+	for e in entities(vao, spat, text, col)
+        e_vao, e_spat, e_text, e_col = vao[e], spat[e], text[e], col[e]
 		set_uniform(prog, :start_pos, e_spat.position + e_text.offset)
 		set_uniform(prog, :color, e_col.color)
 		bind(e_vao)

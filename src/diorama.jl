@@ -20,6 +20,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 			    MousePicker(),
 			    UniformCalculator(),
 			    Mover(),
+			    ProgramTagger(),
 			    DefaultUploader(),
 			    InstancedDefaultUploader(),
 			    LineUploader(),

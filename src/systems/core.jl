@@ -70,10 +70,10 @@ requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
 function update(::AABBGenerator, m::Manager)
 	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
-	it = zip(geometry, selectable, exclude=(aabb,))
-	for (e_geom, s) in it 
-		rect = GeometryTypes.AABB(e_geom.geometry) 
-		aabb[Entity(it)] = AABB(rect.origin, rect.widths)
+	it = entities(geometry, selectable, exclude=(aabb,))
+	for e in it 
+		rect = GeometryTypes.AABB(geometry[e].geometry) 
+		aabb[e] = AABB(rect.origin, rect.widths)
 	end
 end
 
@@ -82,47 +82,50 @@ struct MousePicker <: System end
 requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
 function update(::MousePicker, m::Manager)
-	sel = m[Selectable]
-	aabb = m[AABB]
-	camera = m[Camera3D]
-	spat   = m[Spatial]
-	col    =m[UniformColor]
-	canvas = m[Canvas]
+	sel                = m[Selectable]
+	aabb               = m[AABB]
+	camera             = m[Camera3D]
+	spat               = m[Spatial]
+	col                = m[UniformColor]
+	canvas             = m[Canvas]
 	updated_components = m[UpdatedComponents][1]
-	c=canvas[1]
-	mouse_buttons   = c.mouse_buttons
-	cursor_position = c.cursor_position
-	keyboard_button = c.keyboard_buttons
-	wh = size(c)
-	cam = camera[1]
-	camid = Entity(camera, 1)
-	eye = spat[camid].position
+	c                  = canvas[1]
+	mouse_buttons      = c.mouse_buttons
+	cursor_position    = c.cursor_position
+	keyboard_button    = c.keyboard_buttons
+	wh                 = size(c)
+	cam                = camera[1]
+	camid              = Entity(camera, 1)
+	eye                = spat[camid].position
 
-	cam_proj = cam.proj
-	cam_view = cam.view
+	cam_proj           = cam.proj
+	cam_view           = cam.view
 
 
-	if keyboard_button[3] == Int(GLFW.PRESS) && keyboard_button[1] ∈ CTRL_KEYS &&
+	@inbounds if keyboard_button[3] == Int(GLFW.PRESS) && keyboard_button[1] ∈ CTRL_KEYS &&
 		mouse_buttons[2] == Int(GLFW.PRESS) && mouse_buttons[1] == Int(GLFW.MOUSE_BUTTON_1)
 		screenspace = (2 * cursor_position[1] / wh[1] - 1,  1-2*cursor_position[2]/wh[2])
 		ray_clip    = Vec4f0(screenspace..., -1.0, 1.0)
 		ray_eye     = Vec4f0((inv(cam_proj) * ray_clip)[1:2]..., -1.0, 0.0)
 		ray_dir     = normalize(Vec3f0((inv(cam_view) * ray_eye)[1:3]...))
-		for ((id, s), e_aabb, e_spat, (idc, e_color)) in zip(enumerate(sel), aabb, spat, enumerate(col))
+		for e in entities(sel, aabb, spat, col)
+    		s       = sel[e]
+    		e_color = col[e]
+    		e_spat  = spat[e]
 			o_c    = e_color.color
 			mod    = s.color_modifier
 			if aabb_ray_intersect(e_aabb, e_spat.position, eye, ray_dir)
 				was_selected = s.selected
-				sel[id] = Selectable(true, s.color_modifier)
+				sel[e] = Selectable(true, s.color_modifier)
 				if !was_selected
-					col[idc] = UniformColor(RGBA(o_c.r * mod, o_c.g * mod, o_c.b * mod, o_c.alpha))
+					col[e] = UniformColor(RGBA(o_c.r * mod, o_c.g * mod, o_c.b * mod, o_c.alpha))
 					push!(updated_components.components, UniformColor)
 				end
 			else
 				was_not_selected = s.selected
-				sel[id] = Selectable(false, s.color_modifier)
+				sel[e] = Selectable(false, s.color_modifier)
 				if was_not_selected
-					col[idc] = UniformColor(RGBA(o_c.r / mod, o_c.g / mod, o_c.b / mod, o_c.alpha))
+					col[e] = UniformColor(RGBA(o_c.r / mod, o_c.g / mod, o_c.b / mod, o_c.alpha))
 					push!(updated_components.components, UniformColor)
 				end
 			end

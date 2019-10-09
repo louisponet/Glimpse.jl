@@ -87,11 +87,11 @@ function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
     fullscreenvao       = m[FullscreenVao][1]
 
 	set_light_camera_uniforms = (prog) -> begin
-	    for (l, c, s) in zip(light, ucolor, spatial)
-		    set_uniform(prog, l, c, s)
+	    for e  in entities(light, ucolor, spatial)
+		    set_uniform(prog, light[e], ucolor[e], spatial[e])
 	    end
-	    for (s, c) in zip(spatial, camera)
-		    set_uniform(prog, s, c)
+	    for e in entities(spatial, camera)
+		    set_uniform(prog, spatial[e], camera[e])
 	    end
     end
 
@@ -129,12 +129,9 @@ function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
 
-# 	separate_entities  = indices(renderer)[3]
-# 	instanced_entities = indices(renderer)[4]
-# 	render_separate  = !isempty(separate_entities)
-# 	render_instanced = !isempty(instanced_entities)
-	it1 = zip(vao, modelmat, material, ucolor)
-	it2 = zip(vao, modelmat, material, bcolor, exclude=(ucolor,))
+	it1 = entities(vao, modelmat, material, ucolor)
+	it2 = entities(vao, modelmat, material, bcolor, exclude=(ucolor,))
+
 	ufunc = (e_color) -> begin
 		set_uniform(peeling_program, :uniform_color, e_color.color)
 		set_uniform(peeling_program, :is_uniform, true)
@@ -146,10 +143,11 @@ function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
 	renderall_separate = () -> begin
 		set_light_camera_uniforms(peeling_program)
 		for (it, f) in zip((it1,it2), (ufunc, bfunc)) 
-			for (evao, e_modelmat, e_material, e_color) in it
+			for e in it
+                evao = vao[e]
 				if evao.visible
-					set_model_material(e_modelmat, e_material)
-					f(e_color)
+					set_model_material(modelmat[e], material[e])
+					f(color[e])
 					GLA.bind(evao)
 					GLA.draw(evao)
 				end
@@ -157,16 +155,7 @@ function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
 		end
 	end
 
-# 	function renderall_instanced()
-# 		for evao in ivao.shared
-# 			if evao.visible
-# 				GLA.bind(evao)
-# 				GLA.draw(evao)
-# 			end
-# 		end
-# 	end
-
-	function render_start(prog, renderfunc)
+    function render_start(prog, renderfunc)
 	    bind(prog)
 	    set_light_camera_uniforms(prog)
 	    set_uniform(prog, :first_pass, true)
@@ -176,18 +165,11 @@ function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
 	    set_uniform(prog, :first_pass, false)
     end
 
-# 	# first pass: Render all the transparent stuff
-# 	# separate
-# 	if render_separate
+ 	# first pass: Render all the transparent stuff
+ 	# separate
 	render_start(peeling_program, renderall_separate)
-#     end
 
-#     #instanced
-#     if render_instanced
-# 	    render_start(ipeeling_program, renderall_instanced)
-#     end
-
-# 	#start peeling passes
+ 	#start peeling passes
     for layer=1:renderer.num_passes
         currid  = rem1(layer, 2)
         currfbo = peeling_targets[currid]
@@ -272,11 +254,11 @@ function update(renderer::InstancedDepthPeelingRenderer, m::ECS.AbstractManager)
     fullscreenvao       = m[FullscreenVao][1]
 
 	set_light_camera_uniforms = (prog) -> begin
-	    for (l, c, s) in zip(light, ucolor, spatial)
-		    set_uniform(prog, l, c, s)
+	    for e  in entities(light, ucolor, spatial)
+		    set_uniform(prog, light[e], ucolor[e], spatial[e])
 	    end
-	    for (s, c) in zip(spatial, camera)
-		    set_uniform(prog, s, c)
+	    for e in entities(spatial, camera)
+		    set_uniform(prog, spatial[e], camera[e])
 	    end
     end
 
