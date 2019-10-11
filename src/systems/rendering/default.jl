@@ -1,26 +1,20 @@
 import GLAbstraction: set_uniform
 
-struct DefaultProgram <: ProgramKind end
+@render_program DefaultProgram
+@render_program InstancedDefaultProgram
 
-struct InstancedDefaultProgram <: ProgramKind end
-
-ECS.preferred_component_type(::Type{Vao{InstancedDefaultProgram}}) = SharedComponent
-ECS.preferred_component_type(::Type{Vao{DefaultProgram}}) = Component
-
-# Using the shared uploader system inside uploading.jl
-DefaultUploader() = Uploader{DefaultProgram}()
-
-InstancedDefaultUploader() = Uploader{InstancedDefaultProgram}()
+@vao DefaultVao
+@instanced_vao InstancedDefaultVao
 
 struct DefaultRenderer <: AbstractRenderSystem end
 
 requested_components(::DefaultRenderer) =
-	(Vao{DefaultProgram}, RenderProgram{DefaultProgram},
-	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, RenderTarget{IOTarget})
+	(DefaultVao, DefaultProgram,
+	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, IOTarget)
 
 function update(::DefaultRenderer, m::Manager)
-	fbo  = m[RenderTarget{IOTarget}][1]
-	prog = m[RenderProgram{DefaultProgram}][1]
+	fbo  = m[IOTarget][1]
+	prog = m[DefaultProgram][1]
 	bind(fbo)
 	draw(fbo)
 	glDisable(GL_BLEND)
@@ -31,7 +25,7 @@ function update(::DefaultRenderer, m::Manager)
 	bind(prog)
 
     light, ucolor, spat, cam, modelmat, material, vao =
-        m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[Vao{DefaultProgram}]
+        m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[DefaultVao]
 
     for e in entities(light, ucolor, spat)
 	    set_uniform(prog, light[e], ucolor[e], spat[e])
@@ -74,13 +68,13 @@ end
 struct InstancedDefaultRenderer <: AbstractRenderSystem end
 
 requested_components(::InstancedDefaultRenderer) =
-	(Vao{InstancedDefaultProgram}, RenderProgram{InstancedDefaultProgram},
-	 PointLight, Spatial, Camera3D, RenderTarget{IOTarget})
+	(InstancedDefaultVao, InstancedDefaultProgram,
+	 PointLight, Spatial, Camera3D, IOTarget)
 
 #maybe this should be splitted into a couple of systems
 function update(::InstancedDefaultRenderer, m::Manager)
-	fbo  = m[RenderTarget{IOTarget}][1]
-	prog = m[RenderProgram{InstancedDefaultProgram}][1]
+	fbo  = m[IOTarget][1]
+	prog = m[InstancedDefaultProgram][1]
 	bind(fbo)
 	draw(fbo)
 	glDisable(GL_BLEND)
@@ -90,7 +84,7 @@ function update(::InstancedDefaultRenderer, m::Manager)
 	bind(prog)
 
     light, ucolor, spat, cam,  material, vao =
-        m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[Material], m[Vao{InstancedDefaultProgram}]
+        m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[Material], m[InstancedDefaultVao]
 
     for e in entities(light, ucolor, spat)
 	    set_uniform(prog, light[e], ucolor[e], spat[e])
@@ -99,7 +93,7 @@ function update(::InstancedDefaultRenderer, m::Manager)
 	    set_uniform(prog, spat[e], cam[e])
     end
 	for evao in vao.shared
-		@time if evao.visible
+		if evao.visible
 			GLA.bind(evao)
 			GLA.draw(evao)
 		end

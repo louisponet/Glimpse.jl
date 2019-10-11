@@ -1,11 +1,12 @@
-struct TextProgram <: ProgramKind end
+@render_program TextProgram
+@vao TextVao
 
 struct TextUploader <: System end
-requested_components(::TextUploader) = (Text, Vao{TextProgram}, RenderProgram{TextProgram}, FontStorage)
+requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
 
 function ECS.prepare(::TextUploader, dio::Diorama)
-	if isempty(dio[RenderProgram{TextProgram}])
-		Entity(dio, RenderProgram{TextProgram}(Program(text_shaders())))
+	if isempty(dio[TextProgram])
+		Entity(dio, TextProgram(Program(text_shaders())))
 	end
 	if isempty(dio[FontStorage])
 		Entity(dio, FontStorage())
@@ -14,14 +15,14 @@ end
 
 function update(::TextUploader, m::Manager)
 	text = m[Text]
-	vao  = m[Vao{TextProgram}]
-	prog = m[RenderProgram{TextProgram}][1]
+	vao  = m[TextVao]
+	prog = m[TextProgram][1]
 	fontstorage = m[FontStorage][1]
 
 	for e in entities(text)
     	t=text[e]
 		space_o_wh, uv_offset_width  = to_gl_text(t, fontstorage)
-		vao[e] = Vao{TextProgram}(VertexArray([generate_buffers(prog.program,
+		vao[e] = TextVao(VertexArray([generate_buffers(prog.program,
 		                                                        GEOMETRY_DIVISOR,
 		                                                        uv=Vec2f0.([(0, 1),
 		                                                                    (0, 0),
@@ -60,16 +61,16 @@ end
 struct TextRenderer <: AbstractRenderSystem end
 
 requested_components(::TextRenderer) =
-	(Spatial, UniformColor, Camera3D, Vao{TextProgram}, Text,
-		RenderProgram{TextProgram}, RenderTarget{IOTarget}, FontStorage)
+	(Spatial, UniformColor, Camera3D, TextVao, Text,
+		TextProgram, IOTarget, FontStorage)
 
 function update(::TextRenderer, m::Manager)
 	spat      = m[Spatial]
 	col       = m[UniformColor]
-	prog      = m[RenderProgram{TextProgram}][1]
+	prog      = m[TextProgram][1]
 	cam       = m[Camera3D]
-	vao       = m[Vao{TextProgram}]
-	iofbo     = m[RenderTarget{IOTarget}][1]
+	vao       = m[TextVao]
+	iofbo     = m[IOTarget][1]
 	persp_mat = cam[1].projview
 	text      = m[Text]
 	wh = size(iofbo)

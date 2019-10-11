@@ -2,11 +2,11 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 
 #TODO what to do with contexts, do we actually need to save them? Should they all be in the canvas?
-struct GuiText <: ComponentData
+@component struct GuiText
 	text::String
 end
 
-@with_kw struct GuiFuncs <: ComponentData
+@component_with_kw struct GuiFuncs
 	funcs::Vector{Function} = Function[]
 end
 
@@ -17,6 +17,7 @@ requested_components(::GuiRenderer) = (GuiFuncs, GuiText)
 ECS.prepare(::GuiRenderer, dio::Diorama) = isempty(dio[GuiFuncs]) && Entity(dio, GuiFuncs())
 
 function update(::GuiRenderer, m::ECS.AbstractManager)
+    return 
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
     Gui.NewFrame()

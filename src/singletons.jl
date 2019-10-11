@@ -6,7 +6,7 @@ end
 
 #TODO think about contexts
 #TODO handle resizing properly
-mutable struct Canvas <: ComponentData
+@component mutable struct Canvas
     name             ::Symbol
     id               ::Int
     area             ::Area{Int}
@@ -187,7 +187,7 @@ canvas_defaults() = SymAnyDict(:area       => Area{Int}(0, 0, glfw_standard_scre
                            	   :fullscreen => false,
                            	   :monitor    => nothing)
 
-struct FullscreenVao <: ComponentData
+@component struct FullscreenVao
 	vao::VertexArray
 end
 
@@ -208,12 +208,18 @@ draw(v::FullscreenVao)   = draw(v.vao)
 unbind(v::FullscreenVao) = unbind(v.vao)
 
 # I'm not sure this is nice design idk
-struct IOTarget <: RenderTargetKind end
+abstract type RenderTarget <: ComponentData end
 
-struct RenderTarget{R <: RenderTargetKind} <: ComponentData
-	target     ::Union{FrameBuffer, Canvas}
-	background ::RGBAf0
+macro render_target(name)
+    esc(quote
+            @component struct $name <: RenderTarget
+            	target     ::Union{FrameBuffer, Canvas}
+            	background ::RGBAf0
+            end
+        end)
 end
+
+@render_target IOTarget
 
 bind(r::RenderTarget, args...) = bind(r.target, args...)
 
@@ -231,7 +237,7 @@ GLA.free!(r::RenderTarget) = free!(r.target)
 
 Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
 
-@with_kw mutable struct TimingData <: ComponentData
+@component_with_kw mutable struct TimingData
 	time          ::Float64 = time()
 	dtime         ::Float64 = 0.0
 	frames        ::Int     = 0
@@ -239,8 +245,14 @@ Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
 	reversed      ::Bool    = false
 end
 
-struct RenderProgram{P <: ProgramKind} <: ComponentData
-	program::GLA.Program	
+abstract type RenderProgram <: ComponentData end
+
+macro render_program(name)
+    esc(quote
+        @component struct $name <: RenderProgram
+        	program::GLA.Program	
+        end
+    end)
 end
 
 bind(p::RenderProgram) = bind(p.program)
@@ -249,7 +261,7 @@ unbind(p::RenderProgram) = unbind(p.program)
 
 GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
 
-struct UpdatedComponents <: ComponentData
+@component struct UpdatedComponents
 	components::Vector{DataType}
 end
 
@@ -266,7 +278,7 @@ function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:Component
 	end
 end
 
-struct FontStorage <: ComponentData
+@component struct FontStorage
 	atlas       ::AP.TextureAtlas
 	storage_fbo ::GLA.FrameBuffer #All Glyphs should be stored in the first color attachment
 end

@@ -37,15 +37,15 @@ function update(::Sleeper, m::Manager)
 end
 
 struct Resizer <: System end
-requested_components(::Resizer) = (Canvas, RenderTarget{IOTarget})
+requested_components(::Resizer) = (Canvas, IOTarget)
 
 function update(::Resizer, m::Manager)
 	c = m[Canvas][1]
 	fwh = c.framebuffer_size
 	resize!(c, fwh)
-	for (c,v) in m.components
-		if c <: RenderTarget
-			for rt in v
+	for c in m.components
+		if eltype(c) <: RenderTarget
+			for rt in c
 				resize!(rt, fwh)
 			end
 		end
@@ -54,12 +54,12 @@ function update(::Resizer, m::Manager)
 end
 
 # Mouse Picking Stuff
-@with_kw struct Selectable <: ComponentData
+@component_with_kw struct Selectable <: ComponentData
 	selected::Bool = false
 	color_modifier ::Float32 = 1.3f0
 end
 
-struct AABB <: ComponentData
+@component struct AABB
 	origin  ::Vec3f0
 	diagonal::Vec3f0
 end

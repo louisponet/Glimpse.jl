@@ -27,7 +27,7 @@ function update(::UniformCalculator, m::Manager)
 	end
 end
 
-function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultProgram, PeelingProgram, LineProgram}}, system::System)
+function set_entity_uniforms_func(render_program::Union{DefaultProgram, PeelingProgram, LineProgram}, system::System)
     prog = render_program.program
     material = component(system, Material)
     modelmat = component(system, ModelMat)

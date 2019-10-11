@@ -20,17 +20,12 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 			    MousePicker(),
 			    UniformCalculator(),
 			    Mover(),
-			    ProgramTagger(),
-			    DefaultUploader(),
-			    InstancedDefaultUploader(),
-			    LineUploader(),
+			    Uploader(),
+			    InstancedUploader(),
+			    TextUploader(),
 				LineRenderer(),
-				TextUploader(),
 				TextRenderer(),
-			    PeelingUploader(),
-			    InstancedPeelingUploader(),
-			    UniformUploader{InstancedDefaultProgram}(),
-			    UniformUploader{InstancedPeelingProgram}(),
+			    UniformUploader(),
 			    CameraOperator(),
 			    DefaultRenderer(),
 			    InstancedDefaultRenderer(),
@@ -41,7 +36,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 			    Resizer(),
 			    Sleeper())
 
-	for v in (RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background), FullscreenVao(), UpdatedComponents(DataType[]))
+	for v in (IOTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background), FullscreenVao(), UpdatedComponents(DataType[]))
 		e = Entity(m)
 		comp_T = typeof(v)
 		m[comp_T, e] = v
@@ -92,7 +87,7 @@ function renderloop(dio)
 	    	while !should_close(canvas)
 				pollevents(canvas)
 			    clear!(canvas)
-			    iofbo = dio[RenderTarget{IOTarget}][1]
+			    iofbo = dio[IOTarget][1]
 			    bind(iofbo)
 			    draw(iofbo)
 			    clear!(iofbo)

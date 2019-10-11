@@ -1,16 +1,15 @@
 import GLAbstraction: bind, draw, color_attachment, depth_attachment
 
-struct PeelingCompositingProgram <: ProgramKind end
-struct PeelingProgram          <: ProgramKind end
-struct BlendProgram            <: ProgramKind end
-struct InstancedPeelingProgram <: ProgramKind end
+@render_program PeelingCompositingProgram 
+@render_program PeelingProgram          
+@render_program BlendProgram            
+@render_program InstancedPeelingProgram
 
-#can't the colorblender be the IOTarget?
-struct ColorBlendTarget  <: RenderTargetKind end
-struct PeelTarget        <: RenderTargetKind end
+@render_target ColorBlendTarget
+@render_target PeelTarget        
 
-ECS.preferred_component_type(::Type{Vao{InstancedPeelingProgram}}) = SharedComponent
-ECS.preferred_component_type(::Type{Vao{PeelingProgram}}) = Component
+@vao PeelingVao
+@instanced_vao InstancedPeelingVao
 
 # Using the shared uploader system inside uploading.jl
 PeelingUploader() = Uploader{PeelingProgram}()
@@ -26,43 +25,41 @@ end
 
 function requested_components(::DepthPeelingRenderer)
 	pp = PeelingProgram
-	(Vao{pp}, RenderProgram{pp}, RenderProgram{BlendProgram}, RenderProgram{PeelingCompositingProgram},
-	 RenderProgram{CompositingProgram},
+	(PeelingVao, PeelingProgram, BlendProgram, PeelingCompositingProgram, CompositingProgram,
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D,
-	 RenderTarget{PeelTarget}, RenderTarget{ColorBlendTarget}, RenderTarget{IOTarget})
+	 PeelTarget, ColorBlendTarget, IOTarget)
 end
 
 function requested_components(::InstancedDepthPeelingRenderer)
-	pp = InstancedPeelingProgram
-	(Vao{pp}, RenderProgram{pp}, RenderProgram{BlendProgram}, RenderProgram{PeelingCompositingProgram},
-	 RenderProgram{CompositingProgram}, PointLight, UniformColor, Spatial, Camera3D,
-	 RenderTarget{PeelTarget}, RenderTarget{ColorBlendTarget}, RenderTarget{IOTarget})
+	(InstancedPeelingVao, InstancedPeelingProgram, BlendProgram, PeelingCompositingProgram,
+	 CompositingProgram, PointLight, UniformColor, Spatial, Camera3D,
+	 PeelTarget, ColorBlendTarget, IOTarget)
 end
 
 function ECS.prepare(::Union{DepthPeelingRenderer, InstancedDepthPeelingRenderer}, dio::Diorama)
-	if isempty(dio[RenderProgram{BlendProgram}])
-		Entity(dio, RenderProgram{BlendProgram}(Program(blending_shaders())))
+	if isempty(dio[BlendProgram])
+		Entity(dio, BlendProgram(Program(blending_shaders())))
 	end
-	if isempty(dio[RenderProgram{PeelingCompositingProgram}])
-		Entity(dio, RenderProgram{PeelingCompositingProgram}(Program(peeling_compositing_shaders())))
+	if isempty(dio[PeelingCompositingProgram])
+		Entity(dio, PeelingCompositingProgram(Program(peeling_compositing_shaders())))
 	end
-	if isempty(dio[RenderProgram{CompositingProgram}])
-		Entity(dio, RenderProgram{CompositingProgram}(Program(compositing_shaders())))
+	if isempty(dio[CompositingProgram])
+		Entity(dio, CompositingProgram(Program(compositing_shaders())))
 	end
 	c = dio[Canvas][1]
 	wh = size(c)
-	while length(dio[RenderTarget{PeelTarget}]) < 2
-		Entity(dio, RenderTarget{PeelTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
+	while length(dio[PeelTarget]) < 2
+		Entity(dio, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
 	end
-	if isempty(dio[RenderTarget{ColorBlendTarget}])
-		Entity(dio, RenderTarget{ColorBlendTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
+	if isempty(dio[ColorBlendTarget])
+		Entity(dio, ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
 	end
 end
 
 
 function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
 	glDisableCullFace()
-	vao = m[Vao{PeelingProgram}]
+	vao = m[PeelingVao]
 	if isempty(vao)
 		return
 	end
@@ -76,14 +73,14 @@ function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
 	light    = m[PointLight]
 	camera   = m[Camera3D]
 
-	peeling_program  = m[RenderProgram{PeelingProgram}][1]
-	peel_comp_program   = m[RenderProgram{PeelingCompositingProgram}][1]
-    blending_program    = m[RenderProgram{BlendProgram}][1]
-    compositing_program = m[RenderProgram{CompositingProgram}][1]
+	peeling_program  = m[PeelingProgram][1]
+	peel_comp_program   = m[PeelingCompositingProgram][1]
+    blending_program    = m[BlendProgram][1]
+    compositing_program = m[CompositingProgram][1]
 
-    colorblender        = m[RenderTarget{ColorBlendTarget}][1]
-    peeling_targets     = ECS.data(m[RenderTarget{PeelTarget}])[1:2]
-    iofbo               = m[RenderTarget{IOTarget}][1]
+    colorblender        = m[ColorBlendTarget][1]
+    peeling_targets     = ECS.data(m[PeelTarget])[1:2]
+    iofbo               = m[IOTarget][1]
     fullscreenvao       = m[FullscreenVao][1]
 
 	set_light_camera_uniforms = (prog) -> begin
@@ -231,7 +228,7 @@ end
 
 function update(renderer::InstancedDepthPeelingRenderer, m::ECS.AbstractManager)
 	glDisableCullFace()
-	vao = m[Vao{InstancedPeelingProgram}]
+	vao = m[InstancedPeelingVao]
 	if isempty(vao)
 		return
 	end
@@ -243,14 +240,14 @@ function update(renderer::InstancedDepthPeelingRenderer, m::ECS.AbstractManager)
 	light    = m[PointLight]
 	camera   = m[Camera3D]
 
-	peeling_program  = m[RenderProgram{InstancedPeelingProgram}][1]
-	peel_comp_program   = m[RenderProgram{PeelingCompositingProgram}][1]
-    blending_program    = m[RenderProgram{BlendProgram}][1]
-    compositing_program = m[RenderProgram{CompositingProgram}][1]
+	peeling_program  = m[InstancedPeelingProgram][1]
+	peel_comp_program   = m[PeelingCompositingProgram][1]
+    blending_program    = m[BlendProgram][1]
+    compositing_program = m[CompositingProgram][1]
 
-    colorblender        = m[RenderTarget{ColorBlendTarget}][1]
-    peeling_targets     = ECS.data(m[RenderTarget{PeelTarget}])[1:2]
-    iofbo               = m[RenderTarget{IOTarget}][1]
+    colorblender        = m[ColorBlendTarget][1]
+    peeling_targets     = ECS.data(m[PeelTarget])[1:2]
+    iofbo               = m[IOTarget][1]
     fullscreenvao       = m[FullscreenVao][1]
 
 	set_light_camera_uniforms = (prog) -> begin

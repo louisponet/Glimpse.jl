@@ -11,48 +11,59 @@ function shared_entities(c::SharedComponent{T}, dat::T) where T
 end
 
 # DEFAULT COMPONENTS
-abstract type ProgramKind end
+abstract type Vao <: ComponentData end
 
-struct ProgramTag{P <: ProgramKind} <: ComponentData end
-
-@with_kw struct Vao{P <: ProgramKind} <: ComponentData
-	vertexarray::VertexArray
-	visible    ::Bool = true
+macro vao(name)
+    esc(quote
+        @component_with_kw struct $name <: Vao
+        	vertexarray::VertexArray
+        	visible    ::Bool = true
+    	end
+    	$name(v::VertexArray) = $name(vertexarray=v)
+	end)
 end
 
-programkind(::Vao{P}) where {P} = P
+macro instanced_vao(name)
+    esc(quote
+        @shared_component_with_kw struct $name <: Vao
+        	vertexarray::VertexArray
+        	visible    ::Bool = true
+    	end
+    	$name(v::VertexArray) = $name(vertexarray=v)
+	end)
+end
 
 GLA.bind(vao::Vao) = GLA.bind(vao.vertexarray)
 
 GLA.draw(vao::Vao) = GLA.draw(vao.vertexarray)
 
 # NON rendering Components
-struct Dynamic <: ComponentData end
-@with_kw struct Spatial <: ComponentData
+@component struct Dynamic  end
+@component_with_kw struct Spatial 
 	position::Point3f0 = zero(Point3f0)
 	velocity::Vec3f0   = zero(Vec3f0)
 end
 
-@with_kw struct Shape <: ComponentData
+@component_with_kw struct Shape 
 	scale::Float32 = 1f0
 end
 
-@with_kw struct ModelMat <: ComponentData
+@component_with_kw struct ModelMat 
 	modelmat::Mat4f0 = Eye4f0()
 end
 
-@with_kw struct Material <: ComponentData
+@component_with_kw struct Material 
 	specpow ::Float32 = 0.8f0
 	specint ::Float32 = 0.8f0
 end
 
-@with_kw struct PointLight <: ComponentData
+@component_with_kw struct PointLight 
     diffuse ::Float32  = 0.5f0
     specular::Float32  = 0.5f0
     ambient ::Float32  = 0.5f0
 end
 
-struct DirectionLight <: ComponentData
+@component struct DirectionLight 
 	direction::Vec3f0
     diffuse  ::Float32
     specular ::Float32
@@ -63,7 +74,7 @@ const X_AXIS = Vec3f0(1.0f0, 0.0  , 0.0)
 const Y_AXIS = Vec3f0(0.0,   1.0f0, 0.0)
 const Z_AXIS = Vec3f0(0.0,   0.0  , 1.0f0)
 
-@with_kw struct Camera3D <: ComponentData
+@component_with_kw struct Camera3D 
     lookat ::Vec3f0  = zero(Vec3f0)
     up     ::Vec3f0  = Z_AXIS 
     right  ::Vec3f0  = X_AXIS 
@@ -107,75 +118,72 @@ function Camera3D(old_cam::Camera3D, new_pos::Point3f0, new_lookat::Point3f0, u_
 end
 
 # Meshing and the like
-struct Mesh <: ComponentData
+@shared_component struct Mesh 
 	mesh
 end
-
-ECS.preferred_component_type(::Type{Mesh}) = SharedComponent
 
 abstract type Color <: ComponentData end
 
 # one color, will be put as a uniform in the shader
-struct UniformColor <: Color 
+@component struct UniformColor <: Color 
 	color::RGBAf0
 end
 
 # vector of colors, either supplied manually or filled in by mesher
-struct BufferColor <: Color
+@component struct BufferColor <: Color
 	color::Vector{RGBAf0}
 end
 	
 # color function, mesher uses it to throw in points and get out colors
 #TODO super slow
-struct FunctionColor <: Color 
+@component struct FunctionColor <: Color 
 	color::Function
 end
 
-struct DensityColor <: Color 
+@component struct DensityColor <: Color 
 	color::Array{RGBAf0, 3}
 end
 
 # Cycle, mesher uses it to iterate over together with points
-struct CycledColor <: Color
+@component struct CycledColor <: Color
 	color::Cycle{Union{RGBAf0, Vector{RGBAf0}}}
 end
 
-struct Grid <: ComponentData
+@shared_component struct Grid 
 	points::Array{Point3f0, 3}
 end
-ECS.preferred_component_type(::Type{Grid}) = SharedComponent
 
 
 abstract type Geometry <: ComponentData end
 
-struct PolygonGeometry <: Geometry #spheres and the like
+@component struct PolygonGeometry <: Geometry #spheres and the like
 	geometry 
 end
 
-struct FileGeometry <: Geometry #.obj files
+@component struct FileGeometry <: Geometry #.obj files
 	geometry::String 
 end
 
-struct FunctionGeometry <: Geometry
+@component struct FunctionGeometry <: Geometry
 	geometry::Function
 	iso     ::Float32
 end
 
-struct DensityGeometry <: Geometry
+@component struct DensityGeometry <: Geometry
 	geometry::Array{Float32, 3}
 	iso     ::Float32
 end
 
-struct VectorGeometry <: Geometry
+@component struct VectorGeometry <: Geometry
 	geometry::Vector{Point3f0}
 end
 
-@with_kw struct Line <: ComponentData
+@component_with_kw struct Line 
 	thickness::Float32 = 2.0f0
 	miter    ::Float32 = 0.6f0
 end
 
-@with_kw struct Text <: ComponentData
+@component_with_kw struct Text 
 	str      ::String = "test"
 	font_size::Int    = 1
 	font     = AP.defaultfont()

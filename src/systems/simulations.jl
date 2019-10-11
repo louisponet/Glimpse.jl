@@ -1,6 +1,6 @@
 abstract type SimulationSystem <: System end
 
-Base.@kwdef struct Spring <: ComponentData
+@component_with_kw struct Spring
 	center::Point3f0 = zero(Point3f0)
 	k     ::Float32  = 0.01f0
 	damping::Float32 = 0.0001f0
@@ -27,7 +27,7 @@ function update(::Oscillator, m::Manager)
 	push!(m[UpdatedComponents][1].components, Spatial)
 end
 
-struct Rotation <: ComponentData
+@component struct Rotation
 	omega::Float32
 	center::Point3f0
 	axis::Vec3f0

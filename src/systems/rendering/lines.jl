@@ -1,9 +1,10 @@
-struct LineProgram <: ProgramKind end
+@render_program LineProgram
+@vao LineVao
 
 LineUploader() = Uploader{LineProgram}()
 shaders(::Type{LineProgram}) = line_shaders()
 
-function set_entity_uniforms_func(render_program::RenderProgram{LineProgram}, system::System)
+function set_entity_uniforms_func(render_program::LineProgram, system::System)
     prog = render_program.program
     comp(T)  = component(system, T)
     modelmat = comp(ModelMat)
@@ -18,12 +19,12 @@ end
 struct LineRenderer <: AbstractRenderSystem end
 
 requested_components(::LineRenderer) =
-	(Vao{LineProgram}, RenderProgram{LineProgram},
-	 ModelMat, Material, PointLight, Spatial, Camera3D, RenderTarget{IOTarget}, Line)
+	(LineVao, LineProgram,
+	 ModelMat, Material, PointLight, Spatial, Camera3D, IOTarget, Line)
 
 function update(::LineRenderer, m::Manager)
-	fbo  = m[RenderTarget{IOTarget}][1]
-	prog = m[RenderProgram{LineProgram}][1]
+	fbo  = m[IOTarget][1]
+	prog = m[LineProgram][1]
 	bind(fbo)
 	draw(fbo)
 	glDisable(GL_BLEND)
@@ -39,8 +40,8 @@ function update(::LineRenderer, m::Manager)
     for e in entities(spat, cam)
 	    set_uniform(prog, spat[e], cam[e])
     end
-	set_uniform(prog, :Viewport, Vec2f0(size(m[RenderTarget{IOTarget}][1])))
-    vao, modelmat, line = m[Vao{LineProgram}], m[ModelMat], m[Line] 
+	set_uniform(prog, :Viewport, Vec2f0(size(m[IOTarget][1])))
+    vao, modelmat, line = m[LineVao], m[ModelMat], m[Line] 
 	for e in entities(vao, modelmat, line)
         evao = vao[e]
         e_line = line[e]
