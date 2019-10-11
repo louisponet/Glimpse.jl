@@ -51,7 +51,7 @@ function update(::Uploader, m::Manager)
     #Line Entities
     for e in entities(mesh, ucolor, m[Line], exclude=(line_vao,))
         e_mesh = mesh[e]
-        line_vao[e] = LineVao(VertexArray(generate_buffers(line_prog, e_mesh.mesh), 11), true)
+        line_vao[e] = LineVao(VertexArray(generate_buffers(line_prog.program, e_mesh.mesh), 11), true)
     end
 
 end
