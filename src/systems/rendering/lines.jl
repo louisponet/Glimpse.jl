@@ -20,7 +20,7 @@ struct LineRenderer <: AbstractRenderSystem end
 
 requested_components(::LineRenderer) =
 	(LineVao, LineProgram,
-	 ModelMat, Material, PointLight, Spatial, Camera3D, IOTarget, Line)
+	 ModelMat, Material, PointLight, Spatial, Camera3D, IOTarget, LineOptions)
 
 function update(::LineRenderer, m::Manager)
 	fbo  = m[IOTarget][1]
@@ -41,7 +41,7 @@ function update(::LineRenderer, m::Manager)
 	    set_uniform(prog, spat[e], cam[e])
     end
 	set_uniform(prog, :Viewport, Vec2f0(size(m[IOTarget][1])))
-    vao, modelmat, line = m[LineVao], m[ModelMat], m[Line] 
+    vao, modelmat, line = m[LineVao], m[ModelMat], m[LineOptions] 
 	for e in entities(vao, modelmat, line)
         evao = vao[e]
         e_line = line[e]

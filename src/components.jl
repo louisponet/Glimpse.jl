@@ -178,7 +178,11 @@ end
 	geometry::Vector{Point3f0}
 end
 
-@component_with_kw struct Line 
+@component struct LineGeometry <: Geometry
+    points::Vector{Point3f0}
+end
+
+@component_with_kw struct LineOptions 
 	thickness::Float32 = 2.0f0
 	miter    ::Float32 = 0.6f0
 end

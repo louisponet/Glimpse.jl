@@ -74,6 +74,8 @@ function expose(dio::Diorama;  kwargs...)
 	    canvas_command(dio, make_current, x -> ECS.Entity(dio, Canvas(dio.name; kwargs...))) 
     end
     renderloop(dio)
+    canvas_command(dio, expose)
+
     return dio
 end
 
@@ -84,18 +86,24 @@ function renderloop(dio)
     ECS.prepare(dio)
     canvas_command(dio, canvas ->
 	    dio.loop = @async begin
-	    	while !should_close(canvas)
-				pollevents(canvas)
-			    clear!(canvas)
-			    iofbo = dio[IOTarget][1]
-			    bind(iofbo)
-			    draw(iofbo)
-			    clear!(iofbo)
-			    empty!(dio[UpdatedComponents][1])
-			    ECS.update_systems(dio.manager)
-		    end
-		    close(canvas)
-			dio.loop = nothing
+    	    try
+    	    	while !should_close(canvas)
+    				pollevents(canvas)
+    			    clear!(canvas)
+    			    iofbo = dio[IOTarget][1]
+    			    bind(iofbo)
+    			    draw(iofbo)
+    			    clear!(iofbo)
+    			    empty!(dio[UpdatedComponents][1])
+    			    ECS.update_systems(dio.manager)
+    		    end
+    		    close(canvas)
+    			dio.loop = nothing
+			catch
+    		    close(canvas)
+    		    ECS.update_systems(dio.manager)
+    			dio.loop = nothing
+			end
 		end
 	)
 end

@@ -40,11 +40,9 @@ include("shader.jl")
 include("geometries.jl")
 include("marching_cubes.jl")
 export RGBAf0
-#GLAbstraction exports
-
 
 #package exports, types & enums
-
+export Diorama
 #package exports, default geometries
 
 end # module

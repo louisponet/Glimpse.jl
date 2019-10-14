@@ -88,8 +88,8 @@ function Canvas(name=:Glimpse; kwargs...)
                      minor        = defaults[:minor],
                      windowhints  = window_hints,
                      contexthints = context_hints,
-                     visible      = true,
-                     focus        = true,
+                     visible      = false,
+                     focus        = false,
                      fullscreen   = defaults[:fullscreen],
                      monitor      = defaults[:monitor])
 
@@ -98,14 +98,18 @@ function Canvas(name=:Glimpse; kwargs...)
     background = defaults[:background]
 
 	c = Canvas(name, id, area, nw, background)
+	make_current(c)
     return c
 end
 
 function make_current(c::Canvas)
-	GLFW.SetWindowShouldClose(c.native_window, false)
-	GLFW.ShowWindow(c.native_window)
     GLFW.MakeContextCurrent(c.native_window)
     GLA.set_context!(c.context)
+end
+
+function expose(c::Canvas)
+	GLFW.SetWindowShouldClose(c.native_window, false)
+	GLFW.ShowWindow(c.native_window)
 end
 
 function swapbuffers(c::Canvas)
@@ -260,6 +264,8 @@ bind(p::RenderProgram) = bind(p.program)
 unbind(p::RenderProgram) = unbind(p.program)
 
 GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
+
+generate_buffers(p::RenderProgram, args...) = generate_buffers(p.program, args...)
 
 @component struct UpdatedComponents
 	components::Vector{DataType}

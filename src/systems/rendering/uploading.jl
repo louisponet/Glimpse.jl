@@ -1,7 +1,7 @@
 struct Uploader <: System end
 
 requested_components(::Uploader) =
-	(Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao)
+	(Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao, LineGeometry)
 
 shaders(::Type{DefaultProgram}) = default_shaders()
 shaders(::Type{PeelingProgram}) = peeling_shaders()
@@ -47,11 +47,14 @@ function update(::Uploader, m::Manager)
 		    default_vao[e] = DefaultVao(gen_vao(default_prog))
 	    end
     end
-
+    line_geom = m[LineGeometry]
     #Line Entities
-    for e in entities(mesh, ucolor, m[Line], exclude=(line_vao,))
-        e_mesh = mesh[e]
-        line_vao[e] = LineVao(VertexArray(generate_buffers(line_prog.program, e_mesh.mesh), 11), true)
+    for e in entities(line_geom, ucolor, exclude=(line_vao,))
+        e_geom = line_geom[e]
+        @show e
+        vert_loc = attribute_location(line_prog.program, :vertices)
+
+        line_vao[e] = LineVao(VertexArray([BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)], 11), true)
     end
 
 end
