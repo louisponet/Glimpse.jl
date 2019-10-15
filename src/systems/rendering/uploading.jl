@@ -30,9 +30,9 @@ function update(::Uploader, m::Manager)
     peeling_prog= m[PeelingProgram][1]
     default_prog= m[DefaultProgram][1]
     line_prog   = m[LineProgram][1]
+
     #Buffer color entities are always not instanced
-    for e in entities(mesh, bcolor,exclude=(default_vao, peeling_vao))
-        @show e
+    for e in entities(mesh, bcolor, exclude=(default_vao, peeling_vao))
         e_mesh = mesh[e]
         e_color = bcolor[e].color
         gen_vao = prog -> begin
@@ -51,7 +51,6 @@ function update(::Uploader, m::Manager)
     #Line Entities
     for e in entities(line_geom, ucolor, exclude=(line_vao,))
         e_geom = line_geom[e]
-        @show e
         vert_loc = attribute_location(line_prog.program, :vertices)
 
         line_vao[e] = LineVao(VertexArray([BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)], 11), true)

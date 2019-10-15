@@ -265,7 +265,7 @@ unbind(p::RenderProgram) = unbind(p.program)
 
 GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
 
-generate_buffers(p::RenderProgram, args...) = generate_buffers(p.program, args...)
+generate_buffers(p::RenderProgram, args...; kwargs...) = generate_buffers(p.program, args...; kwargs...)
 
 @component struct UpdatedComponents
 	components::Vector{DataType}

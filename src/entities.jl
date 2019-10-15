@@ -5,14 +5,14 @@ data_id(e::Entity, id::Int) = getfirst(x -> x.comp_id == id, e.data_ids).data_id
 
 assemble_sphere(;position::Point3f0 = zero(Point3f0),
 	   velocity::Vec3f0        = zero(Vec3f0),
-	   color   ::RGBA{Float32} = RGBAf0(0.0,0.4,0.8, 1.0),
+	   color   = RGBAf0(0.0,0.4,0.8, 1.0),
        radius  ::Float32       = 1f0,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
        ) = (Spatial(position, velocity),
             PolygonGeometry(Sphere(Point3f0(0.0), radius)),
             Material(specint, specpow),
-            UniformColor(color),
+            (color isa ComponentData ? color : UniformColor(color)),
             Shape(radius))
 
 box_coordinates() = [zero(Point3f0), zero(Point3f0), Vec3f0(1, 0, 0),
