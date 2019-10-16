@@ -182,7 +182,7 @@ function update(::UniformUploader, m::AbstractManager)
     				if binfo != nothing
     					GLA.bind(binfo.buffer)
     					s = length(modelmats) * matsize
-    					glBufferSubData(binfo.buffer.buffertype, 0, s, pointer(modelmats, 1))
+    					glBufferData(binfo.buffer.buffertype, s, pointer(modelmats, 1), binfo.buffer.usage)
     					GLA.unbind(binfo.buffer)
     				end
     			end
@@ -205,7 +205,7 @@ function update(::UniformUploader, m::AbstractManager)
     				if binfo != nothing
     					GLA.bind(binfo.buffer)
     					s = length(colors) * colsize
-    					glBufferSubData(binfo.buffer.buffertype, 0, s, pointer(colors, 1))
+    					glBufferData(binfo.buffer.buffertype, s, pointer(colors, 1), binfo.buffer.usage)
     					GLA.unbind(binfo.buffer)
     				end
     			end
