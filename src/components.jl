@@ -3,6 +3,8 @@ using PStdLib.ECS: SharedComponent, Component
 import Base.Iterators: Cycle
 import Base: ==
 
+@component struct DioEntity end
+
 #TODO get rid of this in favor of a correct iterator
 function shared_entities(c::SharedComponent{T}, dat::T) where T
 	ids = Int[]
@@ -194,4 +196,4 @@ end
 	align    ::Symbol = :right
 	offset   ::Vec3f0= zero(Vec3f0)
 end
-	
+

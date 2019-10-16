@@ -5,47 +5,49 @@ import PStdLib.ECS: AbstractComponent, push_system, insert_system
 ECS.manager(dio::Diorama) = dio.manager
 
 function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
-	c                  = Canvas(name; kwargs...)
-	wh                 = size(c)
+	m = Manager(SystemStage(:start, [Timer()]),
+                SystemStage(:setup, [PolygonMesher(),
+			                         DensityMesher(),
+			                         VectorMesher(),
+			                         FunctionMesher(),
+			                         FunctionColorizer(),
+			                         AABBGenerator(),
+			                         Uploader(),
+			                         InstancedUploader(),
+			                         TextUploader()]),
+                extra_systems...,
 
-	timing = TimingData(time(),0.0, 0, 60, false)
-	m = Manager(Timer(), extra_systems...,
-			    PolygonMesher(),
-			    DensityMesher(),
-			    VectorMesher(),
-			    FunctionMesher(),
-			    FunctionColorizer(),
-			    Oscillator(),
-			    AABBGenerator(),
-			    MousePicker(),
-			    UniformCalculator(),
-			    Mover(),
-			    Uploader(),
-			    InstancedUploader(),
-			    TextUploader(),
-				LineRenderer(),
-				TextRenderer(),
-			    UniformUploader(),
-			    CameraOperator(),
-			    DefaultRenderer(),
-			    DepthPeelingRenderer(),
-			    GuiRenderer(),
-			    FinalRenderer(),
-			    Resizer(),
-			    Sleeper())
+			    SystemStage(:simulation, [Oscillator(),
+                        			      Mover(),
+                        			      MousePicker(),
+                        			      UniformCalculator(),
+                        			      CameraOperator()]),
 
-	for v in (IOTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background), FullscreenVao(), UpdatedComponents(DataType[]))
-		e = Entity(m)
-		comp_T = typeof(v)
-		m[comp_T, e] = v
-	end
-	Entity(m, c)
-	Entity(m, Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)),
-	            PointLight(),
-	            UniformColor(RGBA{Float32}(1.0)))
+				SystemStage(:rendering, [LineRenderer(),
+				                         TextRenderer(),
+			                             UniformUploader(),
+			                             DefaultRenderer(),
+			                             DepthPeelingRenderer(),
+			                             GuiRenderer(),
+			                             FinalRenderer()]),
 
-	Entity(m, assemble_camera3d(Int32.(size(c))...)...)
-	Entity(m, timing)
+			    SystemStage(:stop, [Resizer(), Sleeper()]))
+
+    #assemble all rendering, canvas and camera components
+    e = Entity(m, DioEntity(), Canvas(name; kwargs...), TimingData(time(),0.0, 0, 60, false))
+    c = m[Canvas][e]
+	wh = size(c)
+    m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
+    m[e] = FullscreenVao()
+    m[e] = UpdatedComponents(DataType[])
+    for v in assemble_camera3d(Int32.(size(c))...)
+        m[e] = v
+    end
+
+	Entity(m, DioEntity(), Spatial(position=Point3f0(200f0)),
+	          PointLight(),
+	          UniformColor(RGBA{Float32}(1.0)))
+
 	t = Diorama(name, m; kwargs...)
 	ECS.prepare(t)
 	return t
@@ -77,7 +79,6 @@ function expose(dio::Diorama;  kwargs...)
     return dio
 end
 
-
 #TODO move control over this to diorama itself
 function renderloop(dio)
     dio    = dio
@@ -88,18 +89,26 @@ function renderloop(dio)
     	    	while !should_close(canvas)
     				pollevents(canvas)
     			    clear!(canvas)
-    			    iofbo = dio[IOTarget][1]
+    			    iofbo = singleton(dio, IOTarget)
     			    bind(iofbo)
     			    draw(iofbo)
     			    clear!(iofbo)
-    			    empty!(dio[UpdatedComponents][1])
-    			    ECS.update_systems(dio.manager)
+    			    empty!(singleton(dio, UpdatedComponents))
+
+                    for stage in system_stages(dio)
+                        # first(stage) == :setup && continue
+                        update_systems(stage, dio)
+                    end
+
     		    end
     		    close(canvas)
     			dio.loop = nothing
 			catch
     		    close(canvas)
-    		    ECS.update_systems(dio.manager)
+                for stage in system_stages(dio)
+                    # first(stage) == :setup && continue
+                    update_systems(stage, dio)
+                end
     			dio.loop = nothing
 			end
 		end

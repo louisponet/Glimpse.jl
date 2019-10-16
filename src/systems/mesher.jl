@@ -18,7 +18,7 @@ geometry_type(::Type{PolygonMesher}) = PolygonGeometry
 geometry_type(::Type{VectorMesher}) = VectorGeometry
 geometry_type(::Type{FileMesher}) = FileGeometry
 
-function update(::Union{M}, m::Manager) where {M<:Mesher}
+function update(::Union{M}, m::AbstractManager) where {M<:Mesher}
 	mesh = m[Mesh]
 	geom = m[geometry_type(M)]
 	it = entities(geom, exclude=(mesh,))
@@ -35,7 +35,7 @@ struct DensityMesher <: Mesher end
 
 requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
 
-function update(::Union{FunctionMesher, DensityMesher}, m::Manager)
+function update(::Union{FunctionMesher, DensityMesher}, m::AbstractManager)
 	mesh = m[Mesh]
 	geom = m[FunctionGeometry]
 	grid = m[Grid]
@@ -52,7 +52,7 @@ struct FunctionColorizer <: System end
 
 requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
 
-function update(::FunctionColorizer, m::Manager)
+function update(::FunctionColorizer, m::AbstractManager)
 	colorbuffers = m[BufferColor]
 	fcolor       = m[FunctionColor]
 	mesh         = m[Mesh]

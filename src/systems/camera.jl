@@ -6,7 +6,7 @@ struct CameraOperator <: InteractiveSystem end
 
 requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
 
-function update(::CameraOperator, m::Manager)
+function update(::CameraOperator, m::AbstractManager)
 	spatial = m[Spatial]
 	camera = m[Camera3D]
 	canvas_comp=m[Canvas]

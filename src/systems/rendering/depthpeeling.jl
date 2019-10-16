@@ -28,25 +28,25 @@ end
 
 function ECS.prepare(::DepthPeelingRenderer, dio::Diorama)
 	if isempty(dio[BlendProgram])
-		Entity(dio, BlendProgram(Program(blending_shaders())))
+		dio[Entity(1)] = BlendProgram(Program(blending_shaders()))
 	end
 	if isempty(dio[PeelingCompositingProgram])
-		Entity(dio, PeelingCompositingProgram(Program(peeling_compositing_shaders())))
+		dio[Entity(1)] = PeelingCompositingProgram(Program(peeling_compositing_shaders()))
 	end
 	if isempty(dio[CompositingProgram])
-		Entity(dio, CompositingProgram(Program(compositing_shaders())))
+		dio[Entity(1)] = CompositingProgram(Program(compositing_shaders()))
 	end
-	c = dio[Canvas][1]
+	c = singleton(dio, Canvas)
 	wh = size(c)
 	while length(dio[PeelTarget]) < 2
-		Entity(dio, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
+		Entity(dio.manager, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
 	end
 	if isempty(dio[ColorBlendTarget])
-		Entity(dio, ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
+		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
 	end
 end
 
-function update(renderer::DepthPeelingRenderer, m::ECS.AbstractManager)
+function update(renderer::DepthPeelingRenderer, m::AbstractManager)
 	glDisableCullFace()
 	vao = m[PeelingVao]
     ivao = m[InstancedPeelingVao]

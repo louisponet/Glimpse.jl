@@ -1,6 +1,6 @@
 struct ProgramTagger <: System end
 
-function update(::ProgramTagger, m::ECS.AbstractManager)
+function update(::ProgramTagger, m::AbstractManager)
     line_prog_tag = m[ProgramTag{LineProgram}]
 
     default_prog_tag = m[ProgramTag{DefaultProgram}]

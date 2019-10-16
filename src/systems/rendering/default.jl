@@ -12,7 +12,7 @@ requested_components(::DefaultRenderer) =
 	(DefaultVao, DefaultProgram, InstancedDefaultVao, InstancedDefaultProgram,
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, IOTarget)
 
-function update(::DefaultRenderer, m::Manager)
+function update(::DefaultRenderer, m::AbstractManager)
 	fbo   = m[IOTarget][1]
 	prog  = m[DefaultProgram][1]
 	iprog = m[InstancedDefaultProgram][1]

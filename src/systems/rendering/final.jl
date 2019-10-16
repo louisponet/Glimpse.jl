@@ -6,11 +6,11 @@ requested_components(::FinalRenderer) = (Canvas, FullscreenVao, CompositingProgr
 
 function ECS.prepare(::FinalRenderer, dio::Diorama)
 	if isempty(dio[CompositingProgram])
-		Entity(dio, CompositingProgram(Program(compositing_shaders())))
+		dio[Entity(1)] = CompositingProgram(Program(compositing_shaders()))
 	end
 end
 
-function update(::FinalRenderer, m::Manager)
+function update(::FinalRenderer, m::AbstractManager)
     compositing_program = m[CompositingProgram][1]
     canvas              = m[Canvas][1]
     vao                 = m[FullscreenVao][1]

@@ -17,12 +17,12 @@ function ECS.prepare(::Uploader, dio::Diorama)
     for prog in components(dio, RenderProgram)
     	if isempty(prog)
         	ProgType = eltype(prog)
-    		Entity(dio, ProgType(Program(shaders(ProgType))))
+    		dio[Entity(1)] = ProgType(Program(shaders(ProgType)))
     	end
 	end
 end
 
-function update(::Uploader, m::Manager)
+function update(::Uploader, m::AbstractManager)
     mesh, bcolor, ucolor = m[Mesh], m[BufferColor], m[UniformColor]
     default_vao = m[DefaultVao]
     peeling_vao = m[PeelingVao]
@@ -60,7 +60,7 @@ end
 
 struct InstancedUploader <: System end
 
-function update(::InstancedUploader, m::Manager)
+function update(::InstancedUploader, m::AbstractManager)
 	default_prog = m[InstancedDefaultProgram][1].program	
 	peeling_prog = m[InstancedPeelingProgram][1].program	
 	default_vao  = m[InstancedDefaultVao]
@@ -160,13 +160,8 @@ requested_components(::UniformUploader) =
 # 	push!(ranges, cur_start:indices[end])
 # 	return ranges
 # end
-function ECS.prepare(::UniformUploader, dio::Diorama)
-	if isempty(dio[UpdatedComponents])
-		Entity(dio, UpdatedComponents())
-	end
-end
 
-function update(::UniformUploader, m::Manager)
+function update(::UniformUploader, m::AbstractManager)
 	uc = m[UpdatedComponents][1]
 	mat = m[ModelMat]
 	matsize = sizeof(eltype(mat))

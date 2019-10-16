@@ -3,7 +3,7 @@ struct Timer <: System end
 
 requested_components(::Timer) = (TimingData,)
 
-function update(::Timer, m::Manager)
+function update(::Timer, m::AbstractManager)
 	for t in m[TimingData]
 		nt = time()
 		t.dtime = t.reversed ? - nt + t.time : nt - t.time
@@ -15,13 +15,7 @@ end
 struct Sleeper <: System end
 requested_components(::Sleeper) = (TimingData, Canvas)
 
-function ECS.prepare(::Sleeper, d::Diorama)
-	if isempty(d[TimingData])
-		Entity(d, TimingData())
-	end
-end
-
-function update(::Sleeper, m::Manager)
+function update(::Sleeper, m::AbstractManager)
 	sd = m[TimingData]
 	swapbuffers(m[Canvas][1])
 	curtime    = time()
@@ -39,11 +33,11 @@ end
 struct Resizer <: System end
 requested_components(::Resizer) = (Canvas, IOTarget)
 
-function update(::Resizer, m::Manager)
+function update(::Resizer, m::AbstractManager)
 	c = m[Canvas][1]
 	fwh = c.framebuffer_size
 	resize!(c, fwh)
-	for c in m.components
+	for c in components(m)
 		if eltype(c) <: RenderTarget
 			for rt in c
 				resize!(rt, fwh)
@@ -68,7 +62,7 @@ struct AABBGenerator <: System end
 
 requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
-function update(::AABBGenerator, m::Manager)
+function update(::AABBGenerator, m::AbstractManager)
 	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
 	it = entities(geometry, selectable, exclude=(aabb,))
 	for e in it 
@@ -81,7 +75,7 @@ struct MousePicker <: System end
 
 requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
-function update(::MousePicker, m::Manager)
+function update(::MousePicker, m::AbstractManager)
 	sel                = m[Selectable]
 	aabb               = m[AABB]
 	camera             = m[Camera3D]

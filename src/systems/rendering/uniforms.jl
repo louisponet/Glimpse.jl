@@ -4,7 +4,7 @@ struct UniformCalculator <: System end
 
 requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
 
-function update(::UniformCalculator, m::Manager)
+function update(::UniformCalculator, m::AbstractManager)
 	uc        = m[UpdatedComponents][1]
 	m_updated = false
 	modelmat  = m[ModelMat]

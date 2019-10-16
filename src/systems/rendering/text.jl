@@ -6,14 +6,14 @@ requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
 
 function ECS.prepare(::TextUploader, dio::Diorama)
 	if isempty(dio[TextProgram])
-		Entity(dio, TextProgram(Program(text_shaders())))
+		dio[Entity(1)] = TextProgram(Program(text_shaders()))
 	end
 	if isempty(dio[FontStorage])
-		Entity(dio, FontStorage())
+		dio[Entity(1)] =  FontStorage()
 	end
 end
 
-function update(::TextUploader, m::Manager)
+function update(::TextUploader, m::AbstractManager)
 	text = m[Text]
 	vao  = m[TextVao]
 	prog = m[TextProgram][1]
@@ -64,7 +64,7 @@ requested_components(::TextRenderer) =
 	(Spatial, UniformColor, Camera3D, TextVao, Text,
 		TextProgram, IOTarget, FontStorage)
 
-function update(::TextRenderer, m::Manager)
+function update(::TextRenderer, m::AbstractManager)
 	spat      = m[Spatial]
 	col       = m[UniformColor]
 	prog      = m[TextProgram][1]
