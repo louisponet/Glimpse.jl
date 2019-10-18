@@ -30,9 +30,9 @@ using TimerOutputs
 const to = TimerOutput()
 
 
-include("extensions.jl")
+const _temp_componentdata_types = ECS.COMPONENTDATA_TYPES
 
-@define_component_creation_macros
+include("extensions.jl")
 include("types.jl")
 include("entities.jl")
 include("maths/matrices.jl")

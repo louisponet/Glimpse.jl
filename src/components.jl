@@ -1,5 +1,3 @@
-using PStdLib.ECS: SharedComponent, Component
-
 import Base.Iterators: Cycle
 import Base: ==
 
