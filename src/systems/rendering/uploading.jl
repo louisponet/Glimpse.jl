@@ -48,14 +48,18 @@ function update(::Uploader, m::AbstractManager)
 	    end
     end
     line_geom = m[LineGeometry]
+
     #Line Entities
-    for e in entities(line_geom, ucolor, exclude=(line_vao,))
+    for e in entities(line_geom, ucolor)
         e_geom = line_geom[e]
         vert_loc = attribute_location(line_prog.program, :vertices)
-
-        line_vao[e] = LineVao(VertexArray([BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)], 11), true)
+        if !(e in line_vao)
+            line_vao[e] = LineVao(VertexArray([BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)], 11), true)
+        else
+            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e_geom.points)
+        end
     end
-
+    empty!(line_geom)
 end
 
 struct InstancedUploader <: System end

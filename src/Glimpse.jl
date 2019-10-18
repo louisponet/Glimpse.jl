@@ -31,6 +31,8 @@ const to = TimerOutput()
 
 
 include("extensions.jl")
+
+@define_component_creation_macros
 include("types.jl")
 include("entities.jl")
 include("maths/matrices.jl")
@@ -39,10 +41,12 @@ include("callbacks.jl")
 include("shader.jl")
 include("geometries.jl")
 include("marching_cubes.jl")
+
 export RGBAf0
 
 #package exports, types & enums
 export Diorama
+export expose
 #package exports, default geometries
 
 end # module

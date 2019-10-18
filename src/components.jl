@@ -182,6 +182,15 @@ end
 
 @component struct LineGeometry <: Geometry
     points::Vector{Point3f0}
+    function LineGeometry(points::Vector{Point3f0})
+        if points[1] != points[2]
+            insert!(points, 1, points[1])
+        end
+        if points[end-1] != points[end]
+            push!(points, points[end])
+        end
+        return new(points)
+    end
 end
 
 @component_with_kw struct LineOptions 
