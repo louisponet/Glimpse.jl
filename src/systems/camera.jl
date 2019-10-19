@@ -4,9 +4,9 @@ abstract type InteractiveSystem <: System end
 
 struct CameraOperator <: InteractiveSystem end
 
-requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
+ECS.requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
 
-function update(::CameraOperator, m::AbstractManager)
+function ECS.update(::CameraOperator, m::AbstractManager)
 	spatial = m[Spatial]
 	camera = m[Camera3D]
 	canvas_comp=m[Canvas]
@@ -17,7 +17,7 @@ function update(::CameraOperator, m::AbstractManager)
     w, h                 = size(canvas)
     scroll_dx, scroll_dy = Float32.(canvas.scroll)
 
-	@inbounds for e in entities(spatial, camera)
+	@inbounds for e in @entities_in(spatial && camera)
     	spat = spatial[e]
     	cam  = camera[e]
 		new_pos = Point3f0(spat.position)

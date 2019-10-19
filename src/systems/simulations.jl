@@ -9,14 +9,14 @@ end
 struct Oscillator <: System end
 
 
-requested_components(::Oscillator) = (Spatial, Spring, UpdatedComponents, TimingData)
+ECS.requested_components(::Oscillator) = (Spatial, Spring, UpdatedComponents, TimingData)
 
-function update(::Oscillator, m::AbstractManager)
+function ECS.update(::Oscillator, m::AbstractManager)
 	spat, spring=m[Spatial], m[Spring]
 	td     = m[TimingData][1] 
 	dt     = td.dtime
 
-	it = entities(spat, spring)
+	it = @entities_in(spat && spring)
 	@inbounds for e in it
 		e_spat  = spat[e]
 		spr     = spring[e]
@@ -40,7 +40,8 @@ function ECS.update(::Rotator, dio::AbstractManager)
 	rotation  = dio[Rotation]
 	spatial   = dio[Spatial]
 	dt        = Float32(dio[TimingData][1].dtime)
-	@inbounds for e in entities(rotation, spatial)
+	it = @entities_in(rotation && spatial)
+	@inbounds for e in it 
     	e_rotation = rotation[e]
     	e_spatial  = spatial[e]
 		n          = erotation.axis
@@ -54,11 +55,12 @@ struct Mover <: System end
 
 ECS.requested_components(::Mover) = (Spatial, TimingData)
 
-function update(::Mover, m::AbstractManager)
+function ECS.update(::Mover, m::AbstractManager)
     dt = m[TimingData][1].dtime
     spat = m[Spatial]
-    for (i, e_spat) in enumerate(spat.storage.data)
-        spat.storage.data[i] = Spatial(e_spat.position + e_spat.velocity*dt, e_spat.velocity)
+    for e in @entities_in(spat)
+        e_spat = spat[e]
+        spat[e] = Spatial(e_spat.position + e_spat.velocity*dt, e_spat.velocity)
     end
     push!(m[UpdatedComponents][1].components, Spatial)
 end

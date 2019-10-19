@@ -3,7 +3,7 @@ module Glimpse
 using Reexport
 @reexport using ColorTypes
 
-@reexport using PStdLib.ECS
+@reexport using ECS
 @reexport using GeometryTypes
 
 using AbstractPlotting # I'd like to get away from this
@@ -29,7 +29,6 @@ const Gui = CImGui
 using TimerOutputs
 const to = TimerOutput()
 
-
 const _temp_componentdata_types = ECS.COMPONENTDATA_TYPES
 
 include("extensions.jl")
@@ -48,5 +47,7 @@ export RGBAf0
 export Diorama
 export expose
 #package exports, default geometries
-
+function __init__()
+    copy!(ECS.COMPONENTDATA_TYPES, _temp_componentdata_types)
+end
 end # module

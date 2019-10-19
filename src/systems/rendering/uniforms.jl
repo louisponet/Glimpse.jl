@@ -2,9 +2,9 @@ import GLAbstraction: set_uniform
 
 struct UniformCalculator <: System end
 
-requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
+ECS.requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
 
-function update(::UniformCalculator, m::AbstractManager)
+function ECS.update(::UniformCalculator, m::AbstractManager)
 	uc        = m[UpdatedComponents][1]
 	m_updated = false
 	modelmat  = m[ModelMat]
@@ -12,7 +12,7 @@ function update(::UniformCalculator, m::AbstractManager)
 	camera    = m[Camera3D]
 	spatial   = m[Spatial]
 	shape     = m[Shape]
-	for e in entities(spatial)
+	for e in @entities_in(spatial)
 		if !in(e, modelmat) || in(e, dyn) || in(e, camera) || in(Spatial, uc)
 			m_updated = true
 			if in(e, shape)

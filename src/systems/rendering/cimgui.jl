@@ -12,11 +12,11 @@ end
 
 struct GuiRenderer <: AbstractRenderSystem end
 
-requested_components(::GuiRenderer) = (GuiFuncs, GuiText)
+ECS.requested_components(::GuiRenderer) = (GuiFuncs, GuiText)
 
 ECS.prepare(::GuiRenderer, dio::Diorama) = isempty(dio[GuiFuncs]) && (dio[Entity(1)] = GuiFuncs())
 
-function update(::GuiRenderer, m::AbstractManager)
+function ECS.update(::GuiRenderer, m::AbstractManager)
     return 
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
@@ -41,7 +41,7 @@ function update(::GuiRenderer, m::AbstractManager)
  #    Gui.SetWindowFontScale(2.0f0)
 	# for c in filter(x -> !isempty(x), renderer.data.components)
 	# 	if Gui.TreeNode(replace("$(eltype(c))", "Glimpse." => ""))
-	# 		eids = valid_entities(c)
+	# 		eids = @valid_entities_in(c)
 	# 		if length(eids) < 5
 	# 			for e in eids
 	# 				if Gui.TreeNode("$e")

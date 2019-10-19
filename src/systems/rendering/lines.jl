@@ -18,11 +18,11 @@ end
 
 struct LineRenderer <: AbstractRenderSystem end
 
-requested_components(::LineRenderer) =
+ECS.requested_components(::LineRenderer) =
 	(LineVao, LineProgram,
 	 ModelMat, Material, PointLight, Spatial, Camera3D, IOTarget, LineOptions)
 
-function update(::LineRenderer, m::AbstractManager)
+function ECS.update(::LineRenderer, m::AbstractManager)
 	fbo  = m[IOTarget][1]
 	prog = m[LineProgram][1]
 	bind(fbo)
@@ -34,15 +34,15 @@ function update(::LineRenderer, m::AbstractManager)
 	bind(prog)
     light, ucolor, spat, modelmat, cam =
         m[PointLight], m[UniformColor], m[Spatial], m[ModelMat], m[Camera3D]
-    for e in entities(light, ucolor, spat)
+    for e in @entities_in(light && ucolor && spat)
 	    set_uniform(prog, light[e], ucolor[e], spat[e])
     end
-    for e in entities(spat, cam)
+    for e in @entities_in(spat && cam)
 	    set_uniform(prog, spat[e], cam[e])
     end
 	set_uniform(prog, :Viewport, Vec2f0(size(m[IOTarget][1])))
     vao, modelmat, line = m[LineVao], m[ModelMat], m[LineOptions] 
-	for e in entities(vao, modelmat, line)
+	for e in @entities_in(vao && modelmat && line)
         evao = vao[e]
         e_line = line[e]
 		if evao.visible

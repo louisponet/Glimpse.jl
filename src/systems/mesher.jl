@@ -4,24 +4,24 @@ abstract type Mesher <: System end
 
 struct PolygonMesher <: Mesher end
 
-requested_components(::PolygonMesher) = (PolygonGeometry, Mesh)
+ECS.requested_components(::PolygonMesher) = (PolygonGeometry, Mesh)
 
 struct FileMesher <: Mesher end
 
-requested_components(::FileMesher) = (FileGeometry, Mesh)
+ECS.requested_components(::FileMesher) = (FileGeometry, Mesh)
 
 struct VectorMesher <: Mesher end
 
-requested_components(::VectorMesher) = (VectorGeometry, Mesh)
+ECS.requested_components(::VectorMesher) = (VectorGeometry, Mesh)
 
 geometry_type(::Type{PolygonMesher}) = PolygonGeometry
 geometry_type(::Type{VectorMesher}) = VectorGeometry
 geometry_type(::Type{FileMesher}) = FileGeometry
 
-function update(::Union{M}, m::AbstractManager) where {M<:Mesher}
+function ECS.update(::Union{M}, m::AbstractManager) where {M<:Mesher}
 	mesh = m[Mesh]
 	geom = m[geometry_type(M)]
-	it = entities(geom, exclude=(mesh,))
+	it = @entities_in(geom && !mesh)
 	@inbounds for e in it
 		mesh[e] = Mesh(BasicMesh(geom[e].geometry))
 	end
@@ -29,17 +29,17 @@ end
 
 struct FunctionMesher <: Mesher end
 
-requested_components(::FunctionMesher) = (FunctionGeometry, Mesh, Grid)
+ECS.requested_components(::FunctionMesher) = (FunctionGeometry, Mesh, Grid)
 
 struct DensityMesher <: Mesher end
 
-requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
+ECS.requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
 
-function update(::Union{FunctionMesher, DensityMesher}, m::AbstractManager)
+function ECS.update(::Union{FunctionMesher, DensityMesher}, m::AbstractManager)
 	mesh = m[Mesh]
 	geom = m[FunctionGeometry]
 	grid = m[Grid]
-	it = entities(geom, grid, exclude=(mesh,))
+	it = @entities_in(geom && grid && !mesh)
 	@inbounds for e in it
 		points = grid[e].points
 		vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
@@ -50,13 +50,13 @@ end
 
 struct FunctionColorizer <: System end
 
-requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
+ECS.requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
 
-function update(::FunctionColorizer, m::AbstractManager)
+function ECS.update(::FunctionColorizer, m::AbstractManager)
 	colorbuffers = m[BufferColor]
 	fcolor       = m[FunctionColor]
 	mesh         = m[Mesh]
-	it = entities(fcolor, mesh, exclude=(colorbuffers,))
+	it = @entities_in(fcolor && mesh && !colorbuffers)
 	@inbounds for e in it
 		colorbuffers[e] = BufferColor(fcolor[e].color.(mesh[e].mesh.vertices))
 	end

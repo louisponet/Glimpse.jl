@@ -2,7 +2,7 @@
 
 struct FinalRenderer <: AbstractRenderSystem end
 
-requested_components(::FinalRenderer) = (Canvas, FullscreenVao, CompositingProgram, IOTarget)
+ECS.requested_components(::FinalRenderer) = (Canvas, FullscreenVao, CompositingProgram, IOTarget)
 
 function ECS.prepare(::FinalRenderer, dio::Diorama)
 	if isempty(dio[CompositingProgram])
@@ -10,7 +10,7 @@ function ECS.prepare(::FinalRenderer, dio::Diorama)
 	end
 end
 
-function update(::FinalRenderer, m::AbstractManager)
+function ECS.update(::FinalRenderer, m::AbstractManager)
     compositing_program = m[CompositingProgram][1]
     canvas              = m[Canvas][1]
     vao                 = m[FullscreenVao][1]

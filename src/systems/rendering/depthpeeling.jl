@@ -19,7 +19,7 @@ InstancedPeelingUploader() = Uploader{InstancedPeelingProgram}()
 	num_passes::Int = 5
 end
 
-function requested_components(::DepthPeelingRenderer)
+function ECS.requested_components(::DepthPeelingRenderer)
 	(PeelingVao, PeelingProgram,InstancedPeelingVao, InstancedPeelingProgram,
      BlendProgram, PeelingCompositingProgram, CompositingProgram,
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D,
@@ -46,7 +46,7 @@ function ECS.prepare(::DepthPeelingRenderer, dio::Diorama)
 	end
 end
 
-function update(renderer::DepthPeelingRenderer, m::AbstractManager)
+function ECS.update(renderer::DepthPeelingRenderer, m::AbstractManager)
 	glDisableCullFace()
 	vao = m[PeelingVao]
     ivao = m[InstancedPeelingVao]
@@ -76,10 +76,10 @@ function update(renderer::DepthPeelingRenderer, m::AbstractManager)
     fullscreenvao       = m[FullscreenVao][1]
 
 	set_light_camera_uniforms = (prog) -> begin
-	    for e  in entities(light, ucolor, spatial)
+	    for e  in @entities_in(light && ucolor && spatial)
 		    set_uniform(prog, light[e], ucolor[e], spatial[e])
 	    end
-	    for e in entities(spatial, camera)
+	    for e in @entities_in(spatial && camera)
 		    set_uniform(prog, spatial[e], camera[e])
 	    end
     end
@@ -113,8 +113,8 @@ function update(renderer::DepthPeelingRenderer, m::AbstractManager)
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
 
-	it1 = entities(vao, modelmat, material, ucolor)
-	it2 = entities(vao, modelmat, material, bcolor, exclude=(ucolor,))
+	it1 = @entities_in(vao && modelmat && material && ucolor)
+	it2 = @entities_in(vao && modelmat && material && bcolor && !ucolor)
 
 	ufunc = (e_color) -> begin
 		set_uniform(peeling_program, :uniform_color, e_color.color)

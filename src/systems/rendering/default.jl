@@ -8,11 +8,11 @@ import GLAbstraction: set_uniform
 
 struct DefaultRenderer <: AbstractRenderSystem end
 
-requested_components(::DefaultRenderer) =
+ECS.requested_components(::DefaultRenderer) =
 	(DefaultVao, DefaultProgram, InstancedDefaultVao, InstancedDefaultProgram,
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, IOTarget)
 
-function update(::DefaultRenderer, m::AbstractManager)
+function ECS.update(::DefaultRenderer, m::AbstractManager)
 	fbo   = m[IOTarget][1]
 	prog  = m[DefaultProgram][1]
 	iprog = m[InstancedDefaultProgram][1]
@@ -29,11 +29,11 @@ function update(::DefaultRenderer, m::AbstractManager)
         m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[DefaultVao]
 
     set_light_camera_uniforms = (prog) -> begin
-        for e in entities(light, ucolor, spat)
+        for e in @entities_in(light && ucolor && spat)
     	    set_uniform(prog, light[e], ucolor[e], spat[e])
         end
 
-        for e in entities(spat, cam)
+        for e in @entities_in(spat && cam)
     	    set_uniform(prog, spat[e], cam[e])
         end
     end
@@ -46,7 +46,7 @@ function update(::DefaultRenderer, m::AbstractManager)
 	end
 
 	#Colors inside Vao
-	for e in entities(vao, modelmat, material, exclude=(ucolor,))
+	for e in @entities_in(vao && modelmat && material && !ucolor)
     	evao = vao[e]
 		if evao.visible
 			set_model_material(modelmat[e], material[e])

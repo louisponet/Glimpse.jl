@@ -1,9 +1,9 @@
 # These are all the systems used for the general running of Dioramas
 struct Timer <: System end
 
-requested_components(::Timer) = (TimingData,)
+ECS.requested_components(::Timer) = (TimingData,)
 
-function update(::Timer, m::AbstractManager)
+function ECS.update(::Timer, m::AbstractManager)
 	for t in m[TimingData]
 		nt = time()
 		t.dtime = t.reversed ? - nt + t.time : nt - t.time
@@ -13,9 +13,9 @@ function update(::Timer, m::AbstractManager)
 end
 
 struct Sleeper <: System end
-requested_components(::Sleeper) = (TimingData, Canvas)
+ECS.requested_components(::Sleeper) = (TimingData, Canvas)
 
-function update(::Sleeper, m::AbstractManager)
+function ECS.update(::Sleeper, m::AbstractManager)
 	sd = m[TimingData]
 	swapbuffers(m[Canvas][1])
 	curtime    = time()
@@ -31,9 +31,9 @@ function update(::Sleeper, m::AbstractManager)
 end
 
 struct Resizer <: System end
-requested_components(::Resizer) = (Canvas, IOTarget)
+ECS.requested_components(::Resizer) = (Canvas, IOTarget)
 
-function update(::Resizer, m::AbstractManager)
+function ECS.update(::Resizer, m::AbstractManager)
 	c = m[Canvas][1]
 	fwh = c.framebuffer_size
 	resize!(c, fwh)
@@ -60,11 +60,11 @@ end
 
 struct AABBGenerator <: System end
 
-requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
+ECS.requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
-function update(::AABBGenerator, m::AbstractManager)
+function ECS.update(::AABBGenerator, m::AbstractManager)
 	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
-	it = entities(geometry, selectable, exclude=(aabb,))
+	it = @entities_in(geometry && selectable && !aabb)
 	for e in it 
 		rect = GeometryTypes.AABB(geometry[e].geometry) 
 		aabb[e] = AABB(rect.origin, rect.widths)
@@ -73,9 +73,9 @@ end
 
 struct MousePicker <: System end
 
-requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
+ECS.requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
-function update(::MousePicker, m::AbstractManager)
+function ECS.update(::MousePicker, m::AbstractManager)
 	sel                = m[Selectable]
 	aabb               = m[AABB]
 	camera             = m[Camera3D]
@@ -102,7 +102,7 @@ function update(::MousePicker, m::AbstractManager)
 		ray_clip    = Vec4f0(screenspace..., -1.0, 1.0)
 		ray_eye     = Vec4f0((inv(cam_proj) * ray_clip)[1:2]..., -1.0, 0.0)
 		ray_dir     = normalize(Vec3f0((inv(cam_view) * ray_eye)[1:3]...))
-		for e in entities(sel, aabb, spat, col)
+		for e in @entities_in(sel && aabb && spat && col)
     		s       = sel[e]
     		e_color = col[e]
     		e_spat  = spat[e]

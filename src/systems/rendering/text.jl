@@ -2,7 +2,7 @@
 @vao TextVao
 
 struct TextUploader <: System end
-requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
+ECS.requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
 
 function ECS.prepare(::TextUploader, dio::Diorama)
 	if isempty(dio[TextProgram])
@@ -13,13 +13,13 @@ function ECS.prepare(::TextUploader, dio::Diorama)
 	end
 end
 
-function update(::TextUploader, m::AbstractManager)
+function ECS.update(::TextUploader, m::AbstractManager)
 	text = m[Text]
 	vao  = m[TextVao]
 	prog = m[TextProgram][1]
 	fontstorage = m[FontStorage][1]
 
-	for e in entities(text)
+	for e in @entities_in(text)
     	t=text[e]
 		space_o_wh, uv_offset_width  = to_gl_text(t, fontstorage)
 		vao[e] = TextVao(VertexArray([generate_buffers(prog.program,
@@ -60,11 +60,11 @@ end
 
 struct TextRenderer <: AbstractRenderSystem end
 
-requested_components(::TextRenderer) =
+ECS.requested_components(::TextRenderer) =
 	(Spatial, UniformColor, Camera3D, TextVao, Text,
 		TextProgram, IOTarget, FontStorage)
 
-function update(::TextRenderer, m::AbstractManager)
+function ECS.update(::TextRenderer, m::AbstractManager)
 	spat      = m[Spatial]
 	col       = m[UniformColor]
 	prog      = m[TextProgram][1]
@@ -87,7 +87,7 @@ function update(::TextRenderer, m::AbstractManager)
 	set_uniform(prog, :canvas_dims, Vec2f0(wh))
     set_uniform(prog, :projview, persp_mat)
 	set_uniform(prog, :glyph_texture, (0, color_attachment(glyph_fbo, 1)))
-	for e in entities(vao, spat, text, col)
+	for e in @entities_in(vao && spat && text && col)
         e_vao, e_spat, e_text, e_col = vao[e], spat[e], text[e], col[e]
 		set_uniform(prog, :start_pos, e_spat.position + e_text.offset)
 		set_uniform(prog, :color, e_col.color)

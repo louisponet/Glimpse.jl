@@ -1,6 +1,6 @@
 struct Uploader <: System end
 
-requested_components(::Uploader) =
+ECS.requested_components(::Uploader) =
 	(Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao, LineGeometry)
 
 shaders(::Type{DefaultProgram}) = default_shaders()
@@ -22,7 +22,7 @@ function ECS.prepare(::Uploader, dio::Diorama)
 	end
 end
 
-function update(::Uploader, m::AbstractManager)
+function ECS.update(::Uploader, m::AbstractManager)
     mesh, bcolor, ucolor = m[Mesh], m[BufferColor], m[UniformColor]
     default_vao = m[DefaultVao]
     peeling_vao = m[PeelingVao]
@@ -32,7 +32,7 @@ function update(::Uploader, m::AbstractManager)
     line_prog   = m[LineProgram][1]
 
     #Buffer color entities are always not instanced
-    for e in entities(mesh, bcolor, exclude=(default_vao, peeling_vao))
+    for e in @entities_in(mesh && bcolor && !default_vao && !peeling_vao)
         e_mesh = mesh[e]
         e_color = bcolor[e].color
         gen_vao = prog -> begin
@@ -50,7 +50,7 @@ function update(::Uploader, m::AbstractManager)
     line_geom = m[LineGeometry]
 
     #Line Entities
-    for e in entities(line_geom, ucolor)
+    for e in @entities_in(line_geom && ucolor)
         e_geom = line_geom[e]
         vert_loc = attribute_location(line_prog.program, :vertices)
         if !(e in line_vao)
@@ -64,7 +64,7 @@ end
 
 struct InstancedUploader <: System end
 
-function update(::InstancedUploader, m::AbstractManager)
+function ECS.update(::InstancedUploader, m::AbstractManager)
 	default_prog = m[InstancedDefaultProgram][1].program	
 	peeling_prog = m[InstancedPeelingProgram][1].program	
 	default_vao  = m[InstancedDefaultVao]
@@ -79,7 +79,7 @@ function update(::InstancedUploader, m::AbstractManager)
 
 	default_stor = ECS.storage(default_vao)
 	peeling_stor = ECS.storage(peeling_vao)
-	it   = entities(mesh, ucolor, modelmat, material, exclude=(default_vao, peeling_vao))
+	it   = @entities_in(mesh && ucolor && modelmat && material && !default_vao && !peeling_vao)
 	for tmesh in mesh.shared
 		default_modelmats = Mat4f0[]
 		default_ucolors   = RGBAf0[]
@@ -145,7 +145,7 @@ end
 
 struct UniformUploader <: System end
 
-requested_components(::UniformUploader) =
+ECS.requested_components(::UniformUploader) =
     (InstancedDefaultVao, InstancedPeelingVao, ModelMat, Selectable, UniformColor, UpdatedComponents)
 
 # function find_contiguous_bounds(indices)
@@ -165,13 +165,13 @@ requested_components(::UniformUploader) =
 # 	return ranges
 # end
 
-function update(::UniformUploader, m::AbstractManager)
+function ECS.update(::UniformUploader, m::AbstractManager)
 	uc = m[UpdatedComponents][1]
 	mat = m[ModelMat]
 	matsize = sizeof(eltype(mat))
 	for vao in (m[InstancedDefaultVao], m[InstancedPeelingVao])
     	if ModelMat in uc
-        	it1 = entities(vao, mat)
+        	it1 = @entities_in(vao && mat)
     		for tvao in vao.shared
     			modelmats = Mat4f0[]
 
@@ -195,7 +195,7 @@ function update(::UniformUploader, m::AbstractManager)
         ucolor = m[UniformColor]
     	if UniformColor in uc.components
         	colsize = sizeof(RGBAf0)
-        	it2 = entities(vao, m[UniformColor], m[Selectable])
+        	it2 = @entities_in(vao && m[UniformColor] && m[Selectable])
     		for tvao in vao.shared
     			colors = RGBAf0[]
     			for e in it2

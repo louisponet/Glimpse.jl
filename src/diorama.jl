@@ -1,5 +1,4 @@
 import GLAbstraction: free!
-import PStdLib.ECS: AbstractComponent, push_system, insert_system
 ########### Initialization
 
 ECS.manager(dio::Diorama) = dio.manager
@@ -32,6 +31,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 			                             FinalRenderer()]),
 
 			    SystemStage(:stop, [Resizer(), Sleeper()]))
+
 
     #assemble all rendering, canvas and camera components
     e = Entity(m, DioEntity(), Canvas(name; kwargs...), TimingData(time(),0.0, 0, 60, false))
