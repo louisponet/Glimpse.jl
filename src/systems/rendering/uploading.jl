@@ -77,8 +77,6 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
 	modelmat = m[ModelMat]
 	material = m[Material]
 
-	default_stor = ECS.storage(default_vao)
-	peeling_stor = ECS.storage(peeling_vao)
 	it   = @entities_in(mesh && ucolor && modelmat && material && !default_vao && !peeling_vao)
 	for tmesh in mesh.shared
 		default_modelmats = Mat4f0[]
@@ -91,8 +89,8 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
 		peeling_specints  = Float32[]
 		peeling_specpows  = Float32[]
 
-		default_ids  = Int[]
-		peeling_ids  = Int[]
+		default_ids  = Entity[]
+		peeling_ids  = Entity[]
 		for e in it
             e_mesh, e_color, e_modelmat, e_material = mesh[e], ucolor[e], modelmat[e],  material[e]
 			if e_mesh.mesh === tmesh.mesh
@@ -101,13 +99,13 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
     				push!(peeling_ucolors, e_color.color)
     				push!(peeling_specints, e_material.specint)
     				push!(peeling_specpows, e_material.specpow)
-    				push!(peeling_ids, ECS.id(e))
+    				push!(peeling_ids, e)
 				else
     				push!(default_modelmats, e_modelmat.modelmat)
     				push!(default_ucolors, e_color.color)
     				push!(default_specints, e_material.specint)
     				push!(default_specpows, e_material.specpow)
-    				push!(default_ids, ECS.id(e))
+    				push!(default_ids, e)
 				end
 			end
 		end
@@ -120,10 +118,8 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
                                         specint  = default_specints,
                                         specpow  = default_specpows)]
 			tvao = InstancedDefaultVao(VertexArray(buffers, indices, length(default_ids)), true)
-			push!(default_vao.shared, tvao)
-			id = length(default_vao.shared)
-			for i in default_ids
-				default_stor[i, ECS.Reverse()] = id
+			for e in default_ids
+    			default_vao[e] = tvao
 			end
 		end
 		if !isempty(peeling_ids)
@@ -134,10 +130,8 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
                                         specint  = peeling_specints,
                                         specpow  = peeling_specpows)]
 			tvao = InstancedPeelingVao(VertexArray(buffers, indices, length(peeling_ids)), true)
-			push!(peeling_vao.shared, tvao)
-			id = length(peeling_vao.shared)
-			for i in peeling_ids
-				peeling_stor[i, ECS.Reverse()] = id
+			for e in peeling_ids
+    			peeling_vao[e] = tvao
 			end
 		end
 	end

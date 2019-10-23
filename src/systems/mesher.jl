@@ -21,8 +21,7 @@ geometry_type(::Type{FileMesher}) = FileGeometry
 function ECS.update(::Union{M}, m::AbstractManager) where {M<:Mesher}
 	mesh = m[Mesh]
 	geom = m[geometry_type(M)]
-	it = @entities_in(geom && !mesh)
-	@inbounds for e in it
+	for e in @entities_in(geom && !mesh)
 		mesh[e] = Mesh(BasicMesh(geom[e].geometry))
 	end
 end
@@ -39,8 +38,7 @@ function ECS.update(::Union{FunctionMesher, DensityMesher}, m::AbstractManager)
 	mesh = m[Mesh]
 	geom = m[FunctionGeometry]
 	grid = m[Grid]
-	it = @entities_in(geom && grid && !mesh)
-	@inbounds for e in it
+	for e in @entities_in(geom && grid && !mesh)
 		points = grid[e].points
 		vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
 		faces         = [Face{3, GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
@@ -56,8 +54,7 @@ function ECS.update(::FunctionColorizer, m::AbstractManager)
 	colorbuffers = m[BufferColor]
 	fcolor       = m[FunctionColor]
 	mesh         = m[Mesh]
-	it = @entities_in(fcolor && mesh && !colorbuffers)
-	@inbounds for e in it
+	for e in @entities_in(fcolor && mesh && !colorbuffers)
 		colorbuffers[e] = BufferColor(fcolor[e].color.(mesh[e].mesh.vertices))
 	end
 end

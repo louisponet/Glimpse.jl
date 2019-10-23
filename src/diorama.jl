@@ -94,12 +94,7 @@ function renderloop(dio)
     			    draw(iofbo)
     			    clear!(iofbo)
     			    empty!(singleton(dio, UpdatedComponents))
-
-                    for stage in system_stages(dio)
-                        # first(stage) == :setup && continue
-                        update_systems(stage, dio)
-                    end
-
+                    ECS.update(dio)
     		    end
     		    close(canvas)
     			dio.loop = nothing
@@ -107,7 +102,7 @@ function renderloop(dio)
     		    close(canvas)
                 for stage in system_stages(dio)
                     # first(stage) == :setup && continue
-                    update_systems(stage, dio)
+                    ECS.update(stage, dio)
                 end
     			dio.loop = nothing
 			end

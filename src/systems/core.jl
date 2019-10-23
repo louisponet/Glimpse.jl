@@ -23,7 +23,6 @@ function ECS.update(::Sleeper, m::AbstractManager)
 	sleep_time = 1/sd[1].preferred_fps - dt
     st         = sleep_time - 0.002
     while (time() - curtime) < st
-	    # @show (time() - curtime)
         sleep(0.001) # sleep for the minimal amount of time
     end
 	curtime    = time()
