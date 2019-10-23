@@ -43,10 +43,10 @@ void drawSegment(vec2 points[4], vec4 colors[4], float zValues[4])
 
     /* perform naive culling */
     vec2 area = Viewport * 4;
-    if( p1.x < -area.x || p1.x > area.x ) return;
-    if( p1.y < -area.y || p1.y > area.y ) return;
-    if( p2.x < -area.x || p2.x > area.x ) return;
-    if( p2.y < -area.y || p2.y > area.y ) return;
+    // if( p1.x < -area.x || p1.x > area.x ) return;
+    // if( p1.y < -area.y || p1.y > area.y ) return;
+    // if( p2.x < -area.x || p2.x > area.x ) return;
+    // if( p2.y < -area.y || p2.y > area.y ) return;
 
     /* determine the direction of each of the 3 segments (previous, current, next) */
     vec2 v0 = normalize( p1 - p0 );
@@ -65,8 +65,8 @@ void drawSegment(vec2 points[4], vec4 colors[4], float zValues[4])
     /* determine the length of the miter by projecting it onto normal and then inverse it */
     float an1 = dot(miter_a, n1);
     float bn1 = dot(miter_b, n2);
-    if (an1==0) an1 = 1;
-    if (bn1==0) bn1 = 1;
+    // if (an1==0) an1 = 1;
+    // if (bn1==0) bn1 = 1;
     float length_a = thickness / an1;
     float length_b = thickness / bn1;
 
