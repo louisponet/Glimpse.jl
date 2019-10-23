@@ -181,11 +181,11 @@ end
 @component struct LineGeometry <: Geometry
     points::Vector{Point3f0}
     function LineGeometry(points::Vector{Point3f0})
-        if points[1] != points[2] || length(points) < 4
-            insert!(points, 1, points[1])
+        if length(points) < 4
+            insert!(points, 1, points[2] + 1.001*(points[1] - points[2]))
         end
-        if points[end-1] != points[end] || length(points) < 4
-            push!(points, points[end])
+        if length(points) < 4
+            push!(points, points[end-1] + 1.001*(points[end] - points[end-1]))
         end
         return new(points)
     end

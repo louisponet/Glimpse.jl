@@ -50,13 +50,26 @@ function ECS.update(::Uploader, m::AbstractManager)
     line_geom = m[LineGeometry]
 
     #Line Entities
-    for e in @entities_in(line_geom && ucolor)
+    for e in @entities_in(line_geom)
         e_geom = line_geom[e]
         vert_loc = attribute_location(line_prog.program, :vertices)
+        color_loc = attribute_location(line_prog.program, :color)
+
+        if e in ucolor
+            color_vec = fill(ucolor[e].color, length(e_geom.points))
+        elseif e in bcolor
+            color_vec = bcolor[e].color
+        else
+            continue
+        end
+
         if !(e in line_vao)
-            line_vao[e] = LineVao(VertexArray([BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)], 11), true)
+            color_attach = BufferAttachmentInfo(:color, color_loc, Buffer(color_vec), GEOMETRY_DIVISOR)
+            points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)
+            line_vao[e] = LineVao(VertexArray([points_attach, color_attach], 11), true)
         else
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e_geom.points)
+            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer, color_vec)
         end
     end
     empty!(line_geom)
