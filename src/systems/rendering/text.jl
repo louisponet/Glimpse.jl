@@ -2,9 +2,9 @@
 @vao TextVao
 
 struct TextUploader <: System end
-ECS.requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
+Overseer.requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
 
-function ECS.prepare(::TextUploader, dio::Diorama)
+function Overseer.prepare(::TextUploader, dio::Diorama)
 	if isempty(dio[TextProgram])
 		dio[Entity(1)] = TextProgram(Program(text_shaders()))
 	end
@@ -13,7 +13,7 @@ function ECS.prepare(::TextUploader, dio::Diorama)
 	end
 end
 
-function ECS.update(::TextUploader, m::AbstractManager)
+function Overseer.update(::TextUploader, m::AbstractLedger)
 	text = m[Text]
 	vao  = m[TextVao]
 	prog = m[TextProgram][1]
@@ -60,11 +60,11 @@ end
 
 struct TextRenderer <: AbstractRenderSystem end
 
-ECS.requested_components(::TextRenderer) =
+Overseer.requested_components(::TextRenderer) =
 	(Spatial, UniformColor, Camera3D, TextVao, Text,
 		TextProgram, IOTarget, FontStorage)
 
-function ECS.update(::TextRenderer, m::AbstractManager)
+function Overseer.update(::TextRenderer, m::AbstractLedger)
 	spat      = m[Spatial]
 	col       = m[UniformColor]
 	prog      = m[TextProgram][1]

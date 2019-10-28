@@ -1,9 +1,9 @@
 # These are all the systems used for the general running of Dioramas
 struct Timer <: System end
 
-ECS.requested_components(::Timer) = (TimingData,)
+Overseer.requested_components(::Timer) = (TimingData,)
 
-function ECS.update(::Timer, m::AbstractManager)
+function Overseer.update(::Timer, m::AbstractLedger)
 	for t in m[TimingData]
 		nt = time()
 		t.dtime = t.reversed ? - nt + t.time : nt - t.time
@@ -13,9 +13,9 @@ function ECS.update(::Timer, m::AbstractManager)
 end
 
 struct Sleeper <: System end
-ECS.requested_components(::Sleeper) = (TimingData, Canvas)
+Overseer.requested_components(::Sleeper) = (TimingData, Canvas)
 
-function ECS.update(::Sleeper, m::AbstractManager)
+function Overseer.update(::Sleeper, m::AbstractLedger)
 	sd = m[TimingData]
 	swapbuffers(m[Canvas][1])
 	curtime    = time()
@@ -30,9 +30,9 @@ function ECS.update(::Sleeper, m::AbstractManager)
 end
 
 struct Resizer <: System end
-ECS.requested_components(::Resizer) = (Canvas, IOTarget)
+Overseer.requested_components(::Resizer) = (Canvas, IOTarget)
 
-function ECS.update(::Resizer, m::AbstractManager)
+function Overseer.update(::Resizer, m::AbstractLedger)
 	c = m[Canvas][1]
 	fwh = c.framebuffer_size
 	resize!(c, fwh)
@@ -59,9 +59,9 @@ end
 
 struct AABBGenerator <: System end
 
-ECS.requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
+Overseer.requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
 
-function ECS.update(::AABBGenerator, m::AbstractManager)
+function Overseer.update(::AABBGenerator, m::AbstractLedger)
 	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
 	it = @entities_in(geometry && selectable && !aabb)
 	for e in it 
@@ -72,9 +72,9 @@ end
 
 struct MousePicker <: System end
 
-ECS.requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
+Overseer.requested_components(::MousePicker) = (Selectable, AABB, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
-function ECS.update(::MousePicker, m::AbstractManager)
+function Overseer.update(::MousePicker, m::AbstractLedger)
 	sel                = m[Selectable]
 	aabb               = m[AABB]
 	camera             = m[Camera3D]

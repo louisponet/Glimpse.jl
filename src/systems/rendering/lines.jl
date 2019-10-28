@@ -18,11 +18,11 @@ end
 
 struct LineRenderer <: AbstractRenderSystem end
 
-ECS.requested_components(::LineRenderer) =
+Overseer.requested_components(::LineRenderer) =
 	(LineVao, LineProgram,
 	 ModelMat, Material, PointLight, Spatial, Camera3D, IOTarget, LineOptions)
 
-function ECS.update(::LineRenderer, m::AbstractManager)
+function Overseer.update(::LineRenderer, m::AbstractLedger)
 	fbo  = m[IOTarget][1]
 	prog = m[LineProgram][1]
 	bind(fbo)

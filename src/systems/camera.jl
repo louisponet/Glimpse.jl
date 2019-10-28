@@ -4,9 +4,9 @@ abstract type InteractiveSystem <: System end
 
 struct CameraOperator <: InteractiveSystem end
 
-ECS.requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
+Overseer.requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
 
-function ECS.update(::CameraOperator, m::AbstractManager)
+function Overseer.update(::CameraOperator, m::AbstractLedger)
 	spatial = m[Spatial]
 	camera = m[Camera3D]
 	canvas_comp=m[Canvas]

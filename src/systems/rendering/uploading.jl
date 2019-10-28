@@ -1,6 +1,6 @@
 struct Uploader <: System end
 
-ECS.requested_components(::Uploader) =
+Overseer.requested_components(::Uploader) =
 	(Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao, LineGeometry)
 
 shaders(::Type{DefaultProgram}) = default_shaders()
@@ -13,7 +13,7 @@ shaders(::Type{BlendProgram}) = blending_shaders()
 shaders(::Type{TextProgram})  = text_shaders()
 
 #TODO cleanup: really not the place to do this
-function ECS.prepare(::Uploader, dio::Diorama)
+function Overseer.prepare(::Uploader, dio::Diorama)
     for prog in components(dio, RenderProgram)
     	if isempty(prog)
         	ProgType = eltype(prog)
@@ -22,7 +22,7 @@ function ECS.prepare(::Uploader, dio::Diorama)
 	end
 end
 
-function ECS.update(::Uploader, m::AbstractManager)
+function Overseer.update(::Uploader, m::AbstractLedger)
     mesh, bcolor, ucolor = m[Mesh], m[BufferColor], m[UniformColor]
     default_vao = m[DefaultVao]
     peeling_vao = m[PeelingVao]
@@ -77,7 +77,7 @@ end
 
 struct InstancedUploader <: System end
 
-function ECS.update(::InstancedUploader, m::AbstractManager)
+function Overseer.update(::InstancedUploader, m::AbstractLedger)
 	default_prog = m[InstancedDefaultProgram][1].program	
 	peeling_prog = m[InstancedPeelingProgram][1].program	
 	default_vao  = m[InstancedDefaultVao]
@@ -157,7 +157,7 @@ end
 
 struct UniformUploader <: System end
 
-ECS.requested_components(::UniformUploader) =
+Overseer.requested_components(::UniformUploader) =
     (InstancedDefaultVao, InstancedPeelingVao, ModelMat, Selectable, UniformColor, UpdatedComponents)
 
 # function find_contiguous_bounds(indices)
@@ -177,7 +177,7 @@ ECS.requested_components(::UniformUploader) =
 # 	return ranges
 # end
 
-function ECS.update(::UniformUploader, m::AbstractManager)
+function Overseer.update(::UniformUploader, m::AbstractLedger)
 	uc = m[UpdatedComponents][1]
 	mat = m[ModelMat]
 	matsize = sizeof(eltype(mat))
@@ -185,15 +185,15 @@ function ECS.update(::UniformUploader, m::AbstractManager)
     	if ModelMat in uc
         	it1 = @entities_in(vao && mat)
     		for tvao in vao.shared
-    			modelmats = Mat4f0[]
+    			modelmats = ModelMat[]
 
-    			for e in it1
+    			@timeit debug_timer(m) "mat creating" for e in it1
                     e_vao, e_modelmat = vao[e], mat[e]
     				if e_vao === tvao
-    					push!(modelmats, e_modelmat.modelmat)
+    					push!(modelmats, e_modelmat)
     				end
     			end
-    			if !isempty(modelmats)
+    			@timeit debug_timer(m) "uploading" if !isempty(modelmats)
     				binfo = GLA.bufferinfo(tvao.vertexarray, :modelmat)
     				if binfo != nothing
     					GLA.bind(binfo.buffer)

@@ -4,37 +4,48 @@ abstract type Mesher <: System end
 
 struct PolygonMesher <: Mesher end
 
-ECS.requested_components(::PolygonMesher) = (PolygonGeometry, Mesh)
+Overseer.requested_components(::PolygonMesher) = (PolygonGeometry, Mesh)
 
 struct FileMesher <: Mesher end
 
-ECS.requested_components(::FileMesher) = (FileGeometry, Mesh)
+Overseer.requested_components(::FileMesher) = (FileGeometry, Mesh)
 
 struct VectorMesher <: Mesher end
 
-ECS.requested_components(::VectorMesher) = (VectorGeometry, Mesh)
+Overseer.requested_components(::VectorMesher) = (VectorGeometry, Mesh)
 
 geometry_type(::Type{PolygonMesher}) = PolygonGeometry
 geometry_type(::Type{VectorMesher}) = VectorGeometry
 geometry_type(::Type{FileMesher}) = FileGeometry
 
-function ECS.update(::Union{M}, m::AbstractManager) where {M<:Mesher}
+function Overseer.update(::Union{M}, m::AbstractLedger) where {M<:Mesher}
 	mesh = m[Mesh]
 	geom = m[geometry_type(M)]
-	for e in @entities_in(geom && !mesh)
-		mesh[e] = Mesh(BasicMesh(geom[e].geometry))
+	it = @entities_in(geom && !mesh)
+	if iterate(it) === nothing
+    	return
+	end
+	geometries_handled = geometry_type(M)[]
+	u_geoms = Iterators.unique(geom.data)
+	meshes = [Mesh(BasicMesh(g.geometry)) for g in u_geoms]
+	prevlen = length(mesh.shared)
+    append!(mesh.shared, meshes)
+	for e in it
+    	egeom = geom[e]
+    	push!(mesh.indices, e.id)
+    	push!(mesh.data, prevlen + findfirst(x -> x == egeom, u_geoms))
 	end
 end
 
 struct FunctionMesher <: Mesher end
 
-ECS.requested_components(::FunctionMesher) = (FunctionGeometry, Mesh, Grid)
+Overseer.requested_components(::FunctionMesher) = (FunctionGeometry, Mesh, Grid)
 
 struct DensityMesher <: Mesher end
 
-ECS.requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
+Overseer.requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
 
-function ECS.update(::Union{FunctionMesher, DensityMesher}, m::AbstractManager)
+function Overseer.update(::Union{FunctionMesher, DensityMesher}, m::AbstractLedger)
 	mesh = m[Mesh]
 	geom = m[FunctionGeometry]
 	grid = m[Grid]
@@ -48,9 +59,9 @@ end
 
 struct FunctionColorizer <: System end
 
-ECS.requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
+Overseer.requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
 
-function ECS.update(::FunctionColorizer, m::AbstractManager)
+function Overseer.update(::FunctionColorizer, m::AbstractLedger)
 	colorbuffers = m[BufferColor]
 	fcolor       = m[FunctionColor]
 	mesh         = m[Mesh]

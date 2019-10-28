@@ -12,11 +12,11 @@ end
 
 struct GuiRenderer <: AbstractRenderSystem end
 
-ECS.requested_components(::GuiRenderer) = (GuiFuncs, GuiText)
+Overseer.requested_components(::GuiRenderer) = (GuiFuncs, GuiText)
 
-ECS.prepare(::GuiRenderer, dio::Diorama) = isempty(dio[GuiFuncs]) && (dio[Entity(1)] = GuiFuncs())
+Overseer.prepare(::GuiRenderer, dio::Diorama) = isempty(dio[GuiFuncs]) && (dio[Entity(1)] = GuiFuncs())
 
-function ECS.update(::GuiRenderer, m::AbstractManager)
+function Overseer.update(::GuiRenderer, m::AbstractLedger)
     return 
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()

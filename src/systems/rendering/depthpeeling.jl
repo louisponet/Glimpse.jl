@@ -16,17 +16,17 @@ PeelingUploader() = Uploader{PeelingProgram}()
 InstancedPeelingUploader() = Uploader{InstancedPeelingProgram}()
 
 @with_kw struct DepthPeelingRenderer <: AbstractRenderSystem
-	num_passes::Int = 5
+	num_passes::Int = 2
 end
 
-function ECS.requested_components(::DepthPeelingRenderer)
+function Overseer.requested_components(::DepthPeelingRenderer)
 	(PeelingVao, PeelingProgram,InstancedPeelingVao, InstancedPeelingProgram,
      BlendProgram, PeelingCompositingProgram, CompositingProgram,
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D,
 	 PeelTarget, ColorBlendTarget, IOTarget)
 end
 
-function ECS.prepare(::DepthPeelingRenderer, dio::Diorama)
+function Overseer.prepare(::DepthPeelingRenderer, dio::Diorama)
 	if isempty(dio[BlendProgram])
 		dio[Entity(1)] = BlendProgram(Program(blending_shaders()))
 	end
@@ -39,14 +39,14 @@ function ECS.prepare(::DepthPeelingRenderer, dio::Diorama)
 	c = singleton(dio, Canvas)
 	wh = size(c)
 	while length(dio[PeelTarget]) < 2
-		Entity(dio.manager, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
+		Entity(dio.ledger, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
 	end
 	if isempty(dio[ColorBlendTarget])
 		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
 	end
 end
 
-function ECS.update(renderer::DepthPeelingRenderer, m::AbstractManager)
+function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 	glDisableCullFace()
 	vao = m[PeelingVao]
     ivao = m[InstancedPeelingVao]

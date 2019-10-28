@@ -30,13 +30,13 @@ struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
     basic      ::BM
 end
 
-mutable struct Diorama <: AbstractManager
+mutable struct Diorama <: AbstractLedger
     name       ::Symbol
-	manager    ::Manager
+	ledger    ::Ledger
     loop       ::Union{Task, Nothing}
     reupload   ::Bool
-    function Diorama(name::Symbol, manager::Manager; kwargs...)
-        dio = new(name, manager, nothing, true)
+    function Diorama(name::Symbol, ledger::Ledger; kwargs...)
+        dio = new(name, ledger, nothing, true)
 
         makecurrentdio(dio)
         finalizer(free!, dio)

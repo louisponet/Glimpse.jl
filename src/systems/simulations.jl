@@ -9,9 +9,9 @@ end
 struct Oscillator <: System end
 
 
-ECS.requested_components(::Oscillator) = (Spatial, Spring, UpdatedComponents, TimingData)
+Overseer.requested_components(::Oscillator) = (Spatial, Spring, UpdatedComponents, TimingData)
 
-function ECS.update(::Oscillator, m::AbstractManager)
+function Overseer.update(::Oscillator, m::AbstractLedger)
 	spat, spring=m[Spatial], m[Spring]
 	td     = m[TimingData][1] 
 	dt     = td.dtime
@@ -34,9 +34,9 @@ end
 end
 
 struct Rotator <: System  end
-ECS.requested_components(::Rotator) = (Spatial, Rotation, TimingData)
+Overseer.requested_components(::Rotator) = (Spatial, Rotation, TimingData)
 
-function ECS.update(::Rotator, dio::AbstractManager)
+function Overseer.update(::Rotator, dio::AbstractLedger)
 	rotation  = dio[Rotation]
 	spatial   = dio[Spatial]
 	dt        = Float32(dio[TimingData][1].dtime)
@@ -53,9 +53,9 @@ function ECS.update(::Rotator, dio::AbstractManager)
 end
 struct Mover <: System end
 
-ECS.requested_components(::Mover) = (Spatial, TimingData)
+Overseer.requested_components(::Mover) = (Spatial, TimingData)
 
-function ECS.update(::Mover, m::AbstractManager)
+function Overseer.update(::Mover, m::AbstractLedger)
     dt = m[TimingData][1].dtime
     spat = m[Spatial]
     for e in @entities_in(spat)

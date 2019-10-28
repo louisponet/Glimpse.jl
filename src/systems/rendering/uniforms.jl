@@ -2,9 +2,9 @@ import GLAbstraction: set_uniform
 
 struct UniformCalculator <: System end
 
-ECS.requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
+Overseer.requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
 
-function ECS.update(::UniformCalculator, m::AbstractManager)
+function Overseer.update(::UniformCalculator, m::AbstractLedger)
 	uc        = m[UpdatedComponents][1]
 	m_updated = false
 	modelmat  = m[ModelMat]
@@ -27,7 +27,7 @@ function ECS.update(::UniformCalculator, m::AbstractManager)
 	end
 end
 
-# function ECS.update(::UniformCalculator, m::AbstractManager)
+# function Overseer.update(::UniformCalculator, m::AbstractLedger)
 # 	uc        = m[UpdatedComponents][1]
 # 	m_updated = false
 # 	modelmat  = m[ModelMat]

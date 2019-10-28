@@ -35,8 +35,8 @@ function dio_setup()
 	return dio
 end
 
-SUITE["ECS"] = BenchmarkGroup()
-SUITE["ECS"]["setup"] = @benchmarkable dio_setup()
+SUITE["Overseer"] = BenchmarkGroup()
+SUITE["Overseer"]["setup"] = @benchmarkable dio_setup()
 
 function create_fill_entities(dio)
 	for i = 1:100
@@ -58,13 +58,13 @@ function fill_entities(dio)
 	end
 end
 	
-SUITE["ECS"]["create and fill entities"] =
+SUITE["Overseer"]["create and fill entities"] =
 	@benchmarkable create_fill_entities(dio) setup=(dio=dio_setup())
 
-SUITE["ECS"]["fill entities"] =
+SUITE["Overseer"]["fill entities"] =
 	@benchmarkable fill_entities(dio) setup=(dio=dio_setup(); create_fill_entities(dio)) 
 
-SUITE["ECS"]["update system indices"] =
+SUITE["Overseer"]["update system indices"] =
 	@benchmarkable Gl.update_system_indices!(dio) setup=(dio=dio_setup(); create_fill_entities(dio))
 
 function Gl.update(sys::Oscillator)
@@ -79,5 +79,5 @@ function Gl.update(sys::Oscillator)
 	end
 end
 
-SUITE["ECS"]["update oscillator"] =
+SUITE["Overseer"]["update oscillator"] =
 	@benchmarkable Gl.update(dio.systems[1]) setup=(dio=dio_setup(); create_fill_entities(dio); Gl.update_system_indices!(dio))

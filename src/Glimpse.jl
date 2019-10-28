@@ -3,9 +3,9 @@ module Glimpse
 using Reexport
 @reexport using ColorTypes
 
-@reexport using ECS
+@reexport using Overseer
 @reexport using GeometryTypes
-using ECS: update
+using Overseer: update
 
 using AbstractPlotting # I'd like to get away from this
 const AP = AbstractPlotting
@@ -30,7 +30,7 @@ const Gui = CImGui
 using TimerOutputs
 const to = TimerOutput()
 
-const _temp_componentdata_types = ECS.COMPONENTDATA_TYPES
+const _temp_componentdata_types = Overseer.COMPONENTDATA_TYPES
 
 include("extensions.jl")
 include("types.jl")
@@ -49,6 +49,6 @@ export Diorama
 export expose
 #package exports, default geometries
 function __init__()
-    copy!(ECS.COMPONENTDATA_TYPES, _temp_componentdata_types)
+    copy!(Overseer.COMPONENTDATA_TYPES, _temp_componentdata_types)
 end
 end # module

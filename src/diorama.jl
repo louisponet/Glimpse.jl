@@ -1,11 +1,11 @@
 import GLAbstraction: free!
 ########### Initialization
 
-ECS.manager(dio::Diorama) = dio.manager
+Overseer.ledger(dio::Diorama) = dio.ledger
 
 function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
-	m = Manager(SystemStage(:start, [Timer()]),
-                SystemStage(:setup, [PolygonMesher(),
+	m = Ledger(Stage(:start, [Timer()]),
+                Stage(:setup, [PolygonMesher(),
 			                         DensityMesher(),
 			                         VectorMesher(),
 			                         FunctionMesher(),
@@ -16,13 +16,13 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 			                         TextUploader()]),
                 extra_systems...,
 
-			    SystemStage(:simulation, [Oscillator(),
+			    Stage(:simulation, [Oscillator(),
                         			      Mover(),
                         			      MousePicker(),
                         			      UniformCalculator(),
                         			      CameraOperator()]),
 
-				SystemStage(:rendering, [LineRenderer(),
+				Stage(:rendering, [LineRenderer(),
 				                         TextRenderer(),
 			                             UniformUploader(),
 			                             DefaultRenderer(),
@@ -30,7 +30,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 			                             GuiRenderer(),
 			                             FinalRenderer()]),
 
-			    SystemStage(:stop, [Resizer(), Sleeper()]))
+			    Stage(:stop, [Resizer(), Sleeper()]))
 
 
     #assemble all rendering, canvas and camera components
@@ -49,7 +49,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 	          UniformColor(RGBA{Float32}(1.0)))
 
 	t = Diorama(name, m; kwargs...)
-	ECS.prepare(t)
+	Overseer.prepare(t)
 	return t
 end
 
@@ -61,7 +61,7 @@ end
 #This is kind of like a try catch command to execute only when a valid canvas is attached to the diorama
 #i.e All GL calls should be inside one of these otherwise it might be bad.
 function canvas_command(dio::Diorama, command::Function, catchcommand = x -> nothing)
-	canvas = dio.manager[Canvas][1]
+	canvas = dio.ledger[Canvas][1]
 	if canvas != nothing
 		command(canvas)
 	else
@@ -71,7 +71,7 @@ end
 
 function expose(dio::Diorama;  kwargs...)
     if dio.loop == nothing
-	    canvas_command(dio, make_current, x -> ECS.Entity(dio, Canvas(dio.name; kwargs...))) 
+	    canvas_command(dio, make_current, x -> Overseer.Entity(dio, Canvas(dio.name; kwargs...))) 
     end
     renderloop(dio)
     canvas_command(dio, expose)
@@ -79,10 +79,10 @@ function expose(dio::Diorama;  kwargs...)
     return dio
 end
 
-function ECS.update(dio::Diorama, init=false)
+function Overseer.update(dio::Diorama, init=false)
 	timer = singleton(dio, TimingData).timer
 	mesg = init ? "Init" : "Running"
-    @timeit timer mesg for stage in system_stages(dio)
+    @timeit timer mesg for stage in stages(dio)
         for sys in last(stage)
             timeit(() -> update(sys, dio), timer, string(typeof(sys)))
         end
@@ -92,7 +92,7 @@ end
 #TODO move control over this to diorama itself
 function renderloop(dio)
     dio    = dio
-    ECS.prepare(dio)
+    Overseer.prepare(dio)
     canvas_command(dio, canvas ->
 	    dio.loop = @async begin
     	    try
@@ -112,9 +112,9 @@ function renderloop(dio)
     			dio.loop = nothing
 			catch
     		    close(canvas)
-                for stage in system_stages(dio)
+                for stage in stages(dio)
                     # first(stage) == :setup && continue
-                    ECS.update(stage, dio)
+                    Overseer.update(stage, dio)
                 end
     			dio.loop = nothing
 			end
@@ -191,11 +191,11 @@ function center_cameras(dio::Diorama)
 end
 
 push_system(dio::Diorama, s::System) =
-	(dio.manager = push_system(dio.manager, s); ECS.prepare(dio))
+	(dio.ledger = push_system(dio.ledger, s); Overseer.prepare(dio))
 	
 insert_system(dio::Diorama, id::Integer, s::System) =
-	(dio.manager = insert_system(dio.manager, id, s); ECS.prepare(dio))
+	(dio.ledger = insert_system(dio.ledger, id, s); Overseer.prepare(dio))
 
-
+debug_timer(dio::Diorama) = singleton(dio, TimingData).timer
 
 

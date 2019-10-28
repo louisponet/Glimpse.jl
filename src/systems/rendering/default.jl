@@ -8,11 +8,11 @@ import GLAbstraction: set_uniform
 
 struct DefaultRenderer <: AbstractRenderSystem end
 
-ECS.requested_components(::DefaultRenderer) =
+Overseer.requested_components(::DefaultRenderer) =
 	(DefaultVao, DefaultProgram, InstancedDefaultVao, InstancedDefaultProgram,
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, IOTarget)
 
-function ECS.update(::DefaultRenderer, m::AbstractManager)
+function Overseer.update(::DefaultRenderer, m::AbstractLedger)
 	fbo   = m[IOTarget][1]
 	prog  = m[DefaultProgram][1]
 	iprog = m[InstancedDefaultProgram][1]

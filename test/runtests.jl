@@ -4,7 +4,7 @@ using Test
 
 dio = Gl.Diorama(backgroud=Gl.RGBAf0(0.0,0.0,0.0,1.0))
 # write your own tests here
-finalize(dio) = (Gl.ECS.prepare(dio); Gl.ECS.update_systems(dio.manager))
+finalize(dio) = (Gl.Overseer.prepare(dio); Gl.Overseer.update_systems(dio.ledger))
 include_finalize(str) = (include(str); finalize(dio))
 @testset "text"                   begin include_finalize("text.jl")                   end 
 @testset "gui_text"               begin include_finalize("gui_text.jl")               end 
