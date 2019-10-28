@@ -247,6 +247,7 @@ Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
 	frames        ::Int     = 0
 	preferred_fps ::Float64 = 60
 	reversed      ::Bool    = false
+	timer         ::TimerOutput = TimerOutput()
 end
 
 abstract type RenderProgram <: ComponentData end

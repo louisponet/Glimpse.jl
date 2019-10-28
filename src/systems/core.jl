@@ -107,7 +107,7 @@ function ECS.update(::MousePicker, m::AbstractManager)
     		e_spat  = spat[e]
 			o_c    = e_color.color
 			mod    = s.color_modifier
-			if aabb_ray_intersect(e_aabb, e_spat.position, eye, ray_dir)
+			if aabb_ray_intersect(aabb[e], e_spat.position, eye, ray_dir)
 				was_selected = s.selected
 				sel[e] = Selectable(true, s.color_modifier)
 				if !was_selected

@@ -71,7 +71,7 @@ function ECS.update(renderer::DepthPeelingRenderer, m::AbstractManager)
     compositing_program = m[CompositingProgram][1]
 
     colorblender        = m[ColorBlendTarget][1]
-    peeling_targets     = ECS.data(m[PeelTarget])[1:2]
+    peeling_targets     = m[PeelTarget].data[1:2]
     iofbo               = m[IOTarget][1]
     fullscreenvao       = m[FullscreenVao][1]
 
@@ -141,7 +141,7 @@ function ECS.update(renderer::DepthPeelingRenderer, m::AbstractManager)
 
 	renderall_instanced = () -> begin
 		set_light_camera_uniforms(ipeeling_program)
-		for evao in ECS.shared_data(ivao)
+		for evao in ivao
 			if evao.visible
 				GLA.bind(evao)
 				GLA.draw(evao)

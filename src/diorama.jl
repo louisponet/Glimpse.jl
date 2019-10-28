@@ -34,7 +34,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 
 
     #assemble all rendering, canvas and camera components
-    e = Entity(m, DioEntity(), Canvas(name; kwargs...), TimingData(time(),0.0, 0, 60, false))
+    e = Entity(m, DioEntity(), Canvas(name; kwargs...), TimingData())
     c = m[Canvas][e]
 	wh = size(c)
     m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
@@ -79,6 +79,16 @@ function expose(dio::Diorama;  kwargs...)
     return dio
 end
 
+function ECS.update(dio::Diorama, init=false)
+	timer = singleton(dio, TimingData).timer
+	mesg = init ? "Init" : "Running"
+    @timeit timer mesg for stage in system_stages(dio)
+        for sys in last(stage)
+            timeit(() -> update(sys, dio), timer, string(typeof(sys)))
+        end
+    end
+end
+
 #TODO move control over this to diorama itself
 function renderloop(dio)
     dio    = dio
@@ -86,6 +96,8 @@ function renderloop(dio)
     canvas_command(dio, canvas ->
 	    dio.loop = @async begin
     	    try
+        	    update(dio, true)
+
     	    	while !should_close(canvas)
     				pollevents(canvas)
     			    clear!(canvas)
@@ -93,8 +105,8 @@ function renderloop(dio)
     			    bind(iofbo)
     			    draw(iofbo)
     			    clear!(iofbo)
+    			    update(dio)
     			    empty!(singleton(dio, UpdatedComponents))
-                    ECS.update(dio)
     		    end
     		    close(canvas)
     			dio.loop = nothing
@@ -145,6 +157,9 @@ end
 Base.size(dio::Diorama)  = canvas_command(dio, c -> windowsize(c), x -> (0,0))
 set_background_color!(dio::Diorama, color) = canvas_command(dio, c -> set_background_color!(c, color))
 background_color(dio::Diorama) = canvas_command(dio, c -> c.background)
+
+print_debug_timers(dio::Diorama) = print_timer(singleton(dio, TimingData).timer)
+reset_debug_timers!(dio::Diorama) = reset_timer!(singleton(dio, TimingData).timer)
 
 ###########
 # manipulations

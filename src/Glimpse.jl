@@ -5,6 +5,7 @@ using Reexport
 
 @reexport using ECS
 @reexport using GeometryTypes
+using ECS: update
 
 using AbstractPlotting # I'd like to get away from this
 const AP = AbstractPlotting

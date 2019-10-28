@@ -1,12 +1,11 @@
 import Base.Iterators: Cycle
-import Base: ==
 
 @component struct DioEntity end
 
 #TODO get rid of this in favor of a correct iterator
 function shared_entities(c::SharedComponent{T}, dat::T) where T
 	ids = Int[]
-	id = findfirst(x -> x == dat, shared_data(c))
+	id = findfirst(x -> x == dat, c.shared)
 	return findall(x -> x == id, data(c))
 end
 

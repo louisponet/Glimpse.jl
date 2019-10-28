@@ -90,7 +90,11 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
 	modelmat = m[ModelMat]
 	material = m[Material]
 
-	it   = @entities_in(mesh && ucolor && modelmat && material && !default_vao && !peeling_vao)
+	it   = @entities_in(!peeling_vao && !default_vao && mesh && ucolor && modelmat && material)
+	timing = singleton(m, TimingData).timer
+	if iterate(it) === nothing
+    	return
+	end
 	for tmesh in mesh.shared
 		default_modelmats = Mat4f0[]
 		default_ucolors   = RGBAf0[]
@@ -122,8 +126,8 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
 				end
 			end
 		end
-        indices = tmesh.mesh.faces .- GLint(1)
 		if !isempty(default_ids)
+            indices = tmesh.mesh.faces .- GLint(1)
     		buffers = [generate_buffers(default_prog, tmesh.mesh);
                        generate_buffers(default_prog, GLint(1),
                                         color    = default_ucolors,
@@ -136,6 +140,7 @@ function ECS.update(::InstancedUploader, m::AbstractManager)
 			end
 		end
 		if !isempty(peeling_ids)
+            indices = tmesh.mesh.faces .- GLint(1)
     		buffers = [generate_buffers(peeling_prog, tmesh.mesh);
                        generate_buffers(peeling_prog, GLint(1),
                                         color    = peeling_ucolors,
@@ -182,7 +187,7 @@ function ECS.update(::UniformUploader, m::AbstractManager)
     		for tvao in vao.shared
     			modelmats = Mat4f0[]
 
-    			for e  in it1
+    			for e in it1
                     e_vao, e_modelmat = vao[e], mat[e]
     				if e_vao === tvao
     					push!(modelmats, e_modelmat.modelmat)
@@ -206,7 +211,7 @@ function ECS.update(::UniformUploader, m::AbstractManager)
     		for tvao in vao.shared
     			colors = RGBAf0[]
     			for e in it2
-        			e_val, e_color, = vao[e], ucolor[e]
+        			e_vao, e_color, = vao[e], ucolor[e]
     				if e_vao === tvao
     					push!(colors, e_color.color)
     				end
