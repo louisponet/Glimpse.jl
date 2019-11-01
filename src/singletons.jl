@@ -292,7 +292,7 @@ end
 
 function FontStorage()
 	atlas = AP.get_texture_atlas()
-	fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data])
+	fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data]; minfilter=:linear, magfilter=:linear, anisotropic=16f0)
 	return FontStorage(atlas, fbo)
 end
 

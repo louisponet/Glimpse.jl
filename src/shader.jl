@@ -29,5 +29,6 @@ line_shaders()                = [load_shader_source("lines.vert"),
                                  load_shader_source("lines.geom"),
                                  load_shader_source("lines.frag")]
 
-text_shaders()                = [load_shader_source("text.vert"),
-                                 load_shader_source("text.frag")]
+text_shaders()                = [load_shader_source("sprites.geom"),
+                                 load_shader_source("sprites.vert"),
+                                 load_shader_source("distance_shape.frag")]
