@@ -1,49 +1,62 @@
 import GLAbstraction: set_uniform
 
-struct UniformCalculator <: System
-	data::SystemData
+struct UniformCalculator <: System end
 
-	UniformCalculator(dio::Diorama) = new(SystemData(dio, (Spatial, Shape, ModelMat, Dynamic, Camera3D), (UpdatedComponents,)))
-end
+Overseer.requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
 
-function update_indices!(sys::UniformCalculator)
-	val_es(x...)  = valid_entities(sys, x...)
-	dynamic_entities = val_es(Dynamic)
-	already_filled   = val_es(ModelMat)
-	es               = val_es(Spatial, Shape)
-	es1              = setdiff(setdiff(val_es(Spatial), val_es(Shape)), val_es(Camera3D))
-	sys.data.indices = [setdiff(es, already_filled),
-                        es ∩ dynamic_entities,
-                        setdiff(es1, already_filled),
-                        es1 ∩ dynamic_entities]
-end
-
-function update(sys::UniformCalculator)
-	comp(T) = component(sys, T) 
-	spatial  = comp(Spatial)
-	shape    = comp(Shape)
-	dyn      = comp(Dynamic)
-	modelmat = comp(ModelMat)
-	for e in indices(sys)[1]
-		modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
-	end
-	for e in indices(sys)[3]
-		modelmat[e] = ModelMat(translmat(spatial[e].position))
-	end
-	# Updating uniforms if it's updated
-	uc       = singleton(sys, UpdatedComponents)
-	if Spatial in uc || Shape in uc
-		push!(singleton(sys, UpdatedComponents), ModelMat)
-		Threads.@threads for e in indices(sys)[2]
-			overwrite!(modelmat, ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale))), e)
-		end
-		Threads.@threads for e in indices(sys)[4]
-			overwrite!(modelmat, ModelMat(translmat(spatial[e].position)), e)
+function Overseer.update(::UniformCalculator, m::AbstractLedger)
+	uc        = m[UpdatedComponents][1]
+	m_updated = false
+	modelmat  = m[ModelMat]
+	dyn       = m[Dynamic]
+	camera    = m[Camera3D]
+	spatial   = m[Spatial]
+	shape     = m[Shape]
+	for e in @entities_in(spatial)
+		if !in(e, modelmat) || in(e, dyn) || in(e, camera) || in(Spatial, uc)
+			m_updated = true
+			if in(e, shape)
+				modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
+			else
+				modelmat[e] = ModelMat(translmat(spatial[e].position))
+			end
 		end
 	end
+	if m_updated
+		push!(uc, ModelMat)
+	end
 end
 
-function set_entity_uniforms_func(render_program::RenderProgram{<:Union{DefaultProgram, PeelingProgram, LineProgram}}, system::System)
+# function Overseer.update(::UniformCalculator, m::AbstractLedger)
+# 	uc        = m[UpdatedComponents][1]
+# 	m_updated = false
+# 	modelmat  = m[ModelMat]
+# 	dyn       = m[Dynamic]
+# 	camera    = m[Camera3D]
+# 	spatial   = m[Spatial]
+# 	shape     = m[Shape]
+# 	g1 = group(m, ModelMat, Spatial, Shape)
+# 	g2 = group(m, ModelMat, Spatial)
+# 	if length(g1) == 0
+#     	for e in @entities_in(spatial && shape)
+#     		g1[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
+#     	end
+#     	for e in @entities_in(spatial && !shape)
+#     		g2[e] = ModelMat(translmat(spatial[e].position))
+#     	end
+# 	else
+#         @inbounds for i = 1:length(g2)
+#             modelmat.data[i] = ModelMat(translmat(spatial[i].position))
+#         end
+#         @inbounds for i = 1:length(g1)
+#             modelmat.data[i] = ModelMat(modelmat[i].modelmat * scalemat(Vec3f0(shape[i].scale)))
+#         end
+#     end
+# 	push!(uc, ModelMat)
+# end
+
+
+function set_entity_uniforms_func(render_program::Union{DefaultProgram, PeelingProgram, LineProgram}, system::System)
     prog = render_program.program
     material = component(system, Material)
     modelmat = component(system, ModelMat)

@@ -1,203 +1,231 @@
-struct Uploader{P <: ProgramKind} <: System
-	data ::SystemData
+struct Uploader <: System end
+
+Overseer.requested_components(::Uploader) =
+	(Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao, LineGeometry)
+
+shaders(::Type{DefaultProgram}) = default_shaders()
+shaders(::Type{PeelingProgram}) = peeling_shaders()
+shaders(::Type{InstancedDefaultProgram}) = instanced_default_shaders()
+shaders(::Type{InstancedPeelingProgram}) = instanced_peeling_shaders()
+shaders(::Type{PeelingCompositingProgram}) = peeling_compositing_shaders()
+shaders(::Type{CompositingProgram}) = compositing_shaders()
+shaders(::Type{BlendProgram}) = blending_shaders()
+shaders(::Type{TextProgram})  = text_shaders()
+
+#TODO cleanup: really not the place to do this
+function Overseer.prepare(::Uploader, dio::Diorama)
+    for prog in components(dio, RenderProgram)
+    	if isempty(prog)
+        	ProgType = eltype(prog)
+    		dio[Entity(1)] = ProgType(Program(shaders(ProgType)))
+    	end
+	end
 end
 
-Uploader(::Type{P}, dio::Diorama) where {P<:ProgramKind} = 
-	Uploader{P}(SystemData(dio, (Mesh, BufferColor, Vao{P}, ProgramTag{P}), (RenderProgram{P},)))
+function Overseer.update(::Uploader, m::AbstractLedger)
+    mesh, bcolor, ucolor = m[Mesh], m[BufferColor], m[UniformColor]
+    default_vao = m[DefaultVao]
+    peeling_vao = m[PeelingVao]
+    line_vao    = m[LineVao]
+    peeling_prog= m[PeelingProgram][1]
+    default_prog= m[DefaultProgram][1]
+    line_prog   = m[LineProgram][1]
 
-InstancedUploader(::Type{P}, dio::Diorama) where {P<:ProgramKind} =
-	Uploader{P}(SystemData(dio, (Mesh,
-				      	         UniformColor,
-				      	         ModelMat,
-				      	         Material,
-				      	         Vao{P},
-				      	         ProgramTag{P},
-			      	            ), (RenderProgram{P},)))
+    #Buffer color entities are always not instanced
+    for e in @entities_in(mesh && bcolor && !default_vao && !peeling_vao)
+        e_mesh = mesh[e]
+        e_color = bcolor[e].color
+        gen_vao = prog -> begin
+    		buffers = [generate_buffers(prog, e_mesh.mesh);
+    	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e_color)]
+            return VertexArray(buffers, faces(e_mesh.mesh) .- GLint(1))
+        end
 
-
-function update_indices!(uploader::Uploader{K}) where {K <: Union{DefaultProgram, PeelingProgram, LineProgram}}
-	comp(T)  = component(uploader, T)
-	scomp(T) = shared_component(uploader, T)
-
-	progtag  = comp(ProgramTag{K})
-
-	uploaded_entities = valid_entities(comp(Vao{K}))
-	uploader.data.indices  = [setdiff(valid_entities(progtag, comp(Mesh)), uploaded_entities),
-	                          setdiff(valid_entities(progtag, scomp(Mesh)),  uploaded_entities),
-	                          valid_entities(comp(BufferColor))]
-end
-
-function update(uploader::Uploader{K}) where {K <: Union{DefaultProgram, PeelingProgram, LineProgram}}
-	comp(T)  = component(uploader, T)
-	scomp(T) = shared_component(uploader, T)
-
-	bcolor   = comp(BufferColor)
-	mesh     = comp(Mesh)
-	vao      = comp(Vao{K})
-	prog     = singleton(uploader, RenderProgram{K})
-	progtag  = comp(ProgramTag{K})
-	smesh    = scomp(Mesh)
-	for (i, m) in enumerate((mesh, smesh))
-		for e in indices(uploader)[i]
-			if e ∈ indices(uploader)[end]
-				buffers = [generate_buffers(prog.program, m[e].mesh); generate_buffers(prog.program, GEOMETRY_DIVISOR, color=bcolor[e].color)]
-		    else
-			    buffers = generate_buffers(prog.program, m[e].mesh)
-		    end
-		    if K == LineProgram
-			    vao[e] = Vao{K}(VertexArray(buffers, 11), true)
-		    else
-			    vao[e] = Vao{K}(VertexArray(buffers, faces(m[e].mesh) .- GLint(1)), true)
-		    end
+        if any(x -> x.alpha < 1, bcolor[e].color)
+		    peeling_vao[e] = PeelingVao(gen_vao(peeling_prog))
+	    else
+		    default_vao[e] = DefaultVao(gen_vao(default_prog))
 	    end
-	end
+    end
+    line_geom = m[LineGeometry]
+
+    #Line Entities
+    for e in @entities_in(line_geom)
+        e_geom = line_geom[e]
+        vert_loc = attribute_location(line_prog.program, :vertices)
+        color_loc = attribute_location(line_prog.program, :color)
+
+        if e in ucolor
+            color_vec = fill(ucolor[e].color, length(e_geom.points))
+        elseif e in bcolor
+            color_vec = bcolor[e].color
+        else
+            continue
+        end
+
+        if !(e in line_vao)
+            color_attach = BufferAttachmentInfo(:color, color_loc, Buffer(color_vec), GEOMETRY_DIVISOR)
+            points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)
+            line_vao[e] = LineVao(VertexArray([points_attach, color_attach], 11), true)
+        else
+            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e_geom.points)
+            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer, color_vec)
+        end
+    end
+    empty!(line_geom)
 end
 
-function update_indices!(uploader::Uploader{K}) where {K <: Union{DefaultInstancedProgram, PeelingInstancedProgram}}
-	comp(T)  = component(uploader, T)
-	scomp(T) = shared_component(uploader, T)
+struct InstancedUploader <: System end
 
-	smesh    = scomp(Mesh)
-	ivao     = scomp(Vao{K})
-	iprog    = singleton(uploader, RenderProgram{K})
-	iprogtag = comp(ProgramTag{K})
-	modelmat = comp(ModelMat)
-	material = comp(Material)
-	ucolor   = comp(UniformColor)
-	uploader.data.indices = [setdiff(valid_entities(iprogtag, smesh, modelmat, material, ucolor), valid_entities(ivao))]
-	for m in smesh.shared
-		push!(uploader.data.indices, shared_entities(smesh, m) ∩ indices(uploader)[1])
-	end
-end
-
-function update(uploader::Uploader{K}) where {K <: Union{DefaultInstancedProgram, PeelingInstancedProgram}}
-	comp(T)  = component(uploader, T)
-	scomp(T) = shared_component(uploader, T)
-
-	smesh    = scomp(Mesh)
-	ivao     = scomp(Vao{K})
-	iprog    = singleton(uploader, RenderProgram{K})
-	iprogtag = comp(ProgramTag{K})
-	modelmat = comp(ModelMat)
-	material = comp(Material)
-	ucolor   = comp(UniformColor)
-
-	instanced_entities = indices(uploader)[1]
-	if isempty(instanced_entities)
+function Overseer.update(::InstancedUploader, m::AbstractLedger)
+	default_prog = m[InstancedDefaultProgram][1].program	
+	peeling_prog = m[InstancedPeelingProgram][1].program	
+	default_vao  = m[InstancedDefaultVao]
+	peeling_vao  = m[InstancedPeelingVao]
+	mesh = m[Mesh]
+	if isempty(mesh)
 		return
 	end
-	for (i, m) in enumerate(smesh.shared)
-		t_es = indices(uploader)[i+1]
-		if !isempty(t_es)
-			modelmats = Vector{Mat4f0}(undef,  length(t_es))
-			ucolors   = Vector{RGBAf0}(undef,  length(t_es))
-			specints  = Vector{Float32}(undef, length(t_es))
-			specpows  = Vector{Float32}(undef, length(t_es))
+	ucolor = m[UniformColor]
+	modelmat = m[ModelMat]
+	material = m[Material]
 
-			for (i, e) in enumerate(t_es)
-				ucolors[i]   = ucolor[e].color
-				modelmats[i] = modelmat[e].modelmat
-				specints[i]  = material[e].specint
-				specpows[i]  = material[e].specpow
+	it   = @entities_in(!peeling_vao && !default_vao && mesh && ucolor && modelmat && material)
+	timing = singleton(m, TimingData).timer
+	if iterate(it) === nothing
+    	return
+	end
+	for tmesh in mesh.shared
+		default_modelmats = Mat4f0[]
+		default_ucolors   = RGBAf0[]
+		default_specints  = Float32[]
+		default_specpows  = Float32[]
+
+		peeling_modelmats = Mat4f0[]
+		peeling_ucolors   = RGBAf0[]
+		peeling_specints  = Float32[]
+		peeling_specpows  = Float32[]
+
+		default_ids  = Entity[]
+		peeling_ids  = Entity[]
+		for e in it
+            e_mesh, e_color, e_modelmat, e_material = mesh[e], ucolor[e], modelmat[e],  material[e]
+			if e_mesh.mesh === tmesh.mesh
+    			if e_color.color.alpha < 1
+    				push!(peeling_modelmats, e_modelmat.modelmat)
+    				push!(peeling_ucolors, e_color.color)
+    				push!(peeling_specints, e_material.specint)
+    				push!(peeling_specpows, e_material.specpow)
+    				push!(peeling_ids, e)
+				else
+    				push!(default_modelmats, e_modelmat.modelmat)
+    				push!(default_ucolors, e_color.color)
+    				push!(default_specints, e_material.specint)
+    				push!(default_specpows, e_material.specpow)
+    				push!(default_ids, e)
+				end
 			end
-			tprog = iprog.program
-			tmesh = smesh[t_es[1]].mesh
-		    push!(ivao.shared, Vao{K}(VertexArray([generate_buffers(tprog, tmesh); generate_buffers(tprog, GLint(1), color=ucolors, modelmat=modelmats, specint=specints, specpow=specpows)], tmesh.faces .- GLint(1), length(t_es)), true))
-		    for e in t_es
-			    ivao.data[e] = length(ivao.shared)
-		    end
-	    end
-	end
-end
-
-struct UniformUploader{P<:ProgramKind} <: System
-	data ::SystemData
-
-	function UniformUploader{P}(dio::Diorama) where {P<:ProgramKind}
-		components = (Vao{P}, ModelMat, Selectable, UniformColor)
-		new{P}(SystemData(dio, components, (UpdatedComponents,)))
-	end
-end
-
-function update_indices!(sys::UniformUploader{P}) where {P<:ProgramKind}
-	mat_entities = valid_entities(sys, ModelMat)
-	sel_col_entities = valid_entities(sys, UniformColor, Selectable)
-	vao         = shared_component(sys, Vao{P})
-	tids = Vector{Int}[]
-	for v in vao.shared 
-		push!(tids, shared_entities(vao, v) ∩ mat_entities)
-	end
-	for v in vao.shared 
-		push!(tids, shared_entities(vao, v) ∩ sel_col_entities)
-	end
-	sys.data.indices = tids                       
-end
-
-function find_contiguous_bounds(indices)
-	ranges = UnitRange[]
-	i = 1
-	cur_start = indices[1]
-	while i <= length(indices) - 1
-		id = indices[i]
-		id_1 = indices[i + 1]
-		if id_1 - id != 1
-			push!(ranges, cur_start:id)
-			cur_start = id_1
 		end
-		i += 1
+		if !isempty(default_ids)
+            indices = tmesh.mesh.faces .- GLint(1)
+    		buffers = [generate_buffers(default_prog, tmesh.mesh);
+                       generate_buffers(default_prog, GLint(1),
+                                        color    = default_ucolors,
+                                        modelmat = default_modelmats,
+                                        specint  = default_specints,
+                                        specpow  = default_specpows)]
+			tvao = InstancedDefaultVao(VertexArray(buffers, indices, length(default_ids)), true)
+			for e in default_ids
+    			default_vao[e] = tvao
+			end
+		end
+		if !isempty(peeling_ids)
+            indices = tmesh.mesh.faces .- GLint(1)
+    		buffers = [generate_buffers(peeling_prog, tmesh.mesh);
+                       generate_buffers(peeling_prog, GLint(1),
+                                        color    = peeling_ucolors,
+                                        modelmat = peeling_modelmats,
+                                        specint  = peeling_specints,
+                                        specpow  = peeling_specpows)]
+			tvao = InstancedPeelingVao(VertexArray(buffers, indices, length(peeling_ids)), true)
+			for e in peeling_ids
+    			peeling_vao[e] = tvao
+			end
+		end
 	end
-	push!(ranges, cur_start:indices[end])
-	return ranges
 end
 
-function update(sys::UniformUploader{P}) where {P<:ProgramKind}
-	uc = singleton(sys, UpdatedComponents)
-	vao = shared_component(sys, Vao{P})
+struct UniformUploader <: System end
 
-	mat = component(sys, ModelMat)
+Overseer.requested_components(::UniformUploader) =
+    (InstancedDefaultVao, InstancedPeelingVao, ModelMat, Selectable, UniformColor, UpdatedComponents)
+
+# function find_contiguous_bounds(indices)
+# 	ranges = UnitRange[]
+# 	i = 1
+# 	cur_start = indices[1]
+# 	while i <= length(indices) - 1
+# 		id = indices[i]
+# 		id_1 = indices[i + 1]
+# 		if id_1 - id != 1
+# 			push!(ranges, cur_start:id)
+# 			cur_start = id_1
+# 		end
+# 		i += 1
+# 	end
+# 	push!(ranges, cur_start:indices[end])
+# 	return ranges
+# end
+
+function Overseer.update(::UniformUploader, m::AbstractLedger)
+	uc = m[UpdatedComponents][1]
+	mat = m[ModelMat]
 	matsize = sizeof(eltype(mat))
-	idoffset = 0
-	if ModelMat in uc.components
-		for (i, v) in enumerate(vao.shared)
-			eids = indices(sys)[i]
-			contiguous_ranges = find_contiguous_bounds(eids)
-			offset = 0
-			if !isempty(eids)
-				binfo = GLA.bufferinfo(v.vertexarray, :modelmat)
-				if binfo != nothing
-					GLA.bind(binfo.buffer)
-					for r in contiguous_ranges
-						s = length(r) * matsize
-						glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(mat, r[1]))
-						offset += s
-					end
-					GLA.unbind(binfo.buffer)
-				end
-			end
-			idoffset += 1
-		end
-	end
+	for vao in (m[InstancedDefaultVao], m[InstancedPeelingVao])
+    	if ModelMat in uc
+        	it1 = @entities_in(vao && mat)
+    		for tvao in vao.shared
+    			modelmats = ModelMat[]
 
-	col = component(sys, UniformColor)
-	colsize = sizeof(eltype(col))
-	#TODO Optimization: Color of all selectable entities is updated at the same time.
-	if Selectable in uc.components
-		for (i, v) in enumerate(vao.shared)
-			eids = indices(sys)[i+idoffset]
-			contiguous_ranges = find_contiguous_bounds(eids)
-			offset = 0
-			if !isempty(eids)
-				binfo = GLA.bufferinfo(v.vertexarray, :color)
-				if binfo != nothing
-					GLA.bind(binfo.buffer)
-					for r in contiguous_ranges
-						s = length(r) * colsize
-						glBufferSubData(binfo.buffer.buffertype, offset, s, pointer(col, r[1]))
-						offset += s
-					end
-					GLA.unbind(binfo.buffer)
-				end
-			end
-		end
+    			@timeit debug_timer(m) "mat creating" for e in it1
+                    e_vao, e_modelmat = vao[e], mat[e]
+    				if e_vao === tvao
+    					push!(modelmats, e_modelmat)
+    				end
+    			end
+    			@timeit debug_timer(m) "uploading" if !isempty(modelmats)
+    				binfo = GLA.bufferinfo(tvao.vertexarray, :modelmat)
+    				if binfo != nothing
+    					GLA.bind(binfo.buffer)
+    					s = length(modelmats) * matsize
+    					glBufferData(binfo.buffer.buffertype, s, pointer(modelmats, 1), binfo.buffer.usage)
+    					GLA.unbind(binfo.buffer)
+    				end
+    			end
+    		end
+    	end
+        ucolor = m[UniformColor]
+    	if UniformColor in uc.components
+        	colsize = sizeof(RGBAf0)
+        	it2 = @entities_in(vao && m[UniformColor] && m[Selectable])
+    		for tvao in vao.shared
+    			colors = RGBAf0[]
+    			for e in it2
+        			e_vao, e_color, = vao[e], ucolor[e]
+    				if e_vao === tvao
+    					push!(colors, e_color.color)
+    				end
+    			end
+    			if !isempty(colors)
+    				binfo = GLA.bufferinfo(tvao.vertexarray, :color)
+    				if binfo != nothing
+    					GLA.bind(binfo.buffer)
+    					s = length(colors) * colsize
+    					glBufferData(binfo.buffer.buffertype, s, pointer(colors, 1), binfo.buffer.usage)
+    					GLA.unbind(binfo.buffer)
+    				end
+    			end
+    		end
+    	end
 	end
 end

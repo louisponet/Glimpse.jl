@@ -1,98 +1,68 @@
 abstract type SimulationSystem <: System end
 
-struct Timer <: SimulationSystem
-	data ::SystemData
-
-	Timer(dio::Diorama) = new(SystemData(dio, (), (TimingData,)))
-end 
-
-function update(timer::Timer)
-	sd = system_data(timer).singletons[1]
-	nt         = time()
-	sd.dtime   = sd.reversed ? - nt + sd.time : nt - sd.time
-	sd.time    = nt
-	sd.frames += 1
-end
-
-Base.@kwdef struct Spring <: ComponentData
+@component_with_kw struct Spring
 	center::Point3f0 = zero(Point3f0)
 	k     ::Float32  = 0.01f0
 	damping::Float32 = 0.0001f0
 end
 
-struct Oscillator <: System
-	data ::SystemData
-end
-Oscillator(dio::Diorama) = Oscillator(SystemData(dio, (Spatial, Spring), (TimingData, UpdatedComponents)))
+struct Oscillator <: System end
 
-system_data(o::Oscillator) = o.data
 
-function update_indices!(sys::Oscillator)
-	sp_es  = valid_entities(component(sys, Spatial))
-	spring = shared_component(sys, Spring)
-	tids   = Vector{Int}[]
-	for spr in spring.shared
-		push!(tids,  shared_entities(spring, spr) ∩ sp_es)
-	end
-	sys.data.indices = tids
-end
+Overseer.requested_components(::Oscillator) = (Spatial, Spring, UpdatedComponents, TimingData)
 
-function update(sys::Oscillator)
-	spat   = component(sys, Spatial)
-	spring = shared_component(sys, Spring)
-	td     = singleton(sys, TimingData)
+function Overseer.update(::Oscillator, m::AbstractLedger)
+	spat, spring=m[Spatial], m[Spring]
+	td     = m[TimingData][1] 
 	dt     = td.dtime
-	for (is, spr) in enumerate(spring.shared)
-		Threads.@threads for e in indices(sys)[is] 
-			e_spat   = spat[e]
-			v_prev   = e_spat.velocity
-			new_v    = v_prev - (e_spat.position - spr.center) * spr.k - v_prev * spr.damping
-			new_p    = e_spat.position + v_prev * dt
-			overwrite!(spat, Spatial(new_p, new_v), e)
-		end
+
+	it = @entities_in(spat && spring)
+	@inbounds for e in it
+		e_spat  = spat[e]
+		spr     = spring[e]
+		v_prev  = e_spat.velocity 
+		new_v   = v_prev - (e_spat.position - spr.center) * spr.k - v_prev * spr.damping
+		spat[e] = Spatial(e_spat.position, new_v)
 	end
-	update_component!(singleton(sys, UpdatedComponents), Spatial)
+	push!(m[UpdatedComponents][1].components, Spatial)
 end
 
-struct Rotation <: ComponentData
-	omega ::Float32
+@component struct Rotation
+	omega::Float32
 	center::Point3f0
-	axis  ::Vec3f0
+	axis::Vec3f0
 end
-# RotationComponent(id) = Component(id, Rotation)
 
-struct Rotator <: System
-	data ::SystemData
-end
-Rotator(dio::Diorama) = Rotator(SystemData(dio, (Spatial, Rotation), (TimingData,)))
-system_data(r::Rotator) = r.data
+struct Rotator <: System  end
+Overseer.requested_components(::Rotator) = (Spatial, Rotation, TimingData)
 
-function update(sys::Rotator)
-	rotation  = component(sys, Rotation)
-	spatial   = component(sys, Spatial)
-	dt        = Float32(singleton(sys,TimingData).dtime)
-	for i in valid_entities(rotation, spatial)
-		e_rotation = rotation[i]
-		n          = e_rotation.axis
-		r          = - e_rotation.center + spatial[i].position
+function Overseer.update(::Rotator, dio::AbstractLedger)
+	rotation  = dio[Rotation]
+	spatial   = dio[Spatial]
+	dt        = Float32(dio[TimingData][1].dtime)
+	it = @entities_in(rotation && spatial)
+	@inbounds for e in it 
+    	e_rotation = rotation[e]
+    	e_spatial  = spatial[e]
+		n          = erotation.axis
+		r          = - e_rotation.center + e_spatial.position
 		theta      = e_rotation.omega * dt
 		nnd        = n * dot(n, r)
-		spatial[i] = Spatial(Point3f0(e_rotation.center + nnd + (r - nnd) * cos(theta) + cross(r, n) * sin(theta)),
-							 spatial[i].velocity)
+		spatial[e] = Spatial(Point3f0(e_rotation.center + nnd + (r - nnd) * cos(theta) + cross(r, n) * sin(theta)), e_spatial.velocity)
 	end
 end
+struct Mover <: System end
 
-struct Mover <: System
-	data::SystemData
-end
-Mover(dio::Diorama) = Mover(SystemData(dio, (Spatial,), (TimingData,)))
+Overseer.requested_components(::Mover) = (Spatial, TimingData)
 
-function update(sys::Mover)
-	spatial   = component(sys, Spatial)
-	dt        = 0.1f0*Float32(singleton(sys, TimingData).dtime)
-	for i in valid_entities(spatial)
-		spatial[i] = Spatial(spatial[i].position + dt*spatial[i].velocity, Vec3f0(spatial[i].position...))
-	end
+function Overseer.update(::Mover, m::AbstractLedger)
+    dt = m[TimingData][1].dtime
+    spat = m[Spatial]
+    for e in @entities_in(spat)
+        e_spat = spat[e]
+        spat[e] = Spatial(e_spat.position + e_spat.velocity*dt, e_spat.velocity)
+    end
+    push!(m[UpdatedComponents][1].components, Spatial)
 end
 
 

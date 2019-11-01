@@ -1,8 +1,11 @@
 # __precompile__(true)
 module Glimpse
 using Reexport
-@reexport using GeometryTypes
 @reexport using ColorTypes
+
+@reexport using Overseer
+@reexport using GeometryTypes
+using Overseer: update
 
 using AbstractPlotting # I'd like to get away from this
 const AP = AbstractPlotting
@@ -27,6 +30,8 @@ const Gui = CImGui
 using TimerOutputs
 const to = TimerOutput()
 
+const _temp_componentdata_types = Overseer.COMPONENTDATA_TYPES
+
 include("extensions.jl")
 include("types.jl")
 include("entities.jl")
@@ -36,12 +41,14 @@ include("callbacks.jl")
 include("shader.jl")
 include("geometries.jl")
 include("marching_cubes.jl")
-export RGBAf0
-#GLAbstraction exports
 
+export RGBAf0
 
 #package exports, types & enums
-
+export Diorama
+export expose
 #package exports, default geometries
-
+function __init__()
+    copy!(Overseer.COMPONENTDATA_TYPES, _temp_componentdata_types)
+end
 end # module

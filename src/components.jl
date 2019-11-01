@@ -1,97 +1,68 @@
 import Base.Iterators: Cycle
 
-import Base: ==
+@component struct DioEntity end
 
-Component(id, ::Type{T}) where {T <: ComponentData}       = Component(id, GappedVector([T[]], Int[]))
-SharedComponent(id, ::Type{T}) where {T <: ComponentData} = SharedComponent(id, GappedVector([Int[]], Int[]), T[])
-
-data(component::AbstractComponent) = component.data
-
-Base.length(::ComponentData)         = 1
-Base.iterate(t::ComponentData)       = (t, nothing)
-
-Base.isempty(c::AbstractComponent)   = isempty(c.data)
-Base.empty!(c::AbstractComponent)    = empty!(c.data)
-
-Base.length(c::AbstractComponent)    = length(c.data)
-Base.size(c::AbstractComponent)      = size(c.data)
-Base.lastindex(c::AbstractComponent) = lastindex(c.data)
-
-Base.getindex(c::Component, i)       = getindex(c.data, i)
-Base.getindex(c::SharedComponent, i) = c.shared[getindex(c.data, i)]
-
-Base.setindex!(c::Component, v, i)   = setindex!(c.data, v, i)
-overwrite!(c::Component, v, i)       = overwrite!(c.data, v, i)
-
-function Base.setindex!(c::SharedComponent,v, i)
-	id = findfirst(isequal(v), c.shared)
-	if id == nothing
-		id = length(c.shared) + 1
-		push!(c.shared, v)
-	end
-	c.data[i] = id
-end
-
-valid_entities(c::AbstractComponent)     = collect(Iterators.flatten(ranges(c.data)))
-valid_entities(cs::AbstractComponent...) = collect(Iterators.flatten(ranges(data.(cs)...)))
-has_entity(c::AbstractComponent, entity) = has_index(c.data, entity)
-Base.pointer(c::AbstractComponent, id::Int) = pointer(c.data, id)
-
+#TODO get rid of this in favor of a correct iterator
 function shared_entities(c::SharedComponent{T}, dat::T) where T
 	ids = Int[]
 	id = findfirst(x -> x == dat, c.shared)
-	for i in eachindex(c.data)
-		if c.data[i] == id
-			push!(ids, i)
-		end
-	end
-	return ids
+	return findall(x -> x == id, data(c))
 end
-
-==(c1::T, c2::T) where {T <: ComponentData} = all(getfield.((c1,), fieldnames(T)) .== getfield.((c2,), fieldnames(T)))
 
 # DEFAULT COMPONENTS
-abstract type ProgramKind end
+abstract type Vao <: ComponentData end
 
-struct ProgramTag{P <: ProgramKind} <: ComponentData end
-
-@with_kw struct Vao{P <: ProgramKind} <: ComponentData
-	vertexarray::VertexArray
-	visible    ::Bool = true
+macro vao(name)
+    esc(quote
+        @component_with_kw struct $name <: Vao
+        	vertexarray::VertexArray
+        	visible    ::Bool = true
+    	end
+    	$name(v::VertexArray) = $name(vertexarray=v)
+	end)
 end
-programkind(::Vao{P}) where {P} = P
+
+macro instanced_vao(name)
+    esc(quote
+        @shared_component_with_kw struct $name <: Vao
+        	vertexarray::VertexArray
+        	visible    ::Bool = true
+    	end
+    	$name(v::VertexArray) = $name(vertexarray=v)
+	end)
+end
 
 GLA.bind(vao::Vao) = GLA.bind(vao.vertexarray)
 
 GLA.draw(vao::Vao) = GLA.draw(vao.vertexarray)
 
 # NON rendering Components
-struct Dynamic <: ComponentData end
-@with_kw struct Spatial <: ComponentData
+@component struct Dynamic  end
+@component_with_kw struct Spatial 
 	position::Point3f0 = zero(Point3f0)
 	velocity::Vec3f0   = zero(Vec3f0)
 end
 
-@with_kw struct Shape <: ComponentData
+@component_with_kw struct Shape 
 	scale::Float32 = 1f0
 end
 
-@with_kw struct ModelMat <: ComponentData
+@component_with_kw struct ModelMat 
 	modelmat::Mat4f0 = Eye4f0()
 end
 
-@with_kw struct Material <: ComponentData
+@component_with_kw struct Material 
 	specpow ::Float32 = 0.8f0
 	specint ::Float32 = 0.8f0
 end
 
-@with_kw struct PointLight <: ComponentData
+@component_with_kw struct PointLight 
     diffuse ::Float32  = 0.5f0
     specular::Float32  = 0.5f0
     ambient ::Float32  = 0.5f0
 end
 
-struct DirectionLight <: ComponentData
+@component struct DirectionLight 
 	direction::Vec3f0
     diffuse  ::Float32
     specular ::Float32
@@ -102,7 +73,7 @@ const X_AXIS = Vec3f0(1.0f0, 0.0  , 0.0)
 const Y_AXIS = Vec3f0(0.0,   1.0f0, 0.0)
 const Z_AXIS = Vec3f0(0.0,   0.0  , 1.0f0)
 
-@with_kw struct Camera3D <: ComponentData
+@component_with_kw struct Camera3D 
     lookat ::Vec3f0  = zero(Vec3f0)
     up     ::Vec3f0  = Z_AXIS 
     right  ::Vec3f0  = X_AXIS 
@@ -146,74 +117,89 @@ function Camera3D(old_cam::Camera3D, new_pos::Point3f0, new_lookat::Point3f0, u_
 end
 
 # Meshing and the like
-struct Mesh <: ComponentData
+@shared_component struct Mesh 
 	mesh
 end
 
 abstract type Color <: ComponentData end
 
 # one color, will be put as a uniform in the shader
-struct UniformColor <: Color 
-	color::RGBAf0
+@component_with_kw struct UniformColor <: Color 
+	color::RGBAf0 = DEFAULT_COLOR 
 end
 
 # vector of colors, either supplied manually or filled in by mesher
-struct BufferColor <: Color
+@component struct BufferColor <: Color
 	color::Vector{RGBAf0}
 end
 	
 # color function, mesher uses it to throw in points and get out colors
-struct FunctionColor{F} <: Color 
-	color::F
+#TODO super slow
+@component struct FunctionColor <: Color 
+	color::Function
 end
 
-struct DensityColor <: Color 
+@component struct DensityColor <: Color 
 	color::Array{RGBAf0, 3}
 end
 
 # Cycle, mesher uses it to iterate over together with points
-struct CycledColor <: Color
+@component struct CycledColor <: Color
 	color::Cycle{Union{RGBAf0, Vector{RGBAf0}}}
 end
 
-struct Grid <: ComponentData
+@shared_component struct Grid 
 	points::Array{Point3f0, 3}
 end
 
+
 abstract type Geometry <: ComponentData end
 
-struct PolygonGeometry <: Geometry #spheres and the like
+@component struct PolygonGeometry <: Geometry #spheres and the like
 	geometry 
 end
 
-struct FileGeometry <: Geometry #.obj files
+@component struct FileGeometry <: Geometry #.obj files
 	geometry::String 
 end
 
-struct FunctionGeometry <: Geometry
+@component struct FunctionGeometry <: Geometry
 	geometry::Function
 	iso     ::Float32
 end
 
-struct DensityGeometry <: Geometry
+@component struct DensityGeometry <: Geometry
 	geometry::Array{Float32, 3}
 	iso     ::Float32
 end
 
-struct VectorGeometry <: Geometry
+@component struct VectorGeometry <: Geometry
 	geometry::Vector{Point3f0}
 end
 
-struct Line <: ComponentData
-	thickness::Float32
-	miter    ::Float32
+@component struct LineGeometry <: Geometry
+    points::Vector{Point3f0}
+    function LineGeometry(points::Vector{Point3f0})
+        if length(points) < 4
+            insert!(points, 1, points[2] + 1.001*(points[1] - points[2]))
+        end
+        if length(points) < 4
+            push!(points, points[end-1] + 1.001*(points[end] - points[end-1]))
+        end
+        return new(points)
+    end
 end
 
-@with_kw struct Text <: ComponentData
+@component_with_kw struct LineOptions 
+	thickness::Float32 = 2.0f0
+	miter    ::Float32 = 0.6f0
+end
+
+@component_with_kw struct Text 
 	str      ::String = "test"
 	font_size::Int    = 1
 	font     = AP.defaultfont()
 	align    ::Symbol = :right
 	offset   ::Vec3f0= zero(Vec3f0)
 end
-	
+

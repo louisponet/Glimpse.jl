@@ -1,90 +1,71 @@
 
-# This system constructs all the meshes from geometries. These meshes will then be used to be uploaded to OpenGL 
-struct Mesher <: System
-	data ::SystemData
+# This system constructs all the meshes from geometries. These meshes will then be used to be uploaded to OpenGL
+abstract type Mesher <: System end
 
-	Mesher(dio::Diorama) = new(SystemData(dio, (Geometry, Color, Mesh, Grid), ()))
+struct PolygonMesher <: Mesher end
+
+Overseer.requested_components(::PolygonMesher) = (PolygonGeometry, Mesh)
+
+struct FileMesher <: Mesher end
+
+Overseer.requested_components(::FileMesher) = (FileGeometry, Mesh)
+
+struct VectorMesher <: Mesher end
+
+Overseer.requested_components(::VectorMesher) = (VectorGeometry, Mesh)
+
+geometry_type(::Type{PolygonMesher}) = PolygonGeometry
+geometry_type(::Type{VectorMesher}) = VectorGeometry
+geometry_type(::Type{FileMesher}) = FileGeometry
+
+function Overseer.update(::Union{M}, m::AbstractLedger) where {M<:Mesher}
+	mesh = m[Mesh]
+	geom = m[geometry_type(M)]
+	it = @entities_in(geom && !mesh)
+	if iterate(it) === nothing
+    	return
+	end
+	geometries_handled = geometry_type(M)[]
+	u_geoms = Iterators.unique(geom.data)
+	meshes = [Mesh(BasicMesh(g.geometry)) for g in u_geoms]
+	prevlen = length(mesh.shared)
+    append!(mesh.shared, meshes)
+	for e in it
+    	egeom = geom[e]
+    	push!(mesh.indices, e.id)
+    	push!(mesh.data, prevlen + findfirst(x -> x == egeom, u_geoms))
+	end
 end
 
-function update_indices!(sys::Mesher)
-	comp(T)  = component(sys, T)
-	scomp(T) = shared_component(sys, T)
-	polygon  = comp(PolygonGeometry)
-	file     = comp(FileGeometry)
-	mesh     = comp(Mesh)
-	spolygon = scomp(PolygonGeometry)
-	sfile    = scomp(FileGeometry)
-	smesh    = scomp(Mesh)
-	meshed_entities  = valid_entities(mesh)
-	funcgeometry     = comp(FunctionGeometry)
-	densgeometry     = comp(DensityGeometry)
-	grid             = scomp(Grid)
-	vgeom            = comp(VectorGeometry)
-	# cycledcolor   = comp(CycledColor)
-	tids = Vector{Int}[]
-	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file, vgeom), (spolygon, sfile)))
-		for com in geomcomps
-			push!(tids, setdiff(valid_entities(com), valid_entities(meshcomp)))
-		end
-	end
-	sys.data.indices = [tids; [setdiff(valid_entities(funcgeometry, grid), meshed_entities),
-	                           setdiff(valid_entities(densgeometry, grid), meshed_entities)]]
- end
+struct FunctionMesher <: Mesher end
 
-function update(sys::Mesher)
-	if all(isempty.(indices(sys)))
-		return
-	end
-	comp(T)  = component(sys, T)
-	scomp(T) = shared_component(sys, T)
-	#setup separate meshes
-	polygon  = comp(PolygonGeometry)
-	file     = comp(FileGeometry)
-	mesh     = comp(Mesh)
-	
-	spolygon = scomp(PolygonGeometry)
-	sfile    = scomp(FileGeometry)
-	smesh    = scomp(Mesh)
+Overseer.requested_components(::FunctionMesher) = (FunctionGeometry, Mesh, Grid)
 
-	vgeom    = comp(VectorGeometry)
-	id_counter = 1
-	for (meshcomp, geomcomps) in zip((mesh, smesh), ((polygon, file, vgeom), (spolygon, sfile)))
-		for com in geomcomps
-			for e in indices(sys)[id_counter]
-				meshcomp[e] = Mesh(BasicMesh(com[e].geometry))
-			end
-			id_counter += 1
-		end
-	end
+struct DensityMesher <: Mesher end
 
-	funcgeometry  = comp(FunctionGeometry)
-	densgeometry  = comp(DensityGeometry)
-	grid          = scomp(Grid)
-	funccolor     = comp(FunctionColor)
-	denscolor     = comp(DensityColor)
-	# cycledcolor   = comp(CycledColor)
-	colorbuffers  = comp(BufferColor)
+Overseer.requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
 
-	function calc_mesh(density, iso, e)
-		vertices, ids = marching_cubes(density, grid[e].points, iso)
+function Overseer.update(::Union{FunctionMesher, DensityMesher}, m::AbstractLedger)
+	mesh = m[Mesh]
+	geom = m[FunctionGeometry]
+	grid = m[Grid]
+	for e in @entities_in(geom && grid && !mesh)
+		points = grid[e].points
+		vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
 		faces         = [Face{3, GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
-		# if has_entity(cycledcolor, e)
-		if has_entity(funccolor, e)
-			colorbuffers[e] = BufferColor(funccolor[e].color.(vertices))
-		elseif has_entity(denscolor, e)
-			colorbuffers[e] = BufferColor([denscolor[e].color[i...] for i in ids])
-		end
 		mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
 	end
-
-	for e in indices(sys)[id_counter] 
-		values        = funcgeometry[e].geometry.(grid[e].points)
-		calc_mesh(values, funcgeometry[e].iso, e)
-		id_counter += 1
-	end
-
-	for e in indices(sys)[id_counter]
-		calc_mesh(densgeometry[e].geometry, densgeometry[e].iso, e)
-	end
 end
 
+struct FunctionColorizer <: System end
+
+Overseer.requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
+
+function Overseer.update(::FunctionColorizer, m::AbstractLedger)
+	colorbuffers = m[BufferColor]
+	fcolor       = m[FunctionColor]
+	mesh         = m[Mesh]
+	for e in @entities_in(fcolor && mesh && !colorbuffers)
+		colorbuffers[e] = BufferColor(fcolor[e].color.(mesh[e].mesh.vertices))
+	end
+end

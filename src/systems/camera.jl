@@ -2,31 +2,24 @@
 
 abstract type InteractiveSystem <: System end
 
-struct CameraOperator <: InteractiveSystem
-	data::SystemData
+struct CameraOperator <: InteractiveSystem end
 
-	CameraOperator(dio::Diorama) = new(SystemData(dio, (Spatial, Camera3D,), (Canvas,)))
-end
+Overseer.requested_components(::CameraOperator) = (Spatial, Camera3D, Canvas)
 
-function update(updater::CameraOperator)
-	camera  = component(updater, Camera3D)
-	spatial = component(updater, Spatial)
-	if isempty(component(updater, Camera3D))
-		return
-	end
+function Overseer.update(::CameraOperator, m::AbstractLedger)
+	spatial = m[Spatial]
+	camera = m[Camera3D]
+	canvas_comp=m[Canvas]
+	canvas = canvas_comp[1]
+	x, y = Float32.(canvas.cursor_position)
+	mouse_button         = canvas.mouse_buttons
+	keyboard_button      = canvas.keyboard_buttons
+    w, h                 = size(canvas)
+    scroll_dx, scroll_dy = Float32.(canvas.scroll)
 
-	canvas = singleton(updater, Canvas)
-	pollevents(canvas)
-
-	x, y                 = Float32.(callback_value(canvas, :cursor_position))
-	mouse_button         = callback_value(canvas, :mouse_buttons)
-	keyboard_button      = callback_value(canvas, :keyboard_buttons)
-    w, h                 = Int32.(size(canvas))
-    scroll_dx, scroll_dy = callback_value(canvas, :scroll)
-
-	for i in valid_entities(camera, spatial)
-		cam     = camera[i]
-		spat    = spatial[i]
+	@inbounds for e in @entities_in(spatial && camera)
+    	spat = spatial[e]
+    	cam  = camera[e]
 		new_pos = Point3f0(spat.position)
 		#world orientation/mouse stuff
 	    dx      = x - cam.mouse_pos[1]
@@ -40,11 +33,11 @@ function update(updater::CameraOperator)
 			    rot2    = rotate(-dx * cam.rotation_speed, cam.up)
 			    trans2  = translmat(cam.lookat)
 			    mat_    = trans2 * rot2 * rot1 * trans1
-			    new_pos = Point3f0((mat_ * Vec4(new_pos..., 1.0f0))[1:3])
+			    new_pos = Point3f0((mat_ * Vec4f0(new_pos..., 1.0f0))[1:3])
 
 	        elseif mouse_button[1] == Int(GLFW.MOUSE_BUTTON_2) #panning
-				rt          = cam.right * dx *0.5* cam.translation_speed
-				ut          = -cam.up   * dy *0.5* cam.translation_speed
+				rt          = cam.right * dx * cam.translation_speed / 2
+				ut          = -cam.up   * dy * cam.translation_speed / 2
 				new_lookat += rt + ut
 				new_pos    += rt + ut
 	        end
@@ -61,8 +54,8 @@ function update(updater::CameraOperator)
 	    end
 
 	    #resize stuff
-	    new_proj = projmat(perspective, w, h, cam.near, cam.far, cam.fov) #TODO only perspective
-	    #scroll stuff no dx
+	    new_proj = projmatpersp(w, h, cam.fov, cam.near, cam.far) #TODO only perspective
+	    #scroll stuff no dxp
 	    new_forward   = forward(new_pos, new_lookat)
 	    new_scroll_dy = scroll_dy
 	    new_pos      += Point3f0(new_forward * (scroll_dy - cam.scroll_dy) * cam.translation_speed/2)
@@ -73,10 +66,10 @@ function update(updater::CameraOperator)
 	    new_up       = unitup(u_forward, new_right)
 	    new_view     = lookatmat(new_pos, new_lookat, new_up)
 	    new_projview = new_proj * new_view
-		spatial[i]   = Spatial(new_pos, spatial[i].velocity)
-		overwrite!(camera, Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
+		spatial[e] = Spatial(new_pos, spat.velocity)
+		camera[e]  = Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
 		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed,
-		                            new_mouse_pos, cam.scroll_dx, new_scroll_dy), i)
+		                            new_mouse_pos, cam.scroll_dx, new_scroll_dy)
     end
 end
 

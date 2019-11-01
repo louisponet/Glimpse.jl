@@ -1,90 +1,56 @@
 import GLAbstraction: free!
-
 ########### Initialization
-#TODO, make it so args and kwargs get all passed around to pipelines and screens etc
-function Diorama(name::Symbol = :Glimpse; kwargs...) #Defaults
-	c                  = Canvas(name; kwargs...)
-	wh                 = size(c)
-	io_fbo             = RenderTarget{IOTarget}(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
-	# text_pass          = text_pass()
-	fullscreenvao      = FullscreenVao()
-    def_prog           = RenderProgram{DefaultProgram}(GLA.Program(default_shaders()))
-    def_inst_prog      = RenderProgram{DefaultInstancedProgram}(GLA.Program(default_instanced_shaders()))
-    peel_prog          = RenderProgram{PeelingProgram}(GLA.Program(peeling_shaders()))
-    peel_inst_prog     = RenderProgram{PeelingInstancedProgram}(GLA.Program(peeling_instanced_shaders()))
-    line_prog          = RenderProgram{LineProgram}(GLA.Program(line_shaders()))
-    text_prog          = RenderProgram{TextProgram}(GLA.Program(text_shaders()))
-    updated_components = UpdatedComponents(DataType[])
-    font_storage       = FontStorage()
-    gui_funcs          = GuiFuncs()
 
-	timing = TimingData(time(),0.0, 0, 1/60, false)
-	dio = Diorama(name, Entity[], AbstractComponent[], [timing, gui_funcs, io_fbo, c, fullscreenvao, def_prog, def_inst_prog, peel_prog, peel_inst_prog, updated_components, line_prog, text_prog, font_storage], System[])
-    add_component!.((dio,),[PolygonGeometry,
-    						FileGeometry,
-    						FunctionGeometry,
-    						DensityGeometry,
-    						VectorGeometry,
-    						FunctionColor,
-    						DensityColor,
-    						BufferColor,
-    						Mesh,
-		                    Material,
-		                    Spatial,
-		                    Shape,
-		                    UniformColor,
-		                    PointLight,
-		                    Camera3D,
-		                    Dynamic,
-		                    ModelMat,
-		                    Line,
-		                    Text,
-		                    Selectable,
-		                    AABB,
-		                    GuiText,
-		                    ProgramTag{DefaultProgram},
-		                    ProgramTag{DefaultInstancedProgram},
-		                    ProgramTag{PeelingProgram},
-		                    ProgramTag{PeelingInstancedProgram},
-		                    ProgramTag{LineProgram},
-		                    Vao{DefaultProgram},
-		                    Vao{PeelingProgram},
-		                    Vao{LineProgram},
-		                    Vao{TextProgram}])
-    add_shared_component!.((dio,), [PolygonGeometry,
-    							    AABB,
-    								FileGeometry,
-    							    Mesh,
-							        Vao{DefaultInstancedProgram},
-    							    Vao{PeelingInstancedProgram},
-    							    Grid])
+Overseer.ledger(dio::Diorama) = dio.ledger
 
-	add_system!.((dio,),[Timer(dio),
-						 Resizer(dio),
-                         Mesher(dio),
-                         AABBGenerator(dio),
-                         UniformCalculator(dio),
-                         MousePicker(dio),
-			             DefaultUploader(dio),
-			             DefaultInstancedUploader(dio),
-			             LinesUploader(dio),
-			             PeelingUploader(dio),
-			             PeelingInstancedUploader(dio),
-                         UniformUploader{DefaultInstancedProgram}(dio),
-                         UniformUploader{PeelingInstancedProgram}(dio),
-                         TextUploader(dio),
-			             CameraOperator(dio),
-			             DefaultRenderer(dio),
-			             DepthPeelingRenderer(dio),
-			             TextRenderer(dio),
-			             GuiRenderer(dio),
-			             FinalRenderer(dio),
-			             Sleeper(dio)])
+function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
+	m = Ledger(Stage(:start, [Timer()]),
+                Stage(:setup, [PolygonMesher(),
+			                         DensityMesher(),
+			                         VectorMesher(),
+			                         FunctionMesher(),
+			                         FunctionColorizer(),
+			                         AABBGenerator(),
+			                         Uploader(),
+			                         InstancedUploader(),
+			                         TextUploader()]),
+                extra_systems...,
+
+			    Stage(:simulation, [Oscillator(),
+                        			      Mover(),
+                        			      MousePicker(),
+                        			      UniformCalculator(),
+                        			      CameraOperator()]),
+
+				Stage(:rendering, [LineRenderer(),
+				                         TextRenderer(),
+			                             UniformUploader(),
+			                             DefaultRenderer(),
+			                             DepthPeelingRenderer(),
+			                             GuiRenderer(),
+			                             FinalRenderer()]),
+
+			    Stage(:stop, [Resizer(), Sleeper()]))
 
 
-	add_entity!(dio, separate = [Spatial(position=Point3f0(200f0), velocity=zero(Vec3f0)), PointLight(), UniformColor(RGBA{Float32}(1.0))])
-	add_entity!(dio, separate = [assemble_camera3d(size(dio)...)...])
-	return dio
+    #assemble all rendering, canvas and camera components
+    e = Entity(m, DioEntity(), Canvas(name; kwargs...), TimingData())
+    c = m[Canvas][e]
+	wh = size(c)
+    m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
+    m[e] = FullscreenVao()
+    m[e] = UpdatedComponents(DataType[])
+    for v in assemble_camera3d(Int32.(size(c))...)
+        m[e] = v
+    end
+
+	Entity(m, DioEntity(), Spatial(position=Point3f0(200f0)),
+	          PointLight(),
+	          UniformColor(RGBA{Float32}(1.0)))
+
+	t = Diorama(name, m; kwargs...)
+	Overseer.prepare(t)
+	return t
 end
 
 
@@ -95,7 +61,7 @@ end
 #This is kind of like a try catch command to execute only when a valid canvas is attached to the diorama
 #i.e All GL calls should be inside one of these otherwise it might be bad.
 function canvas_command(dio::Diorama, command::Function, catchcommand = x -> nothing)
-	canvas = singleton(dio, Canvas)
+	canvas = dio.ledger[Canvas][1]
 	if canvas != nothing
 		command(canvas)
 	else
@@ -105,30 +71,53 @@ end
 
 function expose(dio::Diorama;  kwargs...)
     if dio.loop == nothing
-	    canvas_command(dio, make_current, x -> push!(dio.singletons, Canvas(dio.name; kwargs...))) 
+	    canvas_command(dio, make_current, x -> Overseer.Entity(dio, Canvas(dio.name; kwargs...))) 
     end
+    renderloop(dio)
+    canvas_command(dio, expose)
+
     return dio
+end
+
+function Overseer.update(dio::Diorama, init=false)
+	timer = singleton(dio, TimingData).timer
+	mesg = init ? "Init" : "Running"
+    @timeit timer mesg for stage in stages(dio)
+        for sys in last(stage)
+            timeit(() -> update(sys, dio), timer, string(typeof(sys)))
+        end
+    end
 end
 
 #TODO move control over this to diorama itself
 function renderloop(dio)
     dio    = dio
-    update_system_indices!(dio)
+    Overseer.prepare(dio)
     canvas_command(dio, canvas ->
 	    dio.loop = @async begin
-	    	while !should_close(canvas)
-			    clear!(canvas)
-			    iofbo = singleton(dio, RenderTarget{IOTarget})
-			    bind(iofbo)
-			    draw(iofbo)
-			    clear!(iofbo)
-			    empty!(singleton(dio, UpdatedComponents))
-		        for sys in engaged_systems(dio)
-			        update(sys)
-		        end
-		    end
-		    close(canvas)
-			dio.loop = nothing
+    	    try
+        	    update(dio, true)
+
+    	    	while !should_close(canvas)
+    				pollevents(canvas)
+    			    clear!(canvas)
+    			    iofbo = singleton(dio, IOTarget)
+    			    bind(iofbo)
+    			    draw(iofbo)
+    			    clear!(iofbo)
+    			    update(dio)
+    			    empty!(singleton(dio, UpdatedComponents))
+    		    end
+    		    close(canvas)
+    			dio.loop = nothing
+			catch
+    		    close(canvas)
+                for stage in stages(dio)
+                    # first(stage) == :setup && continue
+                    Overseer.update(stage, dio)
+                end
+    			dio.loop = nothing
+			end
 		end
 	)
 end
@@ -146,7 +135,12 @@ function reload(dio::Diorama)
     )
 end
 
-close(dio::Diorama) = canvas_command(dio, canvas -> should_close!(canvas, true))
+function close(dio::Diorama)
+    canvas_command(dio, canvas -> should_close!(canvas, true))
+    if dio.loop === nothing
+        canvas_command(dio, canvas->close(canvas))
+    end
+end
 
 free!(dio::Diorama) = canvas_command(dio, c -> free!(c))
 
@@ -164,245 +158,12 @@ Base.size(dio::Diorama)  = canvas_command(dio, c -> windowsize(c), x -> (0,0))
 set_background_color!(dio::Diorama, color) = canvas_command(dio, c -> set_background_color!(c, color))
 background_color(dio::Diorama) = canvas_command(dio, c -> c.background)
 
-
-# __/\\\\\\\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\\\___        
-#  _\/\\\///////////______/\\\////////____/\\\/////////\\\_       
-#   _\/\\\_______________/\\\/____________\//\\\______\///__      
-#    _\/\\\\\\\\\\\______/\\\_______________\////\\\_________     
-#     _\/\\\///////______\/\\\__________________\////\\\______    
-#      _\/\\\_____________\//\\\____________________\////\\\___   
-#       _\/\\\______________\///\\\___________/\\\______\//\\\__  
-#        _\/\\\\\\\\\\\\\\\____\////\\\\\\\\\_\///\\\\\\\\\\\/___ 
-#         _\///////////////________\/////////____\///////////_____
-
-function Base.empty!(dio::Diorama)
-	for component in dio.components
-		empty!(component)
-	end
-	empty!(dio.entities)
-end
-
-#TODO: change such that there are no components until needed?
-function component(dio::Diorama, ::Type{T}) where {T <: ComponentData}
-	for c in components(dio)
-		if eltype(c) <: T && isa(c, Component)
-			return c
-		end
-	end
-	for c in components(dio)
-		if T <: eltype(c) && isa(c, Component)
-			return c
-		end
-	end
-end
-
-function shared_component(dio::Diorama, ::Type{T}) where {T <: ComponentData}
-	for c in components(dio)
-		if eltype(c) <: T && isa(c, SharedComponent)
-			return c
-		end
-	end
-	for c in components(dio)
-		if T <: eltype(c) && isa(c, SharedComponent)
-			return c
-		end
-	end
-end
-
-components(dio::Diorama) = dio.components
-
-function components(dio::Diorama, ::Type{T}) where {T <: ComponentData}
-	compids = findall(x -> eltype(x) <: T, dio.components)
-	@assert compids != nothing "Component $T was not found, please add it first"
-	return dio.components[compids]
-end
-
-function singletons(dio::Diorama, ::Type{T}) where {T <: Singleton}
-	singlids = findall(x -> typeof(x) <: T, dio.singletons)
-	@assert singlids != nothing "No singleton of type $T was not found, please add it first"
-	return dio.singletons[singlids]
-end
-
-ncomponents(dio::Diorama) = length(dio.components)
-
-singleton(dio::Diorama, ::Type{T}) where {T <: Singleton} = getfirst(x -> isa(x, T), dio.singletons)
-
-function add_component_to_systems(dio, comp::AbstractComponent{T}) where T
-	for sys in dio.systems
-		for rc in sys.data.requested_components
-			if T <: rc
-				push!(sys.data.components, comp)
-				return
-			end
-		end
-	end
-end
-
-
-function add_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData}
-	comp = Component(ncomponents(dio)+1, T)
-	push!(dio.components, comp)
-	add_component_to_systems(dio, comp)
-	return comp
-end
-	
-function add_shared_component!(dio::Diorama, ::Type{T}) where {T <: ComponentData}
-	comp = SharedComponent(ncomponents(dio)+1, T)
-	push!(dio.components, comp)
-	add_component_to_systems(dio, comp)
-	return comp
-end
-
-system(dio::Diorama, ::Type{T}) where {T <: System} =
-	getfirst(x -> isa(x, T), dio.systems)
-
-add_system!(dio::Diorama, sys::System) = push!(dio.systems, sys)
-
-insert_system!(dio::Diorama, i::Int, sys::System) = insert!(dio.systems, i, sys)
-
-function insert_system_after!(dio::Diorama, ::Type{T}, sys::System) where {T<:System}
-	id = findfirst(x -> isa(x, T), dio.systems)
-	if id != nothing
-		insert!(dio.systems, id + 1, sys)
-	end
-end
-
-function insert_system_before!(dio::Diorama, ::Type{T}, sys::System) where {T<:System}
-	id = findfirst(x -> isa(x, T), dio.systems)
-	if id != nothing
-		insert!(dio.systems, id - 1, sys)
-	end
-end
-
-function remove_system!(dio::Diorama, ::Type{T}) where {T <: System}
-	sysids = findall(x -> isa(x, T), dio.systems)
-	deleteat!(dio.systems, sysids)
-end
-	
-
-#TODO handle freeing and reusing stuff
-#TODO MAKE SURE THAT ALWAYS ALL ENTITIES WITH CERTAIN COMPONENTS THAT SYSTEMS CARE ABOUT IN UNISON ARE SORTED 
-function add_to_components!(id, datas, components)
-	for (data, comp) in zip(datas, components)
-		comp[id] = data
-	end
-end
-
-function add_entity!(dio::Diorama; separate::Vector{<:ComponentData}=ComponentData[], shared::Vector{<: ComponentData}=ComponentData[])
-	entity_id  = length(dio.entities) + 1
-
-	names        = typeof.(separate)
-	shared_names = typeof.(shared)
-	found_components        = component.((dio, ), names)
-	found_shared_components = shared_component.((dio, ), shared_names)
-	components = Component[]
-	shared_components = SharedComponent[]
-	for (n, c) in zip(names, found_components)
-		if c === nothing
-			push!(components, add_component!(dio, n))
-		else
-			push!(components, c)
-		end
-	end
-	for (n, c) in zip(shared_names, found_shared_components)
-		if c === nothing
-			push!(shared_components, add_shared_component!(dio, n))
-		else
-			push!(shared_components, c)
-		end
-	end
-
-    add_to_components!(entity_id, separate, components)
-    add_to_components!(entity_id, shared, shared_components)
-	
-	push!(dio.entities, Entity(entity_id))
-	return entity_id
-end
-
-function set_entity_component!(dio::Diorama, entity_id::Int, componentdatas::ComponentData...)
-	entity = getfirst(x->x.id == entity_id, dio.entities)
-	if entity == nothing
-		error("entity id $entity_id doesn't exist")
-	end
-
-	for data in componentdatas
-		component(dio, typeof(data)).data[entity_id] = data
-	end
-end
-
-
+print_debug_timers(dio::Diorama) = print_timer(singleton(dio, TimingData).timer)
+reset_debug_timers!(dio::Diorama) = reset_timer!(singleton(dio, TimingData).timer)
 
 ###########
 # manipulations
 # set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.camera.rotation_speed = Float32(rotation_speed)
-
-function component_ids(dio::Diorama, ComponentTypes)
-	diocomps = components(dio)
-	ids      = zeros(Int, length(ComponentTypes))
-	for (ic, ct) in enumerate(ComponentTypes)
-		for c in diocomps
-			if eltype(c) == ct
-				ids[ic] = c.id
-			end
-		end
-	end
-	return ids
-end
-
-function get_components(dio::Diorama, component_ids::Vector{Int})
-	ncomps   = length(component_ids)
-	diocomps = components(dio)
-	comps    = Vector{Component}(undef, ncomps)
-	for (ic, cid) in enumerate(component_ids)
-		for c in diocomps
-			if c.id == cid
-				comps[ic] = c
-			end
-		end
-	end
-	return comps
-end
-
-function get_components(dio::Diorama, ComponentTypes::Type{<:ComponentData}...)
-	ncomps   = length(ComponentTypes)
-	diocomps = components(dio)
-	comps    = Vector{Component}(undef, ncomps)
-	for (ic, ct) in enumerate(ComponentTypes)
-		for c in diocomps
-			if eltype(c) == ct
-				comps[ic] = c
-			end
-		end
-	end
-	return comps
-end
-#maybe this should be splitted into a couple of systems
-
-component_types(sys::System) = eltype.(sys.components)
-component_ids(sys::System)   = [c.id for c in sys.components]
-component_id(sys::System, ::Type{DT}) where {DT<:ComponentData} = findfirst(isequal(DT), component_types(sys))
-
-function has_components(e::Entity, components::Vector{<:Component})
-	c = 0
-	for ct in components
-		if has_index(ct.data, e.id)
-			c += 1
-		end
-	end
-	return c == length(component_ids)
-end
-
-engaged_systems(dio) = filter(x -> isengaged(x), dio.systems)
-
-function update_system_indices!(dio::Diorama)
-	for sys in dio.systems
-		update_indices!(sys)
-	end
-	for i=1:length(dio.systems) - 1
-		update(dio.systems[i])
-		update_indices!(dio.systems[i+1])
-	end
-end
 
 function center_cameras(dio::Diorama)
 	spat = component(dio, Spatial)
@@ -429,9 +190,12 @@ function center_cameras(dio::Diorama)
     end
 end
 
-# function reupload(::Diorama)
-# 	renderables = fi(x -> x.should_upload, dio.renderables)
-# 	for rp in dio.pipeline
-# 		upload(filter(x->has_pass(x, rp), renderables), rp)
-# 	end
-# end
+push_system(dio::Diorama, s::System) =
+	(dio.ledger = push_system(dio.ledger, s); Overseer.prepare(dio))
+	
+insert_system(dio::Diorama, id::Integer, s::System) =
+	(dio.ledger = insert_system(dio.ledger, id, s); Overseer.prepare(dio))
+
+debug_timer(dio::Diorama) = singleton(dio, TimingData).timer
+
+

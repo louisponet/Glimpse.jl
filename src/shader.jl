@@ -5,7 +5,7 @@ load_shader_source(source_file) = load(joinpath(@__DIR__, "shaders", source_file
 
 default_shaders()             = [load_shader_source("default.vert"),
                                  load_shader_source("default.frag")]
-default_instanced_shaders()   = [load_shader_source("default_instanced.vert"),
+instanced_default_shaders()   = [load_shader_source("default_instanced.vert"),
                                  load_shader_source("default_instanced.frag")]
 
 transparency_shaders()        = [load_shader_source("default.vert"),
@@ -15,7 +15,7 @@ peeling_shaders()             = [load_shader_source("default.vert"),
                                  load_shader_source("peel.frag")]
 peeling_compositing_shaders() = [load_shader_source("composite.vert"),
                                  load_shader_source("fullscreen_peel.frag")]
-peeling_instanced_shaders()   = [load_shader_source("default_instanced.vert"),
+instanced_peeling_shaders()   = [load_shader_source("default_instanced.vert"),
                                  load_shader_source("peel_instanced.frag")]
 
 compositing_shaders()         = [load_shader_source("composite.vert"),

@@ -1,123 +1,99 @@
 import GLAbstraction: bind, draw, color_attachment, depth_attachment
 
-struct PeelingCompositeProgram <: ProgramKind end
-struct PeelingProgram          <: ProgramKind end
-struct PeelingInstancedProgram <: ProgramKind end
+@render_program PeelingCompositingProgram 
+@render_program PeelingProgram          
+@render_program BlendProgram            
+@render_program InstancedPeelingProgram
 
-#can't the colorblender be the IOTarget?
-struct ColorBlendTarget  <: RenderTargetKind end
-struct PeelTarget        <: RenderTargetKind end
+@render_target ColorBlendTarget
+@render_target PeelTarget        
+
+@vao PeelingVao
+@instanced_vao InstancedPeelingVao
 
 # Using the shared uploader system inside uploading.jl
-PeelingUploader(dio::Diorama) = Uploader(PeelingProgram, dio)
+PeelingUploader() = Uploader{PeelingProgram}()
+InstancedPeelingUploader() = Uploader{InstancedPeelingProgram}()
 
-PeelingInstancedUploader(dio::Diorama) = InstancedUploader(PeelingInstancedProgram, dio)
-
-struct DepthPeelingRenderer <: AbstractRenderSystem
-	data          ::SystemData
-	peel1_target  ::RenderTarget{PeelTarget}
-	peel2_target  ::RenderTarget{PeelTarget}
-	blender_target::RenderTarget{ColorBlendTarget}
-	peel_comp_program::GLA.Program
-	blend_program    ::GLA.Program
-	comp_program     ::GLA.Program
-	num_passes ::Int
-
-	function DepthPeelingRenderer(dio::Diorama, num_passes=5)
-		components = (Vao{PeelingProgram},
-		              Vao{PeelingInstancedProgram},
-		              ProgramTag{PeelingProgram},
-		              ProgramTag{PeelingInstancedProgram},
-		              ModelMat,
-		              Spatial,
-		              Material,
-		              Shape,
-		              Color,
-		              PointLight,
-		              Camera3D)
-	    singletons = (RenderTarget{IOTarget},
-	  			      FullscreenVao,
-	  			      RenderProgram{PeelingProgram},
-	  			      RenderProgram{PeelingInstancedProgram})
-
-		data       = SystemData(dio, components, singletons)
-		wh         = size(dio)
-		background = background_color(dio)
-
-	    peel_comp_prog      = Program(peeling_compositing_shaders())
-	    comp_prog           = Program(compositing_shaders())
-	    blend_prog          = Program(blending_shaders())
-
-	    color_blender, peel1, peel2 = [FrameBuffer(values(wh), (RGBA{Float32}, GLA.Depth{Float32}), true) for i= 1:3]
-        return new(data,
-                   RenderTarget{PeelTarget}(peel1, background),
-                   RenderTarget{PeelTarget}(peel2, background),
-                   RenderTarget{ColorBlendTarget}(color_blender, background),
-                   peel_comp_prog,    
-                   blend_prog,
-                   comp_prog,
-                   num_passes)
-    end
+@with_kw struct DepthPeelingRenderer <: AbstractRenderSystem
+	num_passes::Int = 2
 end
 
-function update_indices!(sys::DepthPeelingRenderer)
-	comp(T)  = component(sys, T)
-	spat     = comp(Spatial)
-	sys.data.indices = [valid_entities(comp(PointLight), comp(UniformColor), spat),
-                        valid_entities(comp(Camera3D), spat),
-		                valid_entities(comp(Vao{PeelingProgram}),
-		                               spat,
-		                               comp(Material),
-		                               comp(Shape),
-		                               comp(ModelMat),
-		                               comp(ProgramTag{PeelingProgram})),                        
-                        valid_entities(shared_component(sys, Vao{PeelingInstancedProgram}))]
+function Overseer.requested_components(::DepthPeelingRenderer)
+	(PeelingVao, PeelingProgram,InstancedPeelingVao, InstancedPeelingProgram,
+     BlendProgram, PeelingCompositingProgram, CompositingProgram,
+	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D,
+	 PeelTarget, ColorBlendTarget, IOTarget)
 end
 
-function update(renderer::DepthPeelingRenderer)
-	if isempty(indices(renderer))
-		return
+function Overseer.prepare(::DepthPeelingRenderer, dio::Diorama)
+	if isempty(dio[BlendProgram])
+		dio[Entity(1)] = BlendProgram(Program(blending_shaders()))
 	end
-	allempty = true
-	for i in indices(renderer)
-		if !isempty(i)
-			allempty = false
-		end
+	if isempty(dio[PeelingCompositingProgram])
+		dio[Entity(1)] = PeelingCompositingProgram(Program(peeling_compositing_shaders()))
 	end
-	if allempty
+	if isempty(dio[CompositingProgram])
+		dio[Entity(1)] = CompositingProgram(Program(compositing_shaders()))
+	end
+	c = singleton(dio, Canvas)
+	wh = size(c)
+	while length(dio[PeelTarget]) < 2
+		Entity(dio.ledger, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
+	end
+	if isempty(dio[ColorBlendTarget])
+		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background)
+	end
+end
+
+function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
+	glDisableCullFace()
+	vao = m[PeelingVao]
+    ivao = m[InstancedPeelingVao]
+	if isempty(vao) && isempty(ivao)
 		return
 	end
 	rem1(x, y) = (x - 1) % y + 1
-	comp(T)  = component(renderer, T)
-	scomp(T) = shared_component(renderer, T)
-	vao      = comp(Vao{PeelingProgram})
-	ivao     = scomp(Vao{PeelingInstancedProgram})
-	spatial  = comp(Spatial)
-	material = comp(Material)
-	shape    = comp(Shape)
-	modelmat = comp(ModelMat)
-	ucolor   = comp(UniformColor)
-	peeling_program  = singleton(renderer, RenderProgram{PeelingProgram})
-	ipeeling_program = singleton(renderer, RenderProgram{PeelingInstancedProgram})
 
-	ufunc = set_entity_uniforms_func(peeling_program, renderer)
+	spatial  = m[Spatial]
+	material = m[Material]
+	modelmat = m[ModelMat]
+	ucolor   = m[UniformColor]
+	bcolor   = m[BufferColor]
+	light    = m[PointLight]
+	camera   = m[Camera3D]
 
-	light    = comp(PointLight)
-	camera   = comp(Camera3D)
+	peeling_program  = m[PeelingProgram][1]
+	ipeeling_program  = m[InstancedPeelingProgram][1]
 
-	peel_comp_program   = renderer.peel_comp_program
-    blending_program    = renderer.blend_program
-    compositing_program = renderer.comp_program
+	peel_comp_program   = m[PeelingCompositingProgram][1]
+    blending_program    = m[BlendProgram][1]
+    compositing_program = m[CompositingProgram][1]
 
-    colorblender        = renderer.blender_target
-    peeling_targets     = [renderer.peel1_target, renderer.peel2_target]
-    iofbo               = singleton(renderer, RenderTarget{IOTarget})
-    fullscreenvao       = singleton(renderer, FullscreenVao)
+    colorblender        = m[ColorBlendTarget][1]
+    peeling_targets     = m[PeelTarget].data[1:2]
+    iofbo               = m[IOTarget][1]
+    fullscreenvao       = m[FullscreenVao][1]
+
+	set_light_camera_uniforms = (prog) -> begin
+	    for e  in @entities_in(light && ucolor && spatial)
+		    set_uniform(prog, light[e], ucolor[e], spatial[e])
+	    end
+	    for e in @entities_in(spatial && camera)
+		    set_uniform(prog, spatial[e], camera[e])
+	    end
+    end
+
+	set_model_material = (e_modelmat, e_material) -> begin
+		set_uniform(peeling_program, :specint, e_material.specint)
+		set_uniform(peeling_program, :specpow, e_material.specpow)
+		set_uniform(peeling_program, :modelmat, e_modelmat.modelmat)
+	end
 
     bind(colorblender)
     draw(colorblender)
     clear!(colorblender)
-    #TODO change this nonsense
+#     #TODO change this nonsense
     canvas_width, canvas_height = Float32.(size(iofbo))
 
     resize!(colorblender, (Int(canvas_width), Int(canvas_height)))
@@ -136,40 +112,47 @@ function update(renderer::DepthPeelingRenderer)
     bind(fullscreenvao)
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
-	separate_entities  = indices(renderer)[3]
-	instanced_entities = indices(renderer)[4]
-	render_separate  = !isempty(separate_entities)
-	render_instanced = !isempty(instanced_entities)
-	function renderall_separate()
-		#render all separate ones first
-		for i in separate_entities
-			evao   = vao[i]
+
+	it1 = @entities_in(vao && modelmat && material && ucolor)
+	it2 = @entities_in(vao && modelmat && material && bcolor && !ucolor)
+
+	ufunc = (e_color) -> begin
+		set_uniform(peeling_program, :uniform_color, e_color.color)
+		set_uniform(peeling_program, :is_uniform, true)
+	end
+	bfunc = (e_color) -> begin
+		set_uniform(peeling_program, :is_uniform, false)
+	end
+
+	renderall_separate = () -> begin
+		set_light_camera_uniforms(peeling_program)
+		for (it, f, color) in zip((it1,it2), (ufunc, bfunc),(ucolor,bcolor)) 
+			for e in it
+                evao = vao[e]
+				if evao.visible
+					set_model_material(modelmat[e], material[e])
+					f(color[e])
+					GLA.bind(evao)
+					GLA.draw(evao)
+				end
+			end
+		end
+	end
+
+	renderall_instanced = () -> begin
+		set_light_camera_uniforms(ipeeling_program)
+		for evao in ivao
 			if evao.visible
-				ufunc(i)
 				GLA.bind(evao)
 				GLA.draw(evao)
 			end
 		end
 	end
 
-	function renderall_instanced()
-		for evao in ivao.shared
-			if evao.visible
-				GLA.bind(evao)
-				GLA.draw(evao)
-			end
-		end
-	end
 
-	function render_start(prog, renderfunc)
+    function render_start(prog, renderfunc)
 	    bind(prog)
-	    for i in indices(renderer)[1]
-		    set_uniform(prog, light[i], ucolor[i], spatial[i])
-	    end
-	    for i in indices(renderer)[2]
-		    set_uniform(prog, spatial[i], camera[i])
-	    end
-
+	    set_light_camera_uniforms(prog)
 	    set_uniform(prog, :first_pass, true)
 	    set_uniform(prog, :canvas_width, canvas_width)
 	    set_uniform(prog, :canvas_height, canvas_height)
@@ -177,18 +160,12 @@ function update(renderer::DepthPeelingRenderer)
 	    set_uniform(prog, :first_pass, false)
     end
 
-	# first pass: Render all the transparent stuff
-	# separate
-	if render_separate
-		render_start(peeling_program, renderall_separate)
-    end
+ 	# first pass: Render all the transparent stuff
+ 	# separate
+	render_start(peeling_program, renderall_separate)
+	render_start(ipeeling_program, renderall_instanced)
 
-    #instanced
-    if render_instanced
-	    render_start(ipeeling_program, renderall_instanced)
-    end
-
-	#start peeling passes
+ 	#start peeling passes
     for layer=1:renderer.num_passes
         currid  = rem1(layer, 2)
         currfbo = peeling_targets[currid]
@@ -200,7 +177,7 @@ function update(renderer::DepthPeelingRenderer)
         glEnable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
 
-		# peel: Render all opaque stuff
+# 		# peel: Render all opaque stuff
 		bind(peel_comp_program)
 		set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
 		set_uniform(peel_comp_program, :depth_texture, (1, depth_attachment(iofbo)))
@@ -208,24 +185,14 @@ function update(renderer::DepthPeelingRenderer)
 	    bind(fullscreenvao)
 	    draw(fullscreenvao)
 
-		# peel: Render all the transparent stuff
-		if render_separate
-	        bind(peeling_program)
-	        set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
-			renderall_separate()
-		end
-		if render_instanced
-	        bind(ipeeling_program)
-	        set_uniform(ipeeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
-			renderall_instanced()
-		end
+        bind(peeling_program)
+        set_uniform(peeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
+		renderall_separate()
 
-
-        # bind(peeling_instanced_program)
-        # set_uniform(peeling_instanced_program, :depth_texture, (0, depth_attachment(prevfbo)))
-        # render(instanced_renderables(rp), peeling_instanced_program)
+        bind(ipeeling_program)
+        set_uniform(ipeeling_program, :depth_texture, (0, depth_attachment(prevfbo)))
+		renderall_instanced()
         
-        # blend: push the new peel to the colorblender using correct alphas
         bind(colorblender)
         draw(colorblender)
 
@@ -248,5 +215,4 @@ function update(renderer::DepthPeelingRenderer)
     set_uniform(compositing_program, :color_texture, (0, color_attachment(colorblender, 1)))
     bind(fullscreenvao)
     draw(fullscreenvao)
-    # glFlush()
 end
