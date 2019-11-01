@@ -1,8 +1,6 @@
 import GeometryTypes: vertices, normals, faces, decompose, normals
 import GLAbstraction: INVALID_ATTRIBUTE, attribute_location, GEOMETRY_DIVISOR
 
-
-
 BasicMesh(geometry::T, ft=Face{3, GLint}) where T =
     error("Please implement a `BasicMesh` constructor for type $T.")
 

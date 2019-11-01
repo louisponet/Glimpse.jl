@@ -124,8 +124,8 @@ end
 abstract type Color <: ComponentData end
 
 # one color, will be put as a uniform in the shader
-@component struct UniformColor <: Color 
-	color::RGBAf0
+@component_with_kw struct UniformColor <: Color 
+	color::RGBAf0 = DEFAULT_COLOR 
 end
 
 # vector of colors, either supplied manually or filled in by mesher
