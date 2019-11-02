@@ -59,15 +59,16 @@ end
 
 struct AABBGenerator <: System end
 
-Overseer.requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable)
+Overseer.requested_components(::AABBGenerator) = (PolygonGeometry, AABB, Selectable, IDColor)
 
 function Overseer.update(::AABBGenerator, m::AbstractLedger)
-	geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
-	it = @entities_in(geometry && selectable && !aabb)
-	for e in it 
-		rect = GeometryTypes.AABB(geometry[e].geometry) 
-		aabb[e] = AABB(rect.origin, rect.widths)
-	end
+	# geometry, aabb, selectable = m[PolygonGeometry], m[AABB], m[Selectable]
+	idc, selectable =  m[IDColor], m[Selectable]
+	i = length(idc)
+    for e in @entities_in(selectable && !idc)
+        idc[e] = IDColor(RGBf0(((i & 0x000000FF) >>  0)/ 255,((i & 0x0000FF00) >>  8)/255, ((i & 0x00FF0000) >> 16)/255))
+        i+=1
+    end
 end
 
 struct MousePicker <: System end

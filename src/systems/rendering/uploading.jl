@@ -82,6 +82,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
 	peeling_prog = m[InstancedPeelingProgram][1].program	
 	default_vao  = m[InstancedDefaultVao]
 	peeling_vao  = m[InstancedPeelingVao]
+	idc = m[IDColor]
 	mesh = m[Mesh]
 	if isempty(mesh)
 		return
@@ -106,6 +107,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
 		specpows  = Float32[]
 		ids       = Entity[]
 		colors    = RGBf0[]
+		idcolors  = RGBf0[]
 		for e in it
     		e_mesh, e_modelmat, e_material, e_color = mesh[e], modelmat[e], material[e], ucolor[e]
     		if e_mesh === tmesh
@@ -113,16 +115,20 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
         		push!(specints,  e_material.specint)
         		push!(specpows,  e_material.specpow)
         		push!(colors, e_color.color)
-        		push!(ids,  e)
+        		if e ∈ idc
+            		push!(idcolors,  idc[e].color)
+        		else
+            		push!(idcolors, RGBf0(0,0,0))
+        		end
+        		push!(ids, e)
     		end
 		end
-		return modelmats, specints, specpows, colors, ids
+		return modelmats, specints, specpows, colors, idcolors, ids
 	end
 
 	for tmesh in mesh.shared
-    	default_modelmats, default_specints, default_specpows, default_colors, default_ids = get_uniforms(default_it, tmesh)
-    	peeling_modelmats, peeling_specints, peeling_specpows, peeling_colors, peeling_ids = get_uniforms(peeling_it, tmesh)
-
+    	default_modelmats, default_specints, default_specpows, default_colors, default_idcolors, default_ids = get_uniforms(default_it, tmesh)
+    	peeling_modelmats, peeling_specints, peeling_specpows, peeling_colors, peeling_idcolors, peeling_ids = get_uniforms(peeling_it, tmesh)
 		if !isempty(default_ids)
             indices = tmesh.mesh.faces .- GLint(1)
     		buffers = [generate_buffers(default_prog, tmesh.mesh);
@@ -130,7 +136,9 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                                         color    = default_colors,
                                         modelmat = default_modelmats,
                                         specint  = default_specints,
-                                        specpow  = default_specpows)]
+                                        specpow  = default_specpows,
+                                        object_id_color = default_idcolors,
+                                        )]
 			tvao = InstancedDefaultVao(VertexArray(buffers, indices, length(default_ids)), true)
 			for e in default_ids
     			default_vao[e] = tvao
@@ -140,11 +148,12 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     		alphas = [alpha[e].α for e in peeling_ids]
             indices = tmesh.mesh.faces .- GLint(1)
     		buffers = [generate_buffers(peeling_prog, tmesh.mesh);
-                       generate_buffers(peeling_prog, GLint(1),
+                       generate_buffers(peeling_prog, GLA.UNIFORM_DIVISOR,
                                         color    = peeling_colors,
                                         modelmat = peeling_modelmats,
                                         specint  = peeling_specints,
                                         specpow  = peeling_specpows,
+                                        object_id_color = peeling_idcolors,
                                         alpha = alphas)]
 			tvao = InstancedPeelingVao(VertexArray(buffers, indices, length(peeling_ids)), true)
 			for e in peeling_ids

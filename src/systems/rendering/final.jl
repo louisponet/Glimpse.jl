@@ -18,7 +18,7 @@ function Overseer.update(::FinalRenderer, m::AbstractLedger)
     bind(canvas)
     draw(canvas)
     bind(compositing_program)
-    set_uniform(compositing_program, :color_texture, (0, color_attachment(iofbo.target, 1)))
+    set_uniform(compositing_program, :color_texture, (0, color_attachment(iofbo.target, 2)))
     bind(vao)
     draw(vao)
 end

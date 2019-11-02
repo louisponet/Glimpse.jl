@@ -2,9 +2,10 @@
 in vec3 fragnormal;
 in vec3 world_pos;
 in vec4 fragcolor;
+in vec3 id_color;
 
-layout(location=0) out vec4 out_color;
-layout(location=1) out vec4 out_id_color;
+layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec3 out_id_color;
 
 struct point_light {
     vec3 position;
@@ -20,6 +21,7 @@ uniform float specint;
 
 uniform point_light plight;
 void main () {
+	out_id_color = id_color;
 
     vec4 ambient_color  = vec4(plight.color * plight.amb_intensity, 1.0f);
     vec3 light_position = normalize(plight.position - world_pos);
@@ -45,6 +47,6 @@ void main () {
     // out_color = vec4(plight.color, 1.0f);
     // out_color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
     out_color = vec4((fragcolor * ( ambient_color+ diffuse_color + specular_color)).rgb, 1);
-    out_id_color = vec4(1, 0, 0, 1);
+    out_id_color = id_color;
     // out_color = vec4(0.0,1,0.0, 1);
 }

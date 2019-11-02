@@ -37,7 +37,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
     e = Entity(m, DioEntity(), Canvas(name; kwargs...), TimingData())
     c = m[Canvas][e]
 	wh = size(c)
-    m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBAf0, GLA.Depth{Float32}), true), c.background)
+    m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBf0, GLA.Depth{Float32}), true), c.background)
     m[e] = FullscreenVao()
     m[e] = UpdatedComponents(DataType[])
     for v in assemble_camera3d(Int32.(size(c))...)

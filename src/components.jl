@@ -153,6 +153,10 @@ end
 	color::Cycle{Union{RGBAf0, Vector{RGBAf0}}}
 end
 
+@component struct IDColor <: Color
+    color::RGBf0
+end
+
 @shared_component struct Grid 
 	points::Array{Point3f0, 3}
 end

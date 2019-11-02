@@ -1,10 +1,13 @@
 #version 420
 in  vec2 tex_coord;
-out vec4 color;
+
+layout (location=0) out vec4 color;
+layout (location=1) out vec3 color_id;
 
 layout(binding=0) uniform sampler2D color_texture;
 layout(binding=1) uniform sampler2D depth_texture;
 layout(binding=2) uniform sampler2D prev_depth;
+layout(binding=3) uniform sampler2D color_id_texture;
 uniform bool first_pass;
 
 void main(){
@@ -19,10 +22,12 @@ void main(){
 		else {
 			color        = vec4(texture(color_texture, tex_coord).rgb, 1);
 			gl_FragDepth = texture(depth_texture, tex_coord).r;
+			color_id = texture(color_id_texture, tex_coord).rgb;
 		}	
 	}
 	else {
 		color        = vec4(texture(color_texture, tex_coord).rgb, 0);
 		gl_FragDepth = texture(depth_texture, tex_coord).r;
+		color_id = texture(color_id_texture, tex_coord).rgb;
 	}
 }

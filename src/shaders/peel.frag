@@ -2,7 +2,9 @@
 in vec4 fragcolor;
 in vec3 fragnormal;
 in vec3 world_pos;
-out vec4 out_color;
+in vec3 id_color;
+layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec3 out_id_color;
 
 struct point_light {
     vec3 position;
@@ -20,10 +22,12 @@ uniform float specint;
 uniform float canvas_width;
 uniform float canvas_height;
 uniform bool first_pass;
+
 layout(binding=0) uniform sampler2D depth_texture;
 
 uniform point_light plight;
 void main () {
+	out_id_color = id_color;
     vec4 ambient_color  = vec4(plight.color * plight.amb_intensity, 1.0f);
     vec3 light_position = normalize(plight.position - world_pos);
     vec3 normal         = normalize(fragnormal);
