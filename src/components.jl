@@ -122,11 +122,15 @@ end
 	mesh
 end
 
+@component struct Alpha
+    α::Float32
+end
+
 abstract type Color <: ComponentData end
 
 # one color, will be put as a uniform in the shader
 @component_with_kw struct UniformColor <: Color 
-	color::RGBAf0 = DEFAULT_COLOR 
+	color::RGBf0 = DEFAULT_COLOR 
 end
 
 # vector of colors, either supplied manually or filled in by mesher
@@ -152,7 +156,6 @@ end
 @shared_component struct Grid 
 	points::Array{Point3f0, 3}
 end
-
 
 abstract type Geometry <: ComponentData end
 

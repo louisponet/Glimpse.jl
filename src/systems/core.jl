@@ -17,7 +17,7 @@ Overseer.requested_components(::Sleeper) = (TimingData, Canvas)
 
 function Overseer.update(::Sleeper, m::AbstractLedger)
 	sd = m[TimingData]
-	swapbuffers(m[Canvas][1])
+	@timeit sd[1].timer "swapping" swapbuffers(m[Canvas][1])
 	curtime    = time()
 	dt = (curtime - sd[1].time)
 	sleep_time = 1/sd[1].preferred_fps - dt

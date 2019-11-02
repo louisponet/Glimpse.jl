@@ -50,7 +50,6 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
     	evao = vao[e]
 		if evao.visible
 			set_model_material(modelmat[e], material[e])
-			set_uniform(prog, :is_uniform, false)
 			GLA.bind(evao)
 			GLA.draw(evao)
 		end

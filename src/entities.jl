@@ -1,6 +1,6 @@
 # WATCHOUT FOR NOTHING
 data_id(e::Entity, id::Int) = getfirst(x -> x.comp_id == id, e.data_ids).data_id
-const DEFAULT_COLOR = RGBAf0(0.0,0.4,0.8, 1.0)
+const DEFAULT_COLOR = RGBf0(0.0,0.4,0.8)
 # All entity Assemblages go here
 
 assemble_sphere(;position::Point3f0 = zero(Point3f0),
