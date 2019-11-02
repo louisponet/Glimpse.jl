@@ -45,6 +45,7 @@ end
 
 @component_with_kw struct Shape 
 	scale::Float32 = 1f0
+	# orientation::Quaternionf0 = 
 end
 
 @component_with_kw struct ModelMat 

@@ -154,6 +154,92 @@ function generate_buffers(program::Program, divisor::GLint; name_buffers...)
     return buffers
 end
 #----------------GeometryTypes-------------------------#
+struct Cone{T} <: GeometryPrimitive{3, T}
+    origin::Point3{T}
+    extremity::Point3{T}
+    r::T
+end
+
+GeometryTypes.origin(c::Cone{T}) where {T}    = c.origin
+GeometryTypes.extremity(c::Cone{T}) where {T} = c.extremity
+GeometryTypes.radius(c::Cone{T}) where {T}    = c.r
+GeometryTypes.height(c::Cone{T}) where {T}    = norm(c.extremity - c.origin)
+GeometryTypes.direction(c::Cone{T}) where {T} = (c.extremity .- c.origin) ./ GeometryTypes.height(c)
+
+function GeometryTypes.rotation(c::Cone{T}) where T
+    d3 = direction(c); u = GeometryTypes.@SVector [d3[1], d3[2], d3[3]]
+    if abs(u[1]) > 0 || abs(u[2]) > 0
+        v = GeometryTypes.@MVector [u[2], -u[1], T(0)]
+    else
+        v = GeometryTypes.@MVector [T(0), -u[3], u[2]]
+    end
+    normalize!(v)
+    w = GeometryTypes.@SVector [u[2] * v[3] - u[3] * v[2], -u[1] * v[3] + u[3] * v[1], u[1] * v[2] - u[2] * v[1]]
+    return hcat(v, w, u)
+end
+
+function GeometryTypes.decompose(PT::Type{Point{3, T}}, c::Cone, resolution = 30) where T
+    isodd(resolution) && (resolution = 2 * div(resolution, 2))
+    resolution = max(8, resolution); nbv = div(resolution, 2)
+    M = GeometryTypes.rotation(c)
+    h = GeometryTypes.height(c)
+    position = 1; vertices = Vector{PT}(undef, nbv+2)
+    for j = 1:nbv
+        phi = T((2π * (j - 1)) / nbv)
+        vertices[j] = PT(M * Point{3, T}(c.r * cos(phi), c.r * sin(phi),0)) + PT(c.origin)
+    end
+    vertices[end-1] = PT(c.origin)
+    vertices[end] = PT(c.extremity)
+    return vertices
+end
+
+function GeometryTypes.decompose(::Type{FT}, c::Cone, resolution = 30) where FT <: Face
+    isodd(resolution) && (resolution = 2 * div(resolution, 2))
+    resolution = max(8, resolution); nbv = div(resolution, 2)
+    indexes = Vector{FT}(undef, resolution)
+    index = 1
+    for j = 1:nbv-1
+        indexes[index] = (index,  nbv+1, index + 1)
+        indexes[index+nbv] = (index,  index+1, nbv+2)
+        index += 1
+    end
+    # indexes[index] = (index,  index + 1, nbv+1)
+    # indexes[index+nbv] = (index,  nbv+2, index + 1)
+    indexes[nbv] = (1, nbv+2, nbv)
+    indexes[end] = (1, nbv, nbv+1)
+    # indexes[end] = (1, 1, 1)
+    return indexes
+end
+
+struct Arrow{T} <: GeometryPrimitive{3, T}
+    origin::Point3{T}
+    extremity::Point3{T}
+    r::T #cylinder ratio
+    length_ratio::T # height = height_cylinder * (1+length_ratio)
+    radius_ratio::T # cone_radius = radius_ratio * r
+end
+
+GeometryTypes.origin(c::Arrow{T}) where {T}    = c.origin
+GeometryTypes.extremity(c::Arrow{T}) where {T} = c.extremity
+GeometryTypes.radius(c::Arrow{T}) where {T}    = c.r
+GeometryTypes.height(c::Arrow{T}) where {T}    = norm(c.extremity - c.origin)
+GeometryTypes.direction(c::Arrow{T}) where {T} = (c.extremity .- c.origin) ./ GeometryTypes.height(c)
+
+GeometryTypes.Cylinder(c::Arrow) =
+    Cylinder(c.origin, direction(c) * height(c) / (1 + c.length_ratio), c.r)
+
+Cone(c::Arrow) =
+    Cone(direction(c) * height(c)/(1 + c.length_ratio), c.extremity, c.r * c.radius_ratio)
+
+GeometryTypes.decompose(PT::Type{<:Point}, c::Arrow, resolution = 30) =
+    [decompose(PT, Cylinder(c), resolution); decompose(PT, Cone(c), resolution)]
+
+function GeometryTypes.decompose(::Type{FT}, c::Arrow, resolution = 30) where FT <: Face
+    cylinder_indices = decompose(FT, Cylinder(c), resolution)
+    last_id = maximum(maximum.(cylinder_indices))
+    cone_indices = [id .+ last_id for id in decompose(FT, Cone(c), resolution)]
+    return [cylinder_indices; cone_indices]
+end
 
 # const INSTANCEpD_MESHES = Dict{Symbol, BasicMesh}()
 #

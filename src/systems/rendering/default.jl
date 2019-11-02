@@ -21,7 +21,7 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
 	glDisable(GL_BLEND)
 	glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LEQUAL)
-
+    glEnableCullFace(:back)
 	#Render instanced-renderables
 	bind(prog)
 

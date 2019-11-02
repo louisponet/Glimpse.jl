@@ -23,11 +23,11 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
                         			      CameraOperator()]),
 
 				Stage(:rendering, [LineRenderer(),
-				                         TextRenderer(),
 			                             UniformUploader(),
 			                             DefaultRenderer(),
 			                             DepthPeelingRenderer(),
 			                             GuiRenderer(),
+				                         TextRenderer(),
 			                             FinalRenderer()]),
 
 			    Stage(:stop, [Resizer(), Sleeper()]))

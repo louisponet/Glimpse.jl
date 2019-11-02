@@ -85,3 +85,4 @@ end
 
 GLA.VertexArray(program::Program, mesh::AbstractGlimpseMesh; extra_attributes...) =
     VertexArray(generate_buffers(program, mesh; extra_attributes...), faces(mesh) .- GLint(1))
+
