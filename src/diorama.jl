@@ -4,33 +4,35 @@ import GLAbstraction: free!
 Overseer.ledger(dio::Diorama) = dio.ledger
 
 function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
-	m = Ledger(Stage(:start, [Timer()]),
-                Stage(:setup, [PolygonMesher(),
-			                         DensityMesher(),
-			                         VectorMesher(),
-			                         FunctionMesher(),
-			                         FunctionColorizer(),
-			                         AABBGenerator(),
-			                         Uploader(),
-			                         InstancedUploader(),
-			                         TextUploader()]),
+	m = Ledger(Stage(:start, [Timer(), EventPoller()]),
+                Stage(:setup, [MousePicker(),
+                               PolygonMesher(),
+	                           DensityMesher(),
+	                           VectorMesher(),
+	                           FunctionMesher(),
+	                           FunctionColorizer(),
+	                           IDColorGenerator(),
+	                           Uploader(),
+	                           InstancedUploader(),
+	                           TextUploader()]),
                 extra_systems...,
 
 			    Stage(:simulation, [Oscillator(),
-                        			      Mover(),
-                        			      MousePicker(),
-                        			      UniformCalculator(),
-                        			      CameraOperator()]),
+                			        Mover(),
+                			        UniformCalculator(),
+                			        CameraOperator(),
+                			        Editor()]),
 
-				Stage(:rendering, [LineRenderer(),
-			                             UniformUploader(),
-			                             DefaultRenderer(),
-			                             DepthPeelingRenderer(),
-			                             GuiRenderer(),
-				                         TextRenderer(),
-			                             FinalRenderer()]),
+				Stage(:rendering, [Resizer(),
+				                   LineRenderer(),
+	                               UniformUploader(),
+	                               DefaultRenderer(),
+	                               DepthPeelingRenderer(),
+	                               GuiRenderer(),
+		                           TextRenderer(),
+	                               FinalRenderer()]),
 
-			    Stage(:stop, [Resizer(), Sleeper()]))
+			    Stage(:stop, [Sleeper()]))
 
 
     #assemble all rendering, canvas and camera components
@@ -40,6 +42,8 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
     m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBf0, GLA.Depth{Float32}), true), c.background)
     m[e] = FullscreenVao()
     m[e] = UpdatedComponents(DataType[])
+    m[e] = Mouse(div.(wh,2)..., 0, 0, (0, 0), (0, 0), GLFW.MOUSE_BUTTON_1, GLFW.RELEASE)
+    m[e] = Keyboard(GLFW.KEY_UNKNOWN, 0, GLFW.RELEASE)
     for v in assemble_camera3d(Int32.(size(c))...)
         m[e] = v
     end
@@ -100,11 +104,6 @@ function renderloop(dio)
 
     	    	while !should_close(canvas)
     				pollevents(canvas)
-    			    clear!(canvas)
-    			    iofbo = singleton(dio, IOTarget)
-    			    bind(iofbo)
-    			    draw(iofbo)
-    			    clear!(iofbo)
     			    update(dio)
     			    empty!(singleton(dio, UpdatedComponents))
     		    end

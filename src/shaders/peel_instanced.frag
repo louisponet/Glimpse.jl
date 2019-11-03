@@ -59,7 +59,6 @@ void main () {
         }
         else{
             out_color = relcolor*vec4(fragcolor.rgb * fragcolor.a, fragcolor.a);
-			out_id_color = id_color;
         }
     }
     else{

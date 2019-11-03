@@ -118,7 +118,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
         		if e ∈ idc
             		push!(idcolors,  idc[e].color)
         		else
-            		push!(idcolors, RGBf0(0,0,0))
+            		push!(idcolors, RGBf0(1,1,1))
         		end
         		push!(ids, e)
     		end
@@ -214,10 +214,10 @@ function Overseer.update(::UniformUploader, m::AbstractLedger)
     	end
         ucolor = m[UniformColor]
     	if UniformColor in uc.components
-        	colsize = sizeof(RGBAf0)
+        	colsize = sizeof(RGBf0)
         	it2 = @entities_in(vao && m[UniformColor] && m[Selectable])
     		for tvao in vao.shared
-    			colors = RGBAf0[]
+    			colors = RGBf0[]
     			for e in it2
         			e_vao, e_color, = vao[e], ucolor[e]
     				if e_vao === tvao

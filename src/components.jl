@@ -14,7 +14,7 @@ abstract type Vao <: ComponentData end
 
 macro vao(name)
     esc(quote
-        @component_with_kw struct $name <: Vao
+        @component_with_kw mutable struct $name <: Vao
         	vertexarray::VertexArray
         	visible    ::Bool = true
     	end
@@ -24,7 +24,7 @@ end
 
 macro instanced_vao(name)
     esc(quote
-        @shared_component_with_kw struct $name <: Vao
+        @shared_component_with_kw mutable struct $name <: Vao
         	vertexarray::VertexArray
         	visible    ::Bool = true
     	end
@@ -32,9 +32,12 @@ macro instanced_vao(name)
 	end)
 end
 
+Base.length(vao::Vao) = length(vao.vertexarray)
 GLA.bind(vao::Vao) = GLA.bind(vao.vertexarray)
 
 GLA.draw(vao::Vao) = GLA.draw(vao.vertexarray)
+
+GLA.upload!(vao::Vao; kwargs...) = GLA.upload!(vao.vertexarray; kwargs...) 
 
 # NON rendering Components
 @component struct Dynamic  end
@@ -75,20 +78,17 @@ const Y_AXIS = Vec3f0(0.0,   1.0f0, 0.0)
 const Z_AXIS = Vec3f0(0.0,   0.0  , 1.0f0)
 
 @component_with_kw struct Camera3D 
-    lookat ::Vec3f0  = zero(Vec3f0)
-    up     ::Vec3f0  = Z_AXIS 
-    right  ::Vec3f0  = X_AXIS 
-    fov    ::Float32 = 42f0
-    near   ::Float32 = 0.1f0
-    far    ::Float32 = 3000f0
+    lookat ::Vec3f0             = zero(Vec3f0)
+    up     ::Vec3f0             = Z_AXIS 
+    right  ::Vec3f0             = X_AXIS 
+    fov    ::Float32            = 42f0
+    near   ::Float32            = 0.1f0
+    far    ::Float32            = 3000f0
     view   ::Mat4f0
     proj        ::Mat4f0
     projview    ::Mat4f0
     rotation_speed    ::Float32 = 0.001f0
-    translation_speed ::Float32 = 0.5f0
-    mouse_pos         ::Vec2f0  = zero(Vec2f0)
-    scroll_dx         ::Float32 = 0.0f0
-    scroll_dy         ::Float32 = 0.0f0
+    translation_speed ::Float32 = 0.02f0
 end
 
 function Camera3D(width_pixels::Integer, height_pixels::Integer; eyepos = -10*Y_AXIS,
@@ -205,9 +205,8 @@ end
 
 @component_with_kw struct Text 
 	str      ::String = "test"
-	font_size::Int    = 1
+	font_size::Float64  = 1
 	font     = AP.defaultfont()
 	align    ::Symbol = :right
 	offset   ::Vec3f0= zero(Vec3f0)
 end
-

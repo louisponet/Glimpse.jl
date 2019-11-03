@@ -16,7 +16,7 @@ PeelingUploader() = Uploader{PeelingProgram}()
 InstancedPeelingUploader() = Uploader{InstancedPeelingProgram}()
 
 @with_kw struct DepthPeelingRenderer <: AbstractRenderSystem
-	num_passes::Int = 2
+	num_passes::Int = 4
 end
 
 function Overseer.requested_components(::DepthPeelingRenderer)
@@ -39,7 +39,7 @@ function Overseer.prepare(::DepthPeelingRenderer, dio::Diorama)
 	c = singleton(dio, Canvas)
 	wh = size(c)
 	while length(dio[PeelTarget]) < 2
-		Entity(dio.ledger, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBf0, GLA.Depth{Float32}), true), c.background))
+		Entity(dio.ledger, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
 	end
 	if isempty(dio[ColorBlendTarget])
 		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBf0, GLA.Depth{Float32}), true), c.background)
@@ -109,6 +109,7 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 	set_uniform(peel_comp_program, :first_pass, true)
 	set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
 	set_uniform(peel_comp_program, :depth_texture, (1, depth_attachment(iofbo)))
+	set_uniform(peel_comp_program, :color_id_texture, (3, color_attachment(iofbo, 2)))
     bind(fullscreenvao)
     draw(fullscreenvao)
 	set_uniform(peel_comp_program, :first_pass, false)
@@ -182,7 +183,6 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 		set_uniform(peel_comp_program, :color_texture, (0, color_attachment(iofbo, 1)))
 		set_uniform(peel_comp_program, :depth_texture, (1, depth_attachment(iofbo)))
 		set_uniform(peel_comp_program, :prev_depth,    (2, depth_attachment(prevfbo)))
-		set_uniform(peel_comp_program, :color_id_texture,    (3, color_attachment(prevfbo, 2)))
 	    bind(fullscreenvao)
 	    draw(fullscreenvao)
 
@@ -195,7 +195,7 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 		renderall_instanced()
         
         bind(colorblender)
-        draw(colorblender)
+        draw(colorblender, 1)
 
         glDisable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
@@ -204,7 +204,6 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 
         bind(blending_program)
         set_uniform(blending_program, :color_texture,    (0, color_attachment(currfbo, 1)))
-        # set_uniform(blending_program, :color_id_texture, (1, color_attachment(currfbo, 2)))
 
         bind(fullscreenvao)
         draw(fullscreenvao)

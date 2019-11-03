@@ -17,8 +17,8 @@ end
 	cursor_position  ::NTuple{2, Float64}
 	scroll           ::NTuple{2, Float64}
 	has_focus        ::Bool
-	mouse_buttons    ::NTuple{3, Int}
-	keyboard_buttons ::NTuple{4, Int}
+	mouse_buttons    ::Tuple{GLFW.MouseButton, GLFW.Action, Int}
+	keyboard_buttons ::Tuple{GLFW.Key, Int, GLFW.Action, Int}
 	framebuffer_size ::NTuple{2, Int}
 
 	function Canvas(name::Symbol, id::Int, area, nw, background)
@@ -35,7 +35,7 @@ end
 
 
 		obj = new(name, id, area, nw, ctx, background, CanvasContext(id),
-			      (0.0,0.0), (0.0,0.0), true, (0,0,0), (0,0,0,0), (0,0))
+			      (0.0,0.0), (0.0,0.0), true, (GLFW.MOUSE_BUTTON_1, GLFW.RELEASE, 0), (GLFW.KEY_UNKNOWN,0,GLFW.RELEASE,0), (0,0))
 
 	    GLFW.SetCursorPosCallback(nw, (nw, x::Cdouble, y::Cdouble) -> begin
 	    	obj.cursor_position = (x, y)
@@ -50,11 +50,11 @@ end
 		end)
 
 		GLFW.SetMouseButtonCallback(nw, (nw, button::GLFW.MouseButton, action::GLFW.Action, mods::Cint) -> begin
-	        obj.mouse_buttons = (Int(button), Int(action), Int(mods))
+	        obj.mouse_buttons = (button, action, Int(mods))
 	    end)
 
 	    GLFW.SetKeyCallback(nw, (nw, button::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint) -> begin
-	        obj.keyboard_buttons = (Int(button), Int(scancode), Int(action), Int(mods))
+	        obj.keyboard_buttons = (button, Int(scancode), action, Int(mods))
 	    end)
 
 	    GLFW.SetFramebufferSizeCallback(nw, (nw, w::Cint, h::Cint) -> begin
@@ -227,7 +227,7 @@ end
 
 bind(r::RenderTarget, args...) = bind(r.target, args...)
 
-draw(r::RenderTarget) = draw(r.target)
+draw(r::RenderTarget, args...) = draw(r.target, args...)
 
 clear!(r::RenderTarget, c=r.background) = clear!(r.target, c)
 
@@ -295,4 +295,6 @@ function FontStorage()
 	fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data]; minfilter=:linear, magfilter=:linear, anisotropic=16f0)
 	return FontStorage(atlas, fbo)
 end
+
+
 
