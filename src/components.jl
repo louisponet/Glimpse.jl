@@ -46,6 +46,18 @@ GLA.upload!(vao::Vao; kwargs...) = GLA.upload!(vao.vertexarray; kwargs...)
 	velocity::Vec3f0   = zero(Vec3f0)
 end
 
+@component struct Rotation 
+	q::Quaternions.Quaternion{Float32}
+end
+Rotation(axis::Vec, angle::Number) = Rotation(Quaternions.qrotation(axis, angle))
+Rotation(axis1::Vec, axis2::Vec) = Rotation(rotation(axis1, axis2))
+
+Quaternions.angleaxis(r::Rotation) = Quaternions.angleaxis(r.q)
+Quaternions.axis(r::Rotation)      = Quaternions.axis(r.q)
+Quaternions.angle(r::Rotation)     = Quaternions.angle(r.q)
+
+GeometryTypes.direction(r::Rotation) = r.q * Z_AXIS
+
 @component_with_kw struct Shape 
 	scale::Float32 = 1f0
 	# orientation::Quaternionf0 = 

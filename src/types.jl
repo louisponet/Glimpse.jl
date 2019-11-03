@@ -5,9 +5,9 @@ const EmptyNamedTuple = NamedTuple{(), Tuple{}}
 const Area            = SimpleRectangle
 const RGBAf0          = RGBA{Float32}
 const RGBf0           = RGB{Float32}
-const BLUE            = RGBAf0(0.0, 0.0, 1.0, 1.0)
-const GREEN           = RGBAf0(0.0, 1.0, 0.0, 1.0)
-const RED             = RGBAf0(1.0, 0.0, 0.0, 1.0)
+const BLUE            = RGBf0(0.0, 0.0, 1.0)
+const GREEN           = RGBf0(0.0, 1.0, 0.0)
+const RED             = RGBf0(1.0, 0.0, 0.0)
 
 @enum CamKind pixel orthographic perspective
 

@@ -2,24 +2,31 @@ import GLAbstraction: set_uniform
 
 struct UniformCalculator <: System end
 
-Overseer.requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents)
+Overseer.requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents, Rotation)
 
 function Overseer.update(::UniformCalculator, m::AbstractLedger)
-	uc        = m[UpdatedComponents][1]
+	uc        = singleton(m, UpdatedComponents)
 	m_updated = false
 	modelmat  = m[ModelMat]
 	dyn       = m[Dynamic]
 	camera    = m[Camera3D]
 	spatial   = m[Spatial]
 	shape     = m[Shape]
+	rotation  = m[Rotation]
+
 	for e in @entities_in(spatial)
-		if !in(e, modelmat) || in(e, dyn) || in(e, camera) || in(Spatial, uc)
+		if !in(e, modelmat) || in(e, dyn) || in(e, camera) || in(Spatial, uc) || in(Rotation, uc)
 			m_updated = true
+
+    		tmat = translmat(spatial[e].position)
+            if in(e, rotation)
+                tmat = tmat * Mat4f0(rotation[e].q)
+            end
+
 			if in(e, shape)
-				modelmat[e] = ModelMat(translmat(spatial[e].position) * scalemat(Vec3f0(shape[e].scale)))
-			else
-				modelmat[e] = ModelMat(translmat(spatial[e].position))
-			end
+                tmat = tmat * scalemat(shape[e].scale)
+            end
+			modelmat[e] = ModelMat(tmat)
 		end
 	end
 	if m_updated

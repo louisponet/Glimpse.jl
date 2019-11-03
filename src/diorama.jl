@@ -19,9 +19,9 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 
 			    Stage(:simulation, [Oscillator(),
                 			        Mover(),
-                			        UniformCalculator(),
                 			        CameraOperator(),
-                			        Editor()]),
+                			        Editor(),
+                			        UniformCalculator()]),
 
 				Stage(:rendering, [Resizer(),
 				                   LineRenderer(),

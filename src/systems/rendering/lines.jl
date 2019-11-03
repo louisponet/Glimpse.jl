@@ -23,8 +23,9 @@ Overseer.requested_components(::LineRenderer) =
 	 ModelMat, Material, PointLight, Spatial, Camera3D, IOTarget, LineOptions)
 
 function Overseer.update(::LineRenderer, m::AbstractLedger)
-	fbo  = m[IOTarget][1]
-	prog = m[LineProgram][1]
+	fbo  = singleton(m, IOTarget)
+	prog = singleton(m, LineProgram)
+	idc  = m[IDColor]
 	bind(fbo)
 	draw(fbo)
 	glDisable(GL_BLEND)
@@ -49,6 +50,11 @@ function Overseer.update(::LineRenderer, m::AbstractLedger)
 			set_uniform(prog, :modelmat,   modelmat[e].modelmat)
 			set_uniform(prog, :thickness,  e_line.thickness)
 			set_uniform(prog, :MiterLimit, e_line.miter)
+			if e in idc
+        		set_uniform(prog, :object_id_color, idc[e].color)
+    		else
+        		set_uniform(prog, :object_id_color, RGBf0(1.0,1.0,1.0))
+    		end
 			GLA.bind(evao)
 			GLA.draw(evao)
 		end

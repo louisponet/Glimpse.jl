@@ -10,6 +10,16 @@ function scalemat(s::Vec{3, T}) where T
     )
 end
 
+function scalemat(s::T) where T
+    T0, T1 = zero(T), one(T)
+    Mat{4}(
+        s,T0,  T0,  T0,
+        T0,  s,T0,  T0,
+        T0,  T0,  s,T0,
+        T0,  T0,  T0,  T1,
+    )
+end
+
 scalemat(s::Point{3, T}) where T = scalemat(convert(Vec{3, T}, s))
 
 translmat_x(x::T) where {T} = translmat(Vec{3, T}(x, 0, 0))
@@ -238,15 +248,14 @@ function projmatortho(::Type{T},
 end
 
 
-import Base: (*)
-function (*)(q::Quaternions.Quaternion{T}, v::Vec{3, T}) where T
+function Base.:(*)(q::Quaternions.Quaternion{T}, v::Vec{3, T}) where T
     t = T(2) * cross(Vec(q.v1, q.v2, q.v3), v)
     v + q.s * t + cross(Vec(q.v1, q.v2, q.v3), t)
 end
-function Quaternions.qrotation(axis::Vec{3, T}, theta::T) where T<:Real
+function Quaternions.qrotation(axis::Vec{3, T}, theta) where T<:Real
     u = normalize(axis)
     s = sin(theta/2)
-    Quaternions.Quaternion(cos(theta/2), s*u[1], s*u[2], s*u[3], true)
+    Quaternions.Quaternion{T}(cos(theta/2), s*u[1], s*u[2], s*u[3], true)
 end
 
 mutable struct Pivot{T}

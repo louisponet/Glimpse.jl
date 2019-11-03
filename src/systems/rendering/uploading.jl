@@ -27,9 +27,10 @@ function Overseer.update(::Uploader, m::AbstractLedger)
     default_vao = m[DefaultVao]
     peeling_vao = m[PeelingVao]
     line_vao    = m[LineVao]
-    peeling_prog= m[PeelingProgram][1]
-    default_prog= m[DefaultProgram][1]
-    line_prog   = m[LineProgram][1]
+    peeling_prog= singleton(m, PeelingProgram)
+    default_prog= singleton(m, DefaultProgram)
+    line_prog   = singleton(m, LineProgram)
+    uc = singleton(m, UpdatedComponents)
 
     #Buffer color entities are always not instanced
     for e in @entities_in(mesh && bcolor && !default_vao && !peeling_vao)
@@ -67,12 +68,11 @@ function Overseer.update(::Uploader, m::AbstractLedger)
             color_attach = BufferAttachmentInfo(:color, color_loc, Buffer(color_vec), GEOMETRY_DIVISOR)
             points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)
             line_vao[e] = LineVao(VertexArray([points_attach, color_attach], GL_LINE_STRIP_ADJACENCY), true)
-        else
+        else 
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e_geom.points)
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer, color_vec)
         end
     end
-    empty!(line_geom)
 end
 
 struct InstancedUploader <: System end

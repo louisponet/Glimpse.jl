@@ -12,8 +12,12 @@ in VertexData{
     vec4 mColor;
 } VertexIn;
 
-out vec4 fragcolor;
+uniform vec3 object_id_color;
+layout (location=0) out vec4 fragcolor;
+layout (location=1) out vec3 id_color;
+
 void main(void)
 {
     fragcolor = VertexIn.mColor;
+    id_color = object_id_color;
 }

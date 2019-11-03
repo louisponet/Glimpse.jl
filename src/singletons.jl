@@ -159,7 +159,9 @@ draw(c::Canvas) = nothing
 
 nativewindow(c::Canvas) = c.native_window
 
+
 Base.size(canvas::Canvas)  = size(canvas.area)
+Base.size(canvas::Canvas, i::Int)  = size(canvas.area)[i]
 
 function Base.resize!(c::Canvas, wh::NTuple{2, Integer}, resize_window=false)
 	resize!(GLA.context_framebuffer(), wh)
