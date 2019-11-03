@@ -267,10 +267,6 @@ end
 #----------------------GLFW----------------------------#
 glfw_destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
 
-const WASD_KEYS  = Int.([GLFW.KEY_W, GLFW.KEY_A, GLFW.KEY_S, GLFW.KEY_D])
-const SHIFT_KEYS = Int.([GLFW.KEY_LEFT_SHIFT, GLFW.KEY_RIGHT_SHIFT])
-const CTRL_KEYS  = Int.([GLFW.KEY_LEFT_CONTROL, GLFW.KEY_RIGHT_CONTROL])
-
 """
 Standard window hints for creating a plain context without any multisampling
 or extra buffers beside the color buffer

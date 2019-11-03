@@ -21,23 +21,29 @@ function Overseer.update(::TextUploader, m::AbstractLedger)
 	spatial= m[Spatial]
 	fontstorage = m[FontStorage][1]
 
-	for e in @entities_in(text && spatial && ucolor && !vao)
+	for e in @entities_in(text && spatial && ucolor)
     	t=text[e]
 		offset_width, uv_texture_bbox  = to_gl_text(t, fontstorage)
 		nsprites = length(t.str)
-		vao[e] = TextVao(VertexArray(generate_buffers(prog.program,
-                                                      GLint(0),
-                                                      color = fill(ucolor[e].color, nsprites),
-                                                      rotation = fill(Vec4f0(0), nsprites),
-                                                      offset_width    = offset_width,
-                                                      uv_texture_bbox = uv_texture_bbox),
-                                      GL_POINTS), true)
+		if !(e ∈ vao) || nsprites > length(vao[e])
+    		vao[e] = TextVao(VertexArray(generate_buffers(prog.program,
+                                   GLint(0),
+                                   color = fill(ucolor[e].color, nsprites),
+                                   rotation = fill(Vec4f0(0), nsprites),
+                                   offset_width    = offset_width,
+                                   uv_texture_bbox = uv_texture_bbox), GL_POINTS), true)
+        else
+            GLA.upload!(vao[e], color       = fill(ucolor[e].color, nsprites),
+                            rotation        = fill(Vec4f0(0), nsprites),
+                            offset_width    = offset_width,
+                            uv_texture_bbox = uv_texture_bbox)
+        end
 	end
 end
 
 to_gl_text(t::Text, storage::FontStorage) = to_gl_text(t.str, t.font_size, t.font, t.align, storage)
 
-function to_gl_text(string::AbstractString, textsize::Int, font::Vector{Ptr{AP.FreeType.FT_FaceRec}}, align::Symbol, storage::FontStorage)
+function to_gl_text(string::AbstractString, textsize, font::Vector{Ptr{AP.FreeType.FT_FaceRec}}, align::Symbol, storage::FontStorage)
     atlas           = storage.atlas
     rscale          = Float32(textsize)
     chars           = Vector{Char}(string)
@@ -98,10 +104,12 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
 	set_uniform(prog, :scale_primitive,false)
 	for e in @entities_in(vao && spat && text)
         e_vao, e_spat, e_text = vao[e], spat[e], text[e]
-		set_uniform(prog, :origin, e_spat.position + e_text.offset)
-		set_uniform(prog,:model, m[ModelMat][e].modelmat)
-		bind(e_vao)
-		draw(e_vao)
+        if e_vao.visible
+    		set_uniform(prog,:model, m[ModelMat][e].modelmat)
+    		set_uniform(prog,:origin, e_text.offset)
+    		bind(e_vao)
+    		draw(e_vao)
+		end
 	end
 end
 

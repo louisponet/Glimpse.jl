@@ -13,9 +13,10 @@ Overseer.requested_components(::DefaultRenderer) =
 	 ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, IOTarget)
 
 function Overseer.update(::DefaultRenderer, m::AbstractLedger)
-	fbo   = m[IOTarget][1]
-	prog  = m[DefaultProgram][1]
-	iprog = m[InstancedDefaultProgram][1]
+	fbo   = singleton(m, IOTarget)
+	prog  = singleton(m, DefaultProgram)
+	iprog = singleton(m, InstancedDefaultProgram)
+
 	bind(fbo)
 	draw(fbo)
 	glDisable(GL_BLEND)
@@ -23,10 +24,11 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
     glDepthFunc(GL_LEQUAL)
     glEnableCullFace(:back)
 	#Render instanced-renderables
+
 	bind(prog)
 
-    light, ucolor, spat, cam, modelmat, material, vao =
-        m[PointLight], m[UniformColor], m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[DefaultVao]
+    light, ucolor, idcolor, spat, cam, modelmat, material, vao =
+        m[PointLight], m[UniformColor], m[IDColor], m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[DefaultVao]
 
     set_light_camera_uniforms = (prog) -> begin
         for e in @entities_in(light && ucolor && spat)
@@ -50,6 +52,9 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
     	evao = vao[e]
 		if evao.visible
 			set_model_material(modelmat[e], material[e])
+			if e in idcolor
+    			set_uniform(prog, :object_id_color, idcolor[e].color)
+			end
 			GLA.bind(evao)
 			GLA.draw(evao)
 		end

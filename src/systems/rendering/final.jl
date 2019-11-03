@@ -11,11 +11,13 @@ function Overseer.prepare(::FinalRenderer, dio::Diorama)
 end
 
 function Overseer.update(::FinalRenderer, m::AbstractLedger)
-    compositing_program = m[CompositingProgram][1]
-    canvas              = m[Canvas][1]
-    vao                 = m[FullscreenVao][1]
-    iofbo               = m[IOTarget][1]
+    compositing_program = singleton(m, CompositingProgram)
+    canvas              = singleton(m, Canvas)
+    vao                 = singleton(m, FullscreenVao)
+    iofbo               = singleton(m, IOTarget)
+    bind(iofbo)
     bind(canvas)
+    clear!(canvas)
     draw(canvas)
     bind(compositing_program)
     set_uniform(compositing_program, :color_texture, (0, color_attachment(iofbo.target, 1)))
