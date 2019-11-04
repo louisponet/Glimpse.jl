@@ -42,7 +42,7 @@ function Overseer.prepare(::DepthPeelingRenderer, dio::Diorama)
 		Entity(dio.ledger, PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
 	end
 	if isempty(dio[ColorBlendTarget])
-		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBf0, GLA.Depth{Float32}), true), c.background)
+		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBAf0, GLA.Depth{Float32}), true), c.background)
 	end
 end
 

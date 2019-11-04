@@ -39,7 +39,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
     e = Entity(m, DioEntity(), Canvas(name; kwargs...), TimingData())
     c = m[Canvas][e]
 	wh = size(c)
-    m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBf0, GLA.Depth{Float32}), true), c.background)
+    m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBAf0, GLA.Depth{Float32}), true), c.background)
     m[e] = FullscreenVao()
     m[e] = UpdatedComponents(DataType[])
     m[e] = Mouse(div.(wh,2)..., 0, 0, (0, 0), (0, 0), GLFW.MOUSE_BUTTON_1, GLFW.RELEASE)
@@ -50,7 +50,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 
 	Entity(m, DioEntity(), Spatial(position=Point3f0(200f0)),
 	          PointLight(),
-	          UniformColor(RGBA{Float32}(1.0)))
+	          UniformColor(RGBf0(1.0,1.0,1.0)))
 
 	t = Diorama(name, m; kwargs...)
 	Overseer.prepare(t)
