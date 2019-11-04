@@ -27,9 +27,9 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 				                   LineRenderer(),
 	                               UniformUploader(),
 	                               DefaultRenderer(),
+	                               TextRenderer(),
 	                               DepthPeelingRenderer(),
 	                               GuiRenderer(),
-		                           TextRenderer(),
 	                               FinalRenderer()]),
 
 			    Stage(:stop, [Sleeper()]))
@@ -196,5 +196,30 @@ insert_system(dio::Diorama, id::Integer, s::System) =
 	(dio.ledger = insert_system(dio.ledger, id, s); Overseer.prepare(dio))
 
 debug_timer(dio::Diorama) = singleton(dio, TimingData).timer
+
+function Base.empty!(dio::Diorama)
+    dio_entities = dio[DioEntity]
+    for e in entities(dio)
+        if !(e in dio_entities)
+            schedule_delete!(dio.ledger, e)
+        end
+    end
+    delete_scheduled!(dio.ledger)
+end
+
+#TODO make a sanitize camera stuff
+function center_camera!(dio::Diorama, p::Point3f0)
+    camera          = singleton(dio, Camera3D)
+    camera_entity   = Entity(first(dio[Camera3D].indices))
+    eye             = dio[Spatial][camera_entity].position
+    lookat          = camera.lookat
+    shift           = p-lookat
+    camera.lookat   = p
+    new_eye = eye+shift
+    camera.view     = lookatmat(new_eye, p, camera.up)
+    camera.projview = camera.proj * camera.view
+    dio[Spatial][camera_entity] = Spatial(dio[Spatial][camera_entity], position = new_eye)
+end
+
 
 

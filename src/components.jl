@@ -89,7 +89,7 @@ const X_AXIS = Vec3f0(1.0f0, 0.0  , 0.0)
 const Y_AXIS = Vec3f0(0.0,   1.0f0, 0.0)
 const Z_AXIS = Vec3f0(0.0,   0.0  , 1.0f0)
 
-@component_with_kw struct Camera3D 
+@component_with_kw mutable struct Camera3D 
     lookat ::Vec3f0             = zero(Vec3f0)
     up     ::Vec3f0             = Z_AXIS 
     right  ::Vec3f0             = X_AXIS 
@@ -144,6 +144,7 @@ abstract type Color <: ComponentData end
 @component_with_kw struct UniformColor <: Color 
 	color::RGBf0 = DEFAULT_COLOR 
 end
+UniformColor(x,y,z) = UniformColor(RGBf0(x, y, z))
 
 # vector of colors, either supplied manually or filled in by mesher
 @component struct BufferColor <: Color

@@ -30,7 +30,6 @@ const Gui = CImGui
 using TimerOutputs
 const to = TimerOutput()
 
-const _temp_componentdata_types = Overseer.COMPONENTDATA_TYPES
 
 include("extensions.jl")
 include("types.jl")
@@ -46,9 +45,6 @@ export RGBAf0
 
 #package exports, types & enums
 export Diorama
-export expose
+export expose, center_camera!
 #package exports, default geometries
-function __init__()
-    copy!(Overseer.COMPONENTDATA_TYPES, _temp_componentdata_types)
-end
 end # module
