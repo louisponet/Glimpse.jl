@@ -6,7 +6,11 @@ end
 end
 
 @component struct Movable  end
-@component struct Rotatable end
+@component_with_kw struct Rotatable
+    ring_radii::Float32 = 5f0
+    rotation_speed::Float32 = 0.02f0/200
+    orientation_fontsize::Float32 = 0.3f0
+end
 
 struct Editor <: System end
 
@@ -67,7 +71,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
                 rotation_comp[e] = Rotation(Z_AXIS, 0f0)
             end
 
-            editor_guides  = assemble_orientation_sphere(spatial[e].position)
+            editor_guides  = assemble_orientation_sphere(spatial[e].position, radius=rotatable[e].ring_radii)
             guide_entities = map(x -> Entity(m, x..., Selectable(color_modifier=1.5f0)), editor_guides)
             rotate_guides[e] = EditorRotateGuides(guide_entities)
         end
@@ -96,7 +100,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
             rotation_comp[guide_entities[2]] = Rotation(rot.q*rotation(X_AXIS, Z_AXIS))
             rotation_comp[guide_entities[3]] = Rotation(rot.q*rotation(Y_AXIS, Z_AXIS))
              #this is the out of plane one, so should rotate along the perpendicular direction of the object
-            text[guide_entities[1]] = Text(str="Orientation: (x=$(ax[1]), y=$(ax[2]), z=$(ax[3]))", font_size=0.3, align=:top, offset=Vec3f0(0, 0, -2f0))
+            text[guide_entities[1]] = Text(str="Orientation: (x=$(ax[1]), y=$(ax[2]), z=$(ax[3]))", font_size=rotatable[e].orientation_fontsize, align=:top, offset=Vec3f0(0, 0, -2f0))
         end
 
         #handle moving
@@ -127,7 +131,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
                         plane = Plane(spatial[e].position, rotation_axis)
                         closest_point = intersect(ray, plane)
                         tangent = cross(rotation_axis, closest_point - spatial[e].position)
-                        mouse_drag = (mouse.dx * camera.right - mouse.dy * camera.up) * camera.translation_speed / 200
+                        mouse_drag = (mouse.dx * camera.right - mouse.dy * camera.up) * rotatable[parent_entity].rotation_speed
                         
                         guide_rotation = Quaternions.qrotation(rotation_axis, dot(tangent, mouse_drag)) 
 
