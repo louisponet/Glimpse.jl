@@ -46,5 +46,9 @@ export RGBAf0
 #package exports, types & enums
 export Diorama
 export expose, center_camera!
+
+# For now only one context allowed, could change later I guess
+const GLFW_context = Ref{GLFW.Window}()
+
 #package exports, default geometries
 end # module

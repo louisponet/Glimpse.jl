@@ -1,14 +1,13 @@
 import GLAbstraction: bind, unbind, draw
 
 struct CanvasContext <: GLA.AbstractContext
+	nw::GLFW.Window
 	id::Int
 end
-
 #TODO think about contexts
 #TODO handle resizing properly
 @component mutable struct Canvas
     name             ::Symbol
-    id               ::Int
     area             ::Area{Int}
     native_window    ::GLFW.Window
     imgui_context    ::UInt
@@ -21,7 +20,7 @@ end
 	keyboard_buttons ::Tuple{GLFW.Key, Int, GLFW.Action, Int}
 	framebuffer_size ::NTuple{2, Int}
 
-	function Canvas(name::Symbol, id::Int, area, nw, background)
+	function Canvas(name::Symbol, area, nw, background)
 
 		ctx = convert(UInt, CImGui.GetCurrentContext())
 		if ctx == 0
@@ -34,7 +33,7 @@ end
 		ImGui_ImplOpenGL3_Init(420)
 
 
-		obj = new(name, id, area, nw, ctx, background, CanvasContext(id),
+		obj = new(name, area, nw, ctx, background, CanvasContext(nw, 1),
 			      (0.0,0.0), (0.0,0.0), true, (GLFW.MOUSE_BUTTON_1, GLFW.RELEASE, 0), (GLFW.KEY_UNKNOWN,0,GLFW.RELEASE,0), (0,0))
 
 	    GLFW.SetCursorPosCallback(nw, (nw, x::Cdouble, y::Cdouble) -> begin
@@ -67,21 +66,17 @@ end
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 
-const canvas_id_counter = Base.RefValue(0)
-
-new_canvas_id() = (canvas_id_counter[] = mod1(canvas_id_counter[] + 1, 255); canvas_id_counter[])[]
-
 Base.size(area::Area) = (area.w, area.h)
 
 function Canvas(name=:Glimpse; kwargs...)
-	id = new_canvas_id() 
     defaults = mergepop!(canvas_defaults(), kwargs)
 
     window_hints  = GLFW_DEFAULT_WINDOW_HINTS
     context_hints = GLFW.standard_context_hints(defaults[:major], defaults[:minor])
 
     area = defaults[:area]
-    nw = GLFW.Window(name         = string(name),
+    if !isassigned(GLFW_context)
+        GLFW_context[] = GLFW.Window(name = string(name),
                      resolution   = (area.w, area.h),
                      debugging    = defaults[:debugging],
                      major        = defaults[:major],
@@ -92,12 +87,13 @@ function Canvas(name=:Glimpse; kwargs...)
                      focus        = false,
                      fullscreen   = defaults[:fullscreen],
                      monitor      = defaults[:monitor])
+    end
 
     GLFW.SwapInterval(0) # deactivating vsync seems to make everything quite a bit smoother
 
     background = defaults[:background]
 
-	c = Canvas(name, id, area, nw, background)
+	c = Canvas(name, area, GLFW_context[], background)
 	make_current(c)
     return c
 end
