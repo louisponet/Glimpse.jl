@@ -5,11 +5,16 @@ end
     es::NTuple{3, Entity} 
 end
 
-@component struct Movable  end
+@component_with_kw struct Movable
+    axis_thickness::Float32 = 0.2f0
+    axis_length::Float32    = 5f0
+    font_size::Float32 = 0.3f0
+end
+
 @component_with_kw struct Rotatable
     ring_radii::Float32 = 5f0
     rotation_speed::Float32 = 0.02f0/200
-    orientation_fontsize::Float32 = 0.3f0
+    font_size::Float32 = 0.3f0
 end
 
 struct Editor <: System end
@@ -60,7 +65,8 @@ function Overseer.update(::Editor, m::AbstractLedger)
         set_visibility(true)
         #setup move guides 
         for e in @entities_in(movable && spatial && !move_guides)
-            editor_guides  = assemble_axis_arrows(spatial[e].position)
+            mov = movable[e]
+            editor_guides  = assemble_axis_arrows(spatial[e].position, axis_length=mov.axis_length, thickness=mov.axis_thickness)
             guide_entities = map(x -> Entity(m, x..., Selectable()), editor_guides)
             move_guides[e] = EditorMoveGuides(guide_entities)
         end
@@ -84,7 +90,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
                 spatial[g] = t_spat
             end
             pos = t_spat.position
-            text[guide_entities[1]] = Text(str="Position: (x=$(pos[1]), y=$(pos[2]), z=$(pos[3]))", font_size=0.3, align=:top, offset=Vec3f0(0, 0, -2f0))
+            text[guide_entities[1]] = Text(str="Position: (x=$(pos[1]), y=$(pos[2]), z=$(pos[3]))", font_size=movable[e].font_size, align=:top, offset=Vec3f0(0, 0, -2f0))
         end
 
         #sanitize positions and orientiations of rotation_comp guides
@@ -100,7 +106,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
             rotation_comp[guide_entities[2]] = Rotation(rot.q*rotation(X_AXIS, Z_AXIS))
             rotation_comp[guide_entities[3]] = Rotation(rot.q*rotation(Y_AXIS, Z_AXIS))
              #this is the out of plane one, so should rotate along the perpendicular direction of the object
-            text[guide_entities[1]] = Text(str="Orientation: (x=$(ax[1]), y=$(ax[2]), z=$(ax[3]))", font_size=rotatable[e].orientation_fontsize, align=:top, offset=Vec3f0(0, 0, -2f0))
+            text[guide_entities[1]] = Text(str="Orientation: (x=$(ax[1]), y=$(ax[2]), z=$(ax[3]))", font_size=rotatable[e].font_size, align=:top, offset=Vec3f0(0, 0, -2f0))
         end
 
         #handle moving

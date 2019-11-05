@@ -8,6 +8,7 @@ const RGBf0           = RGB{Float32}
 const BLUE            = RGBf0(0.0, 0.0, 1.0)
 const GREEN           = RGBf0(0.0, 1.0, 0.0)
 const RED             = RGBf0(1.0, 0.0, 0.0)
+const BLACK           = RGBf0(0.0, 0.0, 0.0)
 
 @enum CamKind pixel orthographic perspective
 
