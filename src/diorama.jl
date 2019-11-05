@@ -3,7 +3,7 @@ import GLAbstraction: free!
 
 Overseer.ledger(dio::Diorama) = dio.ledger
 
-function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
+function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 	m = Ledger(Stage(:start, [Timer(), EventPoller()]),
                 Stage(:setup, [MousePicker(),
                                PolygonMesher(),
@@ -15,7 +15,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 	                           Uploader(),
 	                           InstancedUploader(),
 	                           TextUploader()]),
-                extra_systems...,
+                extra_stages...,
 
 			    Stage(:simulation, [Oscillator(),
                 			        Mover(),
@@ -52,7 +52,7 @@ function Diorama(extra_systems...; name = :Glimpse, kwargs...) #Defaults
 	          PointLight(),
 	          UniformColor(RGBf0(1.0,1.0,1.0)))
 
-	t = Diorama(name, m; kwargs...)
+	t = Diorama(name, m, stages(m); kwargs...)
 	Overseer.prepare(t)
 	return t
 end
@@ -86,7 +86,7 @@ end
 function Overseer.update(dio::Diorama, init=false)
 	timer = singleton(dio, TimingData).timer
 	mesg = init ? "Init" : "Running"
-    @timeit timer mesg for stage in stages(dio)
+    @timeit timer mesg for stage in dio.renderloop_stages
         for sys in last(stage)
             timeit(() -> update(sys, dio), timer, string(typeof(sys)))
         end

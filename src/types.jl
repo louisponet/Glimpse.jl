@@ -31,12 +31,13 @@ struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
 end
 
 mutable struct Diorama <: AbstractLedger
-    name       ::Symbol
+    name      ::Symbol
 	ledger    ::Ledger
-    loop       ::Union{Task, Nothing}
-    reupload   ::Bool
-    function Diorama(name::Symbol, ledger::Ledger; kwargs...)
-        dio = new(name, ledger, nothing, true)
+	renderloop_stages::Vector{Stage}
+    loop      ::Union{Task, Nothing}
+    reupload  ::Bool
+    function Diorama(name::Symbol, ledger::Ledger, renderloop_stages::Vector{Stage}; kwargs...)
+        dio = new(name, ledger, renderloop_stages, nothing, true)
 
         makecurrentdio(dio)
         finalizer(free!, dio)
