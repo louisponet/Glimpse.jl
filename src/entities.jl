@@ -101,7 +101,7 @@ assemble_camera3d(width_pixels ::Int32,
 			      height_pixels::Int32; eyepos   = -10*Y_AXIS,
 			   					        velocity = zero(Vec3f0), kwargs...) = (Spatial(eyepos, velocity),
 	   					                                                      Camera3D(width_pixels, height_pixels;
-		                                                                                eyepos = eyepos, kwargs...))
+		                                                                               eyepos = eyepos, kwargs...))
 
 function assemble_line(points::Vector{Point3f0};
                        origin = zero(Point3f0),

@@ -1,4 +1,45 @@
 # import GeometryTypes: Vec, Mat
+@component_with_kw mutable struct Camera3D 
+    lookat ::Vec3f0             = zero(Vec3f0)
+    up     ::Vec3f0             = Z_AXIS 
+    right  ::Vec3f0             = X_AXIS 
+    fov    ::Float32            = 42f0
+    near   ::Float32            = 0.1f0
+    far    ::Float32            = 3000f0
+    view   ::Mat4f0
+    proj        ::Mat4f0
+    projview    ::Mat4f0
+    rotation_speed    ::Float32 = 0.001f0
+    translation_speed ::Float32 = 0.02f0
+    locked::Bool = false
+end
+
+function Camera3D(width_pixels::Integer, height_pixels::Integer; eyepos = -10*Y_AXIS,
+													     lookat = zero(Vec3f0),
+                                                         up     = Z_AXIS,
+                                                         right  = X_AXIS,
+                                                         near   = 0.1f0,
+                                                         far    = 3000f0,
+                                                         fov    = 42f0)
+    up    = normalizeperp(lookat - eyepos, up)
+    right = normalize(cross(lookat - eyepos, up))
+
+    viewm = lookatmat(eyepos, lookat, up)
+    projm = projmatpersp(width_pixels, height_pixels, near, far, fov)
+    return Camera3D(lookat=lookat, up=up, right=right, fov=fov, near=near, far=far, view=viewm, proj=projm, projview=projm * viewm) 
+end
+
+function Camera3D(old_cam::Camera3D, new_pos::Point3f0, new_lookat::Point3f0, u_forward::Vec3f0=unitforward(new_pos, new_lookat))
+	new_right    = unitright(u_forward, old_cam.up)
+	new_up       = unitup(u_forward, new_right)
+	new_view     = lookatmat(new_pos, new_lookat, new_up)
+	new_projview = old_cam.proj * new_view
+
+    return Camera3D(new_lookat, new_up, new_right, old_cam.fov, old_cam.near, old_cam.far, new_view,
+	                            old_cam.proj, new_projview, old_cam.rotation_speed, old_cam.translation_speed,
+	                            old_cam.mouse_pos, old_cam.scroll_dx, old_cam.scroll_dy)
+end
+
 
 abstract type InteractiveSystem <: System end
 
@@ -25,6 +66,7 @@ function Overseer.update(::CameraOperator, m::AbstractLedger)
     dy      = mouse.dy
 
 	@inbounds for e in @entities_in(spatial && camera)
+    	camera[e].locked && continue
     	spat = spatial[e]
     	cam  = camera[e]
 		new_pos = Point3f0(spat.position)
@@ -71,7 +113,7 @@ function Overseer.update(::CameraOperator, m::AbstractLedger)
 	    new_projview = new_proj * new_view
 		spatial[e] = Spatial(new_pos, spat.velocity)
 		camera[e]  = Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
-		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed)
+		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed,cam.locked)
     end
 end
 

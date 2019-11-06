@@ -9,6 +9,9 @@ const BLUE            = RGBf0(0.0, 0.0, 1.0)
 const GREEN           = RGBf0(0.0, 1.0, 0.0)
 const RED             = RGBf0(1.0, 0.0, 0.0)
 const BLACK           = RGBf0(0.0, 0.0, 0.0)
+const X_AXIS          = Vec3f0(1.0f0, 0.0  , 0.0)
+const Y_AXIS          = Vec3f0(0.0,   1.0f0, 0.0)
+const Z_AXIS          = Vec3f0(0.0,   0.0  , 1.0f0)
 
 @enum CamKind pixel orthographic perspective
 

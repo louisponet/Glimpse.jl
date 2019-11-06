@@ -2,6 +2,10 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 
 #TODO what to do with contexts, do we actually need to save them? Should they all be in the canvas?
+@component_with_kw mutable struct GuiInfo
+    show_gui::Bool = false
+end
+
 @component struct GuiText
 	text::String
 end
@@ -14,27 +18,42 @@ struct GuiRenderer <: AbstractRenderSystem end
 
 Overseer.requested_components(::GuiRenderer) = (GuiFuncs, GuiText)
 
-Overseer.prepare(::GuiRenderer, dio::Diorama) = isempty(dio[GuiFuncs]) && (dio[Entity(1)] = GuiFuncs())
+Overseer.prepare(::GuiRenderer, dio::Diorama) = isempty(dio[GuiFuncs]) && (dio[Entity(1)] = GuiFuncs();dio[Entity(1)] = GuiInfo())
 
 function Overseer.update(::GuiRenderer, m::AbstractLedger)
-    return 
-    ImGui_ImplOpenGL3_NewFrame()
-    ImGui_ImplGlfw_NewFrame()
-    Gui.NewFrame()
+    camera = singleton(m, Camera3D)
+    gui_info = singleton(m, GuiInfo)
+    keyboard = singleton(m, Keyboard)
 
-	Gui.Begin("User Text")
-    Gui.SetWindowFontScale(2.0f0)
-    for e in m[GuiText]
-        Gui.Text(e.text)
+    if pressed(keyboard) && keyboard.button == GLFW.KEY_G
+        gui_info.show_gui = keyboard.modifiers != 1
     end
-	Gui.End()
 
-	# Submitted Gui Funcs
-	fs = m[GuiFuncs][1].funcs
-	for f in fs
-		f()
+    if gui_info.show_gui 
+        ImGui_ImplOpenGL3_NewFrame()
+        ImGui_ImplGlfw_NewFrame()
+        Gui.NewFrame()
+    	# if Gui.Checkbox("Show GUI")
+    	Gui.Begin("User Text")
+    	camera.locked = Gui.IsWindowFocused() || camera.locked
+        Gui.SetWindowFontScale(2.0f0)
+        for e in m[GuiText]
+            Gui.Text(e.text)
+        end
+    	Gui.End()
+        # end
+
+    	# Submitted Gui Funcs
+    	fs = m[GuiFuncs][1].funcs
+    	for f in fs
+    		f()
+    	end
+    	empty!(fs)
+    	camera.locked = Gui.IsAnyItemActive() || camera.locked
+        Gui.Render()
+        ImGui_ImplOpenGL3_RenderDrawData(Gui.GetDrawData())
 	end
-	empty!(fs)
+
 
 	# Components Debug
 	# Gui.Begin("Components")
@@ -55,6 +74,4 @@ function Overseer.update(::GuiRenderer, m::AbstractLedger)
 	# end
 	# Gui.End()
 	###
-    Gui.Render()
-    ImGui_ImplOpenGL3_RenderDrawData(Gui.GetDrawData())
 end

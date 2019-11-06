@@ -99,11 +99,13 @@ function Canvas(name=:Glimpse; kwargs...)
 end
 
 function make_current(c::Canvas)
+    c.framebuffer_size = (GLFW.GetFramebufferSize(c.native_window)...,)
     GLFW.MakeContextCurrent(c.native_window)
     GLA.set_context!(c.context)
 end
 
 function expose(c::Canvas)
+    c.framebuffer_size = (GLFW.GetFramebufferSize(c.native_window)...,)
 	GLFW.SetWindowShouldClose(c.native_window, false)
 	GLFW.ShowWindow(c.native_window)
 end

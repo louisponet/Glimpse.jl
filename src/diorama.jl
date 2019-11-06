@@ -19,7 +19,6 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 
 			    Stage(:simulation, [Oscillator(),
                 			        Mover(),
-                			        CameraOperator(),
                 			        Editor(),
                 			        UniformCalculator()]),
 
@@ -32,7 +31,7 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 	                               GuiRenderer(),
 	                               FinalRenderer()]),
 
-			    Stage(:stop, [Sleeper()]))
+			    Stage(:stop, [CameraOperator(), Sleeper()]))
 
 
     #assemble all rendering, canvas and camera components
@@ -104,6 +103,7 @@ function renderloop(dio)
 
     	    	while !should_close(canvas)
     				pollevents(canvas)
+                	singleton(dio, Camera3D).locked = false
     			    update(dio)
     			    empty!(singleton(dio, UpdatedComponents))
     		    end
@@ -199,7 +199,7 @@ debug_timer(dio::Diorama) = singleton(dio, TimingData).timer
 
 function Base.empty!(dio::Diorama)
     dio_entities = dio[DioEntity]
-    for e in entities(dio)
+    for e in valid_entities(dio)
         if !(e in dio_entities)
             schedule_delete!(dio.ledger, e)
         end

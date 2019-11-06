@@ -111,7 +111,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
 
         #handle moving
         for parent_entity in @entities_in(move_guides)
-            for e in move_guides[parent_entity].es
+            for e in move_guides[parent_entity].es[2:end]
                 if selectable[e].selected
                     if pressed(mouse)
                         mouse_drag = (mouse.dx * camera.right - mouse.dy * camera.up) * camera.translation_speed / 2
