@@ -34,14 +34,15 @@ function Overseer.update(::GuiRenderer, m::AbstractLedger)
         ImGui_ImplGlfw_NewFrame()
         Gui.NewFrame()
     	# if Gui.Checkbox("Show GUI")
-    	Gui.Begin("User Text")
-    	camera.locked = Gui.IsWindowFocused() || camera.locked
-        Gui.SetWindowFontScale(2.0f0)
-        for e in m[GuiText]
-            Gui.Text(e.text)
+    	if !isempty(m[GuiText])
+        	Gui.Begin("User Text")
+        	camera.locked = Gui.IsWindowFocused() || camera.locked
+            Gui.SetWindowFontScale(2.0f0)
+            for e in m[GuiText]
+                Gui.Text(e.text)
+            end
+        	Gui.End()
         end
-    	Gui.End()
-        # end
 
     	# Submitted Gui Funcs
     	fs = singleton(m, GuiFuncs).funcs
