@@ -44,8 +44,8 @@ function Overseer.update(::GuiRenderer, m::AbstractLedger)
         # end
 
     	# Submitted Gui Funcs
-    	fs = m[GuiFuncs][1].funcs
-    	for f in fs
+    	fs = singleton(m, GuiFuncs).funcs
+    	for (i, f) in enumerate(fs)
     		f()
     	end
     	empty!(fs)
