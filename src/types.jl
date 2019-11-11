@@ -13,8 +13,6 @@ const X_AXIS          = Vec3f0(1.0f0, 0.0  , 0.0)
 const Y_AXIS          = Vec3f0(0.0,   1.0f0, 0.0)
 const Z_AXIS          = Vec3f0(0.0,   0.0  , 1.0f0)
 
-@enum CamKind pixel orthographic perspective
-
 # Gapped Arrays are used in systems
 abstract type RenderPassKind end
 abstract type RenderTargetKind end

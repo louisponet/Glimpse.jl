@@ -345,15 +345,3 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternions.Quaternion(dot(u, half), cross(u, half)...)
 end
 
-function projmat(x::CamKind, w::Integer, h::Integer, near::T, far::T, fov::T) where T
-    if x == pixel
-        return eye(T,4)
-    elseif x == orthographic
-	    return projmatortho(Float32, -w, w, -h, h, near, far)
-    else
-        return projmatpersp(w, h, fov, near, far)
-    end
-end
-
-projmat(x::CamKind, wh::SimpleRectangle, args...) =
-    projmat(x, wh.w, wh.h, args...)

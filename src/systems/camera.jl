@@ -1,3 +1,5 @@
+@enum CameraKind Perspective Orthographic Pixel
+
 # import GeometryTypes: Vec, Mat
 @component_with_kw mutable struct Camera3D 
     lookat ::Vec3f0             = zero(Vec3f0)
@@ -12,6 +14,7 @@
     rotation_speed    ::Float32 = 0.001f0
     translation_speed ::Float32 = 0.02f0
     locked::Bool = false
+    camerakind::CameraKind = Perspective
 end
 
 function Camera3D(width_pixels::Integer, height_pixels::Integer; eyepos = -10*Y_AXIS,
@@ -37,9 +40,23 @@ function Camera3D(old_cam::Camera3D, new_pos::Point3f0, new_lookat::Point3f0, u_
 
     return Camera3D(new_lookat, new_up, new_right, old_cam.fov, old_cam.near, old_cam.far, new_view,
 	                            old_cam.proj, new_projview, old_cam.rotation_speed, old_cam.translation_speed,
-	                            old_cam.mouse_pos, old_cam.scroll_dx, old_cam.scroll_dy)
+	                            old_cam.mouse_pos, old_cam.scroll_dx, old_cam.scroll_dy, old_cam.camerakind)
 end
 
+function projmat(w::Integer, h::Integer, cam::Camera3D, zoom)
+    aspect = w/h
+    h = tan(cam.fov / 360.0f0 * pi) * cam.near
+    w = h * aspect
+    if cam.camerakind == Pixel
+        return eye(Float32, 4)
+    elseif cam.camerakind == Orthographic
+        h, w = h * zoom*23f0, w * zoom*23f0
+	    return projmatortho(Float32, -w, w, -h, h, cam.near, cam.far)
+    elseif cam.camerakind == Perspective
+        # return projmatpersp(Float32, w, h, cam.fov, cam.near, cam.far)
+        return projmatpersp(Float32, cam.fov, aspect, cam.near, cam.far)
+    end
+end
 
 abstract type InteractiveSystem <: System end
 
@@ -100,10 +117,13 @@ function Overseer.update(::CameraOperator, m::AbstractLedger)
 	    end
 
 	    #resize stuff
-	    new_proj = projmatpersp(w, h, cam.fov, cam.near, cam.far) #TODO only perspective
+
+	    # new_proj = projmatpersp(w, h, cam.fov, cam.near, cam.far) #TODO only perspective
 	    #scroll stuff no dxp
 	    new_forward   = forward(new_pos, new_lookat)
 	    new_pos      += Point3f0(new_forward * scroll_dy * cam.translation_speed*5)
+		zoom = norm(new_forward)
+	    new_proj = projmat(w, h, cam, zoom)
 
 		# update_viewmat
 		u_forward    = normalize(new_forward)
@@ -113,7 +133,7 @@ function Overseer.update(::CameraOperator, m::AbstractLedger)
 	    new_projview = new_proj * new_view
 		spatial[e] = Spatial(new_pos, spat.velocity)
 		camera[e]  = Camera3D(new_lookat, new_up, new_right, cam.fov, cam.near, cam.far, new_view,
-		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed,cam.locked)
+		                            new_proj, new_projview, cam.rotation_speed, cam.translation_speed, cam.locked, cam.camerakind)
     end
 end
 
