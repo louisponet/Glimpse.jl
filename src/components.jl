@@ -65,9 +65,9 @@ Quaternions.angle(r::Rotation)     = Quaternions.angle(r.q)
 GeometryTypes.direction(r::Rotation) = r.q * Z_AXIS
 
 @component_with_kw struct Shape 
-	scale::Float32 = 1f0
-	# orientation::Quaternionf0 = 
+	scale::Vec3f0 = Vec3f0(1f0)
 end
+Shape(f::Real) = Shape(Vec3f0(f))
 
 @component_with_kw struct ModelMat 
 	modelmat::Mat4f0 = Eye4f0()
