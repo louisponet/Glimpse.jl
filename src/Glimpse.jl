@@ -5,6 +5,7 @@ using Reexport
 
 @reexport using Overseer
 @reexport using GeometryTypes
+using GeometryTypes.StaticArrays
 using Overseer: update
 
 using AbstractPlotting # I'd like to get away from this

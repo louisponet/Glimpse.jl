@@ -3,8 +3,8 @@ data_id(e::Entity, id::Int) = getfirst(x -> x.comp_id == id, e.data_ids).data_id
 const DEFAULT_COLOR = RGBf0(0.0,0.4,0.8)
 # All entity Assemblages go here
 
-assemble_sphere(position::Point3f0 = zero(Point3f0);
-	   velocity::Vec3f0        = zero(Vec3f0),
+assemble_sphere(position::StaticArray{Tuple{3}} = zero(Point3f0);
+	   velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
 	   color   = DEFAULT_COLOR,
        radius  ::Float32       = 1f0,
        specint ::Float32       = 0.8f0,
@@ -22,10 +22,10 @@ box_coordinates() = [zero(Point3f0), zero(Point3f0), Vec3f0(1, 0, 0),
                           Point3f0(1,0,0), Point3f0(1,0,1), Point3f0(1, 1, 1),
                           Point3f0(1, 1, 0), Point3f0(0,1,0), Point3f0(0, 1, 1), Point3f0(0,1,1)]
 
-function assemble_wire_box(;velocity::Vec3f0 = zero(Vec3f0),
+function assemble_wire_box(;velocity::StaticArray{Tuple{3}}= zero(Vec3f0),
 	   color   ::RGB{Float32} = DEFAULT_COLOR,
-       left    ::Vec3f0        = Vec3f0(-10),
-       right   ::Vec3f0        = Vec3f0(10),
+       left    ::StaticArray{Tuple{3}}       = Vec3f0(-10),
+       right   ::StaticArray{Tuple{3}}       = Vec3f0(10),
        linewidth::Float32      = 2f0,
        miter ::Float32         = 0.6f0,
        )
@@ -38,11 +38,11 @@ function assemble_wire_box(;velocity::Vec3f0 = zero(Vec3f0),
 end
 
 function assemble_wire_axis_box(;
-       position::Point3f0      = zero(Point3f0),
-       x::Vec3f0               = Vec3f0(1,0,0),
-       y::Vec3f0               = Vec3f0(0,1,0),
-       z::Vec3f0               = Vec3f0(0,0,1),
-       velocity::Vec3f0        = zero(Vec3f0),
+       position::StaticArray{Tuple{3}}      = zero(Point3f0),
+       x::StaticArray{Tuple{3}}              = Vec3f0(1,0,0),
+       y::StaticArray{Tuple{3}}              = Vec3f0(0,1,0),
+       z::StaticArray{Tuple{3}}              = Vec3f0(0,0,1),
+       velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
 	   color   ::RGB{Float32} = DEFAULT_COLOR,
        linewidth::Float32      = 2f0,
        miter ::Float32         = 0.6f0,
@@ -57,7 +57,7 @@ end
 
 
 function assemble_box(left = Point3f0(-0.5), right=Point3f0(0.5);
-	   velocity::Vec3f0        = zero(Vec3f0),
+	   velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
 	   color   ::RGB{Float32} = DEFAULT_COLOR,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0)
@@ -70,8 +70,8 @@ function assemble_box(left = Point3f0(-0.5), right=Point3f0(0.5);
                Shape(norm(right-left)))
 end
 
-assemble_pyramid(;position::Point3f0 = zero(Point3f0),
-	   velocity  ::Vec3f0        = zero(Vec3f0),
+assemble_pyramid(;position::StaticArray{Tuple{3}} = zero(Point3f0),
+	   velocity  ::StaticArray{Tuple{3}}       = zero(Vec3f0),
 	   color     ::RGB{Float32} = DEFAULT_COLOR,
        width     ::Float32      = 1.0f0,
        height    ::Float32      = 1.0f0,
@@ -84,8 +84,8 @@ assemble_pyramid(;position::Point3f0 = zero(Point3f0),
            UniformColor(color),
            Shape(scale))
 
-assemble_file_mesh(file;position::Point3f0 = zero(Point3f0),
-	   velocity::Vec3f0        = zero(Vec3f0),
+assemble_file_mesh(file;position::StaticArray{Tuple{3}} = zero(Point3f0),
+	   velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
 	   color   ::RGB{Float32} = DEFAULT_COLOR,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
@@ -114,7 +114,7 @@ function assemble_line(points::Vector{Point3f0};
 end
 
 
-function assemble_arrow(origin::Point3f0, extremity::Point3f0;
+function assemble_arrow(origin::StaticArray{Tuple{3}}, extremity::StaticArray{Tuple{3}};
     color::RGBf0 = DEFAULT_COLOR,
     thickness::Float32 = 0.2f0,
     length_ratio = 0.4f0,
@@ -129,7 +129,7 @@ function assemble_arrow(origin::Point3f0, extremity::Point3f0;
     return (spatial, geom, Rotation(rotation(Z_AXIS, Vec3f0(unit_direction))),  UniformColor(color), Material())
 end
 
-function assemble_axis_arrows(origin::Point3f0=Point3f0(0.0);
+function assemble_axis_arrows(origin::StaticArray{Tuple{3}}=Point3f0(0.0);
     axis_length=5f0,
     thickness::Float32 = 0.2f0,
     length_ratio = 0.4f0,
@@ -154,7 +154,7 @@ function assemble_axis_arrows(origin::Point3f0=Point3f0(0.0);
                            color        = RGBf0(0,0,1)))
 end
 
-function assemble_orientation_sphere(origin::Point3f0=Point3f0(0.0);
+function assemble_orientation_sphere(origin::StaticArray{Tuple{3}}=Point3f0(0.0);
                                      radius::Float32=5.0f0,
                                      thickness::Float32=10.0f0,
                                      base_color=RGBf0(0.7,0.7,0.7),

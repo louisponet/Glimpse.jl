@@ -141,7 +141,7 @@ function close(dio::Diorama)
     end
 end
 
-free!(dio::Diorama) = canvas_command(dio, c -> free!(c))
+free!(dio::Diorama) = (close(dio); canvas_command(dio, c -> free!(c)))
 
 isrendering(dio::Diorama) = dio.loop != nothing
 
