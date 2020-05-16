@@ -43,7 +43,7 @@ end
 
 to_gl_text(t::Text, storage::FontStorage) = to_gl_text(t.str, t.font_size, t.font, t.align, storage)
 
-function to_gl_text(string::AbstractString, textsize, font::Vector{Ptr{AP.FreeType.FT_FaceRec}}, align::Symbol, storage::FontStorage)
+function to_gl_text(string::AbstractString, textsize, font, align::Symbol, storage::FontStorage)
     atlas           = storage.atlas
     rscale          = Float32(textsize)
     chars           = Vector{Char}(string)
@@ -95,7 +95,7 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
     set_uniform(prog, :projection, projection_mat)
 
     # Fragment uniforms
-	set_uniform(prog, :distancefield, (0, color_attachment(glyph_fbo, 1)))
+	set_uniform(prog, :distancefield, 0, color_attachment(glyph_fbo, 1))
 	set_uniform(prog, :shape, 3)
 	#TODO make this changeable
 	set_uniform(prog, :stroke_width, 0f0)

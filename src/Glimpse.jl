@@ -8,7 +8,7 @@ using Reexport
 using GeometryTypes.StaticArrays
 using Overseer: update
 
-using AbstractPlotting # I'd like to get away from this
+import AbstractPlotting # I'd like to get away from this
 const AP = AbstractPlotting
 
 using ModernGL
@@ -26,6 +26,7 @@ using Parameters
 using CImGui
 using CImGui.GLFWBackend
 using CImGui.OpenGLBackend
+using ThreadPools
 const Gui = CImGui
 
 using TimerOutputs

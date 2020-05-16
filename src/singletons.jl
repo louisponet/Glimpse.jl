@@ -1,8 +1,8 @@
 import GLAbstraction: bind, unbind, draw
 
 struct CanvasContext <: GLA.AbstractContext
-	nw::GLFW.Window
-	id::Int
+    nw::GLFW.Window
+    id::Int
 end
 #TODO think about contexts
 #TODO handle resizing properly
@@ -12,57 +12,57 @@ end
     native_window    ::GLFW.Window
     imgui_context    ::UInt
     background       ::Colorant{Float32, 4}
-	context          ::CanvasContext
-	cursor_position  ::NTuple{2, Float64}
-	scroll           ::NTuple{2, Float64}
-	has_focus        ::Bool
-	mouse_buttons    ::Tuple{GLFW.MouseButton, GLFW.Action, Int}
-	keyboard_buttons ::Tuple{GLFW.Key, Int, GLFW.Action, Int}
-	framebuffer_size ::NTuple{2, Int}
+    context          ::CanvasContext
+    cursor_position  ::NTuple{2, Float64}
+    scroll           ::NTuple{2, Float64}
+    has_focus        ::Bool
+    mouse_buttons    ::Tuple{GLFW.MouseButton, GLFW.Action, Int}
+    keyboard_buttons ::Tuple{GLFW.Key, Int, GLFW.Action, Int}
+    framebuffer_size ::NTuple{2, Int}
 
-	function Canvas(name::Symbol, area, nw, background)
+    function Canvas(name::Symbol, area, nw, background)
 
-		ctx = convert(UInt, CImGui.GetCurrentContext())
-		if ctx == 0
-			ctx = convert(UInt, CImGui.CreateContext())
-		else
-			CImGui.DestroyContext(CImGui.GetCurrentContext())
-			ctx = convert(UInt, CImGui.CreateContext())
-		end
-		ImGui_ImplGlfw_InitForOpenGL(nw, true)
-		ImGui_ImplOpenGL3_Init(420)
+    ctx = convert(UInt, CImGui.GetCurrentContext())
+    if ctx == 0
+    ctx = convert(UInt, CImGui.CreateContext())
+    else
+    CImGui.DestroyContext(CImGui.GetCurrentContext())
+    ctx = convert(UInt, CImGui.CreateContext())
+    end
+    ImGui_ImplGlfw_InitForOpenGL(nw, true)
+    ImGui_ImplOpenGL3_Init(420)
 
 
-		obj = new(name, area, nw, ctx, background, CanvasContext(nw, 1),
-			      (0.0,0.0), (0.0,0.0), true, (GLFW.MOUSE_BUTTON_1, GLFW.RELEASE, 0), (GLFW.KEY_UNKNOWN,0,GLFW.RELEASE,0), (0,0))
+    obj = new(name, area, nw, ctx, background, CanvasContext(nw, 1),
+          (0.0,0.0), (0.0,0.0), true, (GLFW.MOUSE_BUTTON_1, GLFW.RELEASE, 0), (GLFW.KEY_UNKNOWN,0,GLFW.RELEASE,0), (0,0))
 
-	    GLFW.SetCursorPosCallback(nw, (nw, x::Cdouble, y::Cdouble) -> begin
-	    	obj.cursor_position = (x, y)
-    	end)
+        GLFW.SetCursorPosCallback(nw, (nw, x::Cdouble, y::Cdouble) -> begin
+        obj.cursor_position = (x, y)
+        end)
 
-    	GLFW.SetScrollCallback(nw, (nw, xoffset::Cdouble, yoffset::Cdouble) -> begin
-        	obj.scroll = (obj.scroll[1] + xoffset, obj.scroll[2] + yoffset)
-    	end)
+        GLFW.SetScrollCallback(nw, (nw, xoffset::Cdouble, yoffset::Cdouble) -> begin
+            obj.scroll = (obj.scroll[1] + xoffset, obj.scroll[2] + yoffset)
+        end)
 
-    	GLFW.SetWindowFocusCallback(nw, (nw, focus::Bool) -> begin
-    		obj.has_focus = focus
-		end)
+        GLFW.SetWindowFocusCallback(nw, (nw, focus::Bool) -> begin
+        obj.has_focus = focus
+    end)
 
-		GLFW.SetMouseButtonCallback(nw, (nw, button::GLFW.MouseButton, action::GLFW.Action, mods::Cint) -> begin
-	        obj.mouse_buttons = (button, action, Int(mods))
-	    end)
+    GLFW.SetMouseButtonCallback(nw, (nw, button::GLFW.MouseButton, action::GLFW.Action, mods::Cint) -> begin
+            obj.mouse_buttons = (button, action, Int(mods))
+        end)
 
-	    GLFW.SetKeyCallback(nw, (nw, button::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint) -> begin
-	        obj.keyboard_buttons = (button, Int(scancode), action, Int(mods))
-	    end)
+        GLFW.SetKeyCallback(nw, (nw, button::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint) -> begin
+            obj.keyboard_buttons = (button, Int(scancode), action, Int(mods))
+        end)
 
-	    GLFW.SetFramebufferSizeCallback(nw, (nw, w::Cint, h::Cint) -> begin
-	        obj.framebuffer_size = (Int(w), Int(h))
-	    end)
+        GLFW.SetFramebufferSizeCallback(nw, (nw, w::Cint, h::Cint) -> begin
+            obj.framebuffer_size = (Int(w), Int(h))
+        end)
 
-		finalizer(free!, obj)
-		return obj
-	end
+    finalizer(free!, obj)
+    return obj
+    end
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 
@@ -93,8 +93,8 @@ function Canvas(name=:Glimpse; kwargs...)
 
     background = defaults[:background]
 
-	c = Canvas(name, area, GLFW_context[], background)
-	make_current(c)
+    c = Canvas(name, area, GLFW_context[], background)
+    make_current(c)
     return c
 end
 
@@ -106,8 +106,8 @@ end
 
 function expose(c::Canvas)
     c.framebuffer_size = (GLFW.GetFramebufferSize(c.native_window)...,)
-	GLFW.SetWindowShouldClose(c.native_window, false)
-	GLFW.ShowWindow(c.native_window)
+    GLFW.SetWindowShouldClose(c.native_window, false)
+    GLFW.ShowWindow(c.native_window)
 end
 
 function swapbuffers(c::Canvas)
@@ -126,8 +126,8 @@ end
 
 #Should this clear the context?
 function close(c::Canvas)
-	GLFW.HideWindow(c.native_window)
-	should_close!(c, false)
+    GLFW.HideWindow(c.native_window)
+    should_close!(c, false)
 end
 
 should_close!(c::Canvas, b) = GLFW.SetWindowShouldClose(c.native_window, b)
@@ -145,8 +145,8 @@ pollevents(c::Canvas) = GLFW.PollEvents()
 waitevents(c::Canvas) = GLFW.WaitEvents()
 
 function GLA.free!(c::Canvas)
-	if GLA.is_current_context(c)
-		GLFW.DestroyWindow(c.native_window)
+    if GLA.is_current_context(c)
+        GLFW.DestroyWindow(c.native_window)
         clear_context!()
     end
 end
@@ -162,8 +162,8 @@ Base.size(canvas::Canvas)  = size(canvas.area)
 Base.size(canvas::Canvas, i::Int)  = size(canvas.area)[i]
 
 function Base.resize!(c::Canvas, wh::NTuple{2, Integer}, resize_window=false)
-	resize!(GLA.context_framebuffer(), wh)
-	c.area = Area{Int}(0, 0, wh...)
+    resize!(GLA.context_framebuffer(), wh)
+    c.area = Area{Int}(0, 0, wh...)
 end
 
 callback_value(c::Canvas, cb::Symbol) = c.callbacks[cb][]
@@ -178,25 +178,25 @@ set_background_color!(canvas::Canvas, color::NTuple)   = canvas.background = con
 #---------------------DEFAULTS-------------------#
 
 canvas_defaults() = SymAnyDict(:area       => Area{Int}(0, 0, glfw_standard_screen_resolution()...),
-                           	   :background => RGBA(1.0f0),
-                           	   :depth      => GLA.Depth{Float32},
-                           	   :callbacks  => standard_callbacks(),
-                           	   :debugging  => false,
-                           	   :major      => 3,
-                           	   :minor      => 3,
-                           	   :clear      => true,
-                           	   :hidden     => false,
-                           	   :visible    => true,
-                           	   :focus      => false,
-                           	   :fullscreen => false,
-                           	   :monitor    => nothing)
+                                  :background => RGBA(1.0f0),
+                                  :depth      => GLA.Depth{Float32},
+                                  :callbacks  => standard_callbacks(),
+                                  :debugging  => false,
+                                  :major      => 3,
+                                  :minor      => 3,
+                                  :clear      => true,
+                                  :hidden     => false,
+                                  :visible    => true,
+                                  :focus      => false,
+                                  :fullscreen => false,
+                                  :monitor    => nothing)
 
 @component struct FullscreenVao
-	vao::VertexArray
+    vao::VertexArray
 end
 
 FullscreenVao() =
-	FullscreenVao(VertexArray([BufferAttachmentInfo(:position,
+    FullscreenVao(VertexArray([BufferAttachmentInfo(:position,
                                                     GLint(0),
                                                     Buffer(fullscreen_pos),
                                                     GEOMETRY_DIVISOR),
@@ -217,8 +217,8 @@ abstract type RenderTarget <: ComponentData end
 macro render_target(name)
     esc(quote
             @component struct $name <: RenderTarget
-            	target     ::Union{FrameBuffer, Canvas}
-            	background ::RGBAf0
+                target     ::Union{FrameBuffer, Canvas}
+                background ::RGBAf0
             end
         end)
 end
@@ -242,12 +242,12 @@ GLA.free!(r::RenderTarget) = free!(r.target)
 Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
 
 @component_with_kw mutable struct TimingData
-	time          ::Float64 = time()
-	dtime         ::Float64 = 0.0
-	frames        ::Int     = 0
-	preferred_fps ::Float64 = 60
-	reversed      ::Bool    = false
-	timer         ::TimerOutput = TimerOutput()
+    time          ::Float64 = time()
+    dtime         ::Float64 = 0.0
+    frames        ::Int     = 0
+    preferred_fps ::Float64 = 60
+    reversed      ::Bool    = false
+    timer         ::TimerOutput = TimerOutput()
 end
 
 abstract type RenderProgram <: ComponentData end
@@ -255,7 +255,7 @@ abstract type RenderProgram <: ComponentData end
 macro render_program(name)
     esc(quote
         @component struct $name <: RenderProgram
-        	program::GLA.Program	
+            program::GLA.Program
         end
     end)
 end
@@ -269,7 +269,7 @@ GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
 generate_buffers(p::RenderProgram, args...; kwargs...) = generate_buffers(p.program, args...; kwargs...)
 
 @component struct UpdatedComponents
-	components::Vector{DataType}
+    components::Vector{DataType}
 end
 
 Base.empty!(uc::UpdatedComponents) = empty!(uc.components)
@@ -280,20 +280,20 @@ Base.push!(uc::UpdatedComponents, t::T) where {T<:ComponentData} = push!(uc.comp
 Base.push!(uc::UpdatedComponents, t::DataType)                   = push!(uc.components, t)
 
 function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:ComponentData}
-	if !in(T, uc.components)
-		push!(uc, T)
-	end
+    if !in(T, uc.components)
+        push!(uc, T)
+    end
 end
 
 @component struct FontStorage
-	atlas       ::AP.TextureAtlas
-	storage_fbo ::GLA.FrameBuffer #All Glyphs should be stored in the first color attachment
+    atlas       ::AP.TextureAtlas
+    storage_fbo ::GLA.FrameBuffer #All Glyphs should be stored in the first color attachment
 end
 
 function FontStorage()
-	atlas = AP.get_texture_atlas()
-	fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data]; minfilter=:linear, magfilter=:linear, anisotropic=16f0)
-	return FontStorage(atlas, fbo)
+    atlas = AP.get_texture_atlas()
+    fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data]; minfilter=:linear, magfilter=:linear, anisotropic=16f0)
+    return FontStorage(atlas, fbo)
 end
 
 

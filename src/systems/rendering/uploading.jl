@@ -11,6 +11,8 @@ shaders(::Type{PeelingCompositingProgram}) = peeling_compositing_shaders()
 shaders(::Type{CompositingProgram}) = compositing_shaders()
 shaders(::Type{BlendProgram}) = blending_shaders()
 shaders(::Type{TextProgram})  = text_shaders()
+shaders(::Type{FXAAProgram})  = fxaa_shaders()
+#TODO there is some preparation doubling here!
 
 #TODO cleanup: really not the place to do this
 function Overseer.prepare(::Uploader, dio::Diorama)

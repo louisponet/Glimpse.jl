@@ -22,7 +22,8 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
                 			        Editor(),
                 			        UniformCalculator()]),
 
-				Stage(:rendering, [Resizer(),
+				Stage(:rendering, [PreRenderer(),
+				                   Resizer(),
 				                   LineRenderer(),
 	                               UniformUploader(),
 	                               DefaultRenderer(),
@@ -66,19 +67,18 @@ end
 function canvas_command(dio::Diorama, command::Function, catchcommand = x -> nothing)
 	canvas = dio.ledger[Canvas][1]
 	if canvas != nothing
-		command(canvas)
+		@tspawnat 2 command(canvas)
 	else
-		catchcommand(canvas)
+		@tspawnat 2 catchcommand(canvas)
 	end
 end
 
 function expose(dio::Diorama;  kwargs...)
     if dio.loop == nothing
 	    canvas_command(dio, make_current, x -> Overseer.Entity(dio, Canvas(dio.name; kwargs...))) 
+        renderloop(dio)
+        canvas_command(dio, expose)
     end
-    renderloop(dio)
-    canvas_command(dio, expose)
-
     return dio
 end
 
@@ -94,10 +94,9 @@ end
 
 #TODO move control over this to diorama itself
 function renderloop(dio)
-    dio    = dio
     Overseer.prepare(dio)
-    canvas_command(dio, canvas ->
-	    dio.loop = @async begin
+    dio.loop = canvas_command(dio, canvas ->
+	    begin
     	    try
         	    update(dio, true)
 
@@ -122,15 +121,15 @@ function renderloop(dio)
 end
 
 function reload(dio::Diorama)
-	close(dio)
-	canvas_command(dio, canvas ->
-		begin
-			while isopen(canvas) && dio.loop != nothing
-				sleep(0.01)
-			end
-			dio.reupload = true
-		    expose(dio)
-	    end
+    close(dio)
+    canvas_command(dio, canvas ->
+        begin
+            while isopen(canvas) && dio.loop != nothing
+                sleep(0.01)
+            end
+            dio.reupload = true
+            expose(dio)
+        end
     )
 end
 
