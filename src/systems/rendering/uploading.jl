@@ -10,7 +10,6 @@ shaders(::Type{InstancedPeelingProgram}) = instanced_peeling_shaders()
 shaders(::Type{PeelingCompositingProgram}) = peeling_compositing_shaders()
 shaders(::Type{CompositingProgram}) = compositing_shaders()
 shaders(::Type{BlendProgram}) = blending_shaders()
-shaders(::Type{TextProgram})  = text_shaders()
 shaders(::Type{FXAAProgram})  = fxaa_shaders()
 #TODO there is some preparation doubling here!
 

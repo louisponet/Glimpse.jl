@@ -1,6 +1,6 @@
 @enum CameraKind Perspective Orthographic Pixel
 
-# import GeometryTypes: Vec, Mat
+# import GeometryBasics: Vec, Mat
 @component_with_kw mutable struct Camera3D 
     lookat ::Vec3f0             = zero(Vec3f0)
     up     ::Vec3f0             = Z_AXIS 

@@ -1,4 +1,4 @@
-using GeometryTypes
+using GeometryBasics
 
 function vertex_interp(iso, p1::Point3{T}, p2::Point3{T}, valp1, valp2, tol=1e-5) where T
     if abs(iso-valp1) < tol

@@ -98,8 +98,9 @@ function renderloop(dio)
     dio.loop = canvas_command(dio, canvas ->
 	    begin
     	    try
+        	    @info "Initializing render..."
         	    update(dio, true)
-
+                @info "Rendering..."
     	    	while !should_close(canvas)
     				pollevents(canvas)
                 	singleton(dio, Camera3D).locked = false

@@ -147,11 +147,11 @@ end
 projection ratio in terms of the rectangular view size `rect` rather
 than the aspect ratio.
 """
-function projmatpersp(wh::SimpleRectangle, fov::T, near::T, far::T) where T
+function projmatpersp(wh::Area, fov::T, near::T, far::T) where T
     projmatpersp(fov, T(wh.w/wh.h), near, far)
 end
 function projmatpersp(
-        ::Type{T}, wh::SimpleRectangle, fov::Number, near::Number, far::Number
+        ::Type{T}, wh::Area, fov::Number, near::Number, far::Number
     ) where T
     projmatpersp(T(fov), T(wh.w/wh.h), T(near), T(far))
 end
@@ -203,11 +203,11 @@ projmatortho(::Type{T}, left::Number, right::Number, bottom::Number, top::Number
 	projmatortho(T(left), T(right), T(bottom), T(top))
 
 
-function projmatortho(wh::SimpleRectangle, near::T, far::T) where T
+function projmatortho(wh::Area, near::T, far::T) where T
     projmatortho(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
 end
 function projmatortho(
-        ::Type{T}, wh::SimpleRectangle, near::Number, far::Number
+        ::Type{T}, wh::Area, near::Number, far::Number
     ) where T
     projmatortho(wh, T(near), T(far))
 end
@@ -268,7 +268,7 @@ mutable struct Pivot{T}
     scale       ::Vec{3, T}
 end
 
-GeometryTypes.origin(p::Pivot) = p.origin
+GeometryBasics.origin(p::Pivot) = p.origin
 
 rotmat4(q::Quaternions.Quaternion{T}) where {T} = Mat4{T}(q)
 

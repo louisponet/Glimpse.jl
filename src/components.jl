@@ -62,7 +62,7 @@ Quaternions.angleaxis(r::Rotation) = Quaternions.angleaxis(r.q)
 Quaternions.axis(r::Rotation)      = Quaternions.axis(r.q)
 Quaternions.angle(r::Rotation)     = Quaternions.angle(r.q)
 
-GeometryTypes.direction(r::Rotation) = r.q * Z_AXIS
+GeometryBasics.direction(r::Rotation) = r.q * Z_AXIS
 
 @component_with_kw struct Shape 
 	scale::Vec3f0 = Vec3f0(1f0)

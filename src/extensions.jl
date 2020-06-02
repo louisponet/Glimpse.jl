@@ -153,36 +153,47 @@ function generate_buffers(program::Program, divisor::GLint; name_buffers...)
     end
     return buffers
 end
-#----------------GeometryTypes-------------------------#
+## StaticArrays
+const Area            = Rect2D
+const X_AXIS          = Vec3f0(1.0f0, 0.0  , 0.0)
+const Y_AXIS          = Vec3f0(0.0,   1.0f0, 0.0)
+const Z_AXIS          = Vec3f0(0.0,   0.0  , 1.0f0)
+
+GeometryBasics.Vec3f0(v::Vec2, nr=0.0) = Vec3f0(v..., nr)
+GeometryBasics.Vec3f0(v::Vec3) = Vec3f0(v...)
+GeometryBasics.Vec4f0(v::Vec2, n1=0.0, n2=0.0) = Vec4f0(v..., n1, n2)
+GeometryBasics.Vec4f0(v::Vec3, n1=0.0) = Vec4f0(v..., n1)
+
+#----------------GeometryBasics-------------------------#
 struct Cone{T} <: GeometryPrimitive{3, T}
     origin::Point3{T}
     extremity::Point3{T}
     r::T
 end
 
-GeometryTypes.origin(c::Cone{T}) where {T}    = c.origin
-GeometryTypes.extremity(c::Cone{T}) where {T} = c.extremity
-GeometryTypes.radius(c::Cone{T}) where {T}    = c.r
-GeometryTypes.height(c::Cone{T}) where {T}    = norm(c.extremity - c.origin)
-GeometryTypes.direction(c::Cone{T}) where {T} = (c.extremity .- c.origin) ./ GeometryTypes.height(c)
+GeometryBasics.origin(c::Cone{T}) where {T}    = c.origin
+GeometryBasics.extremity(c::Cone{T}) where {T} = c.extremity
+GeometryBasics.radius(c::Cone{T}) where {T}    = c.r
+GeometryBasics.height(c::Cone{T}) where {T}    = norm(c.extremity - c.origin)
+GeometryBasics.direction(c::Cone{T}) where {T} = (c.extremity .- c.origin) ./ GeometryBasics.height(c)
 
-function GeometryTypes.rotation(c::Cone{T}) where T
-    d3 = direction(c); u = GeometryTypes.@SVector [d3[1], d3[2], d3[3]]
+function GeometryBasics.rotation(c::Cone{T}) where T
+    d3 = direction(c); u = GeometryBasics.@SVector [d3[1], d3[2], d3[3]]
     if abs(u[1]) > 0 || abs(u[2]) > 0
-        v = GeometryTypes.@MVector [u[2], -u[1], T(0)]
+        v = GeometryBasics.@MVector [u[2], -u[1], T(0)]
     else
-        v = GeometryTypes.@MVector [T(0), -u[3], u[2]]
+        v = GeometryBasics.@MVector [T(0), -u[3], u[2]]
     end
     normalize!(v)
-    w = GeometryTypes.@SVector [u[2] * v[3] - u[3] * v[2], -u[1] * v[3] + u[3] * v[1], u[1] * v[2] - u[2] * v[1]]
+    w = GeometryBasics.@SVector [u[2] * v[3] - u[3] * v[2], -u[1] * v[3] + u[3] * v[1], u[1] * v[2] - u[2] * v[1]]
     return hcat(v, w, u)
 end
 
-function GeometryTypes.decompose(PT::Type{Point{3, T}}, c::Cone, resolution = 30) where T
+function GeometryBasics.decompose(PT::Type{Point{3, T}}, c::Cone, resolution = 30) where T
     isodd(resolution) && (resolution = 2 * div(resolution, 2))
     resolution = max(8, resolution); nbv = div(resolution, 2)
-    M = GeometryTypes.rotation(c)
-    h = GeometryTypes.height(c)
+    M = GeometryBasics.rotation(c)
+    h = GeometryBasics.height(c)
     position = 1; vertices = Vector{PT}(undef, nbv+2)
     for j = 1:nbv
         phi = T((2π * (j - 1)) / nbv)
@@ -193,7 +204,7 @@ function GeometryTypes.decompose(PT::Type{Point{3, T}}, c::Cone, resolution = 30
     return vertices
 end
 
-function GeometryTypes.decompose(::Type{FT}, c::Cone, resolution = 30) where FT <: Face
+function GeometryBasics.decompose(::Type{FT}, c::Cone, resolution = 30) where FT <: GeometryBasics.AbstractFace
     isodd(resolution) && (resolution = 2 * div(resolution, 2))
     resolution = max(8, resolution); nbv = div(resolution, 2)
     indexes = Vector{FT}(undef, resolution)
@@ -219,22 +230,22 @@ struct Arrow{T} <: GeometryPrimitive{3, T}
     radius_ratio::T # cone_radius = radius_ratio * r
 end
 
-GeometryTypes.origin(c::Arrow{T}) where {T}    = c.origin
-GeometryTypes.extremity(c::Arrow{T}) where {T} = c.extremity
-GeometryTypes.radius(c::Arrow{T}) where {T}    = c.r
-GeometryTypes.height(c::Arrow{T}) where {T}    = norm(c.extremity - c.origin)
-GeometryTypes.direction(c::Arrow{T}) where {T} = (c.extremity .- c.origin) ./ GeometryTypes.height(c)
+GeometryBasics.origin(c::Arrow{T}) where {T}    = c.origin
+GeometryBasics.extremity(c::Arrow{T}) where {T} = c.extremity
+GeometryBasics.radius(c::Arrow{T}) where {T}    = c.r
+GeometryBasics.height(c::Arrow{T}) where {T}    = norm(c.extremity - c.origin)
+GeometryBasics.direction(c::Arrow{T}) where {T} = (c.extremity .- c.origin) ./ GeometryBasics.height(c)
 
-GeometryTypes.Cylinder(c::Arrow) =
+GeometryBasics.Cylinder(c::Arrow) =
     Cylinder(c.origin, direction(c) * height(c) / (1 + c.length_ratio), c.r)
 
 Cone(c::Arrow) =
     Cone(direction(c) * height(c)/(1 + c.length_ratio), c.extremity, c.r * c.radius_ratio)
 
-GeometryTypes.decompose(PT::Type{<:Point}, c::Arrow, resolution = 30) =
+GeometryBasics.decompose(PT::Type{<:Point}, c::Arrow, resolution = 30) =
     [decompose(PT, Cylinder(c), resolution); decompose(PT, Cone(c), resolution)]
 
-function GeometryTypes.decompose(::Type{FT}, c::Arrow, resolution = 30) where FT <: Face
+function GeometryBasics.decompose(::Type{FT}, c::Arrow, resolution = 30) where FT <: GeometryBasics.AbstractFace
     cylinder_indices = decompose(FT, Cylinder(c), resolution)
     last_id = maximum(maximum.(cylinder_indices))
     cone_indices = [id .+ last_id for id in decompose(FT, Cone(c), resolution)]
@@ -285,11 +296,20 @@ const GLFW_DEFAULT_WINDOW_HINTS = [(GLFW.SAMPLES,      0),
 glfw_standard_screen_resolution() =
 	GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
 
-#Colorutils
+## Colorutils
 import ColorTypes: RGBA, Colorant, RGB
 ColorTypes.RGBA(x::T) where T<:Real = RGBA{T}(x,x,x,x)
 ColorTypes.RGBA{T}(x) where T<:Real = RGBA{T}(T(x),T(x),T(x),T(x))
 
+Base.length(::Type{<:RGBA}) = 4
 Base.size(x::Type{<:Colorant}) = (length(x),)
 Base.size(x::Type{<:RGB{Float32}}) = (3,)
 Base.ndims(x::Type{Colorant}) = 1
+
+const RGBAf0          = RGBA{Float32}
+const RGBf0           = RGB{Float32}
+const BLUE            = RGBf0(0.0, 0.0, 1.0)
+const GREEN           = RGBf0(0.0, 1.0, 0.0)
+const RED             = RGBf0(1.0, 0.0, 0.0)
+const BLACK           = RGBf0(0.0, 0.0, 0.0)
+

@@ -1,4 +1,4 @@
-import GeometryTypes: Sphere, decompose, normals
+import GeometryBasics: Sphere, decompose, normals
 
 
 #-----------------------------Generated geometries------------------------#
@@ -9,7 +9,7 @@ function generate_sphere(complexity=2)
 		(0,Z,X), (0,Z,-X), (0,-Z,X), (0,-Z,-X),
 		(Z,X,0), (-Z,X,0), (Z,-X,0), (-Z,-X,0)]
 
-	faces = Face{3, Int32}[(1,4,0), (4,9,0), (4,5,9), (8,5,4), (1,8,4),
+	faces = TriangleFace{Int32}[(1,4,0), (4,9,0), (4,5,9), (8,5,4), (1,8,4),
 	      (1,10,8), (10,3,8), (8,3,5), (3,2,5), (3,7,2),
 		(3,10,7), (10,6,7), (6,11,7), (6,0,11), (6,1,0),
 		(10,1,6), (11,0,9), (2,11,9), (5,2,9), (11,2,7)] .+ 1
@@ -21,8 +21,8 @@ end
 
 function subdivide(vertices, faces, level)
     outvertices = Point3f0[]
-    outfaces    = Face{3, Int32}[]
-    newfaces = Face{3, Int32}[]
+    outfaces    = TriangleFace{Int32}[]
+    newfaces = TriangleFace{Int32}[]
     newvertices = Point3f0[]
     if level > 0
     	for face in faces
@@ -35,10 +35,10 @@ function subdivide(vertices, faces, level)
 			v6 = normalize((v1 + v3) / 2.0)
 
             vertlen = length(newvertices)
-            push!(newfaces, Face{3, Int32}(vertlen + 1, vertlen + 4, vertlen + 6))
-            push!(newfaces, Face{3, Int32}(vertlen + 4, vertlen + 2, vertlen + 5))
-            push!(newfaces, Face{3, Int32}(vertlen + 5, vertlen + 3, vertlen + 6))
-            push!(newfaces, Face{3, Int32}(vertlen + 4, vertlen + 5, vertlen + 6))
+            push!(newfaces, TriangleFace{Int32}(vertlen + 1, vertlen + 4, vertlen + 6))
+            push!(newfaces, TriangleFace{Int32}(vertlen + 4, vertlen + 2, vertlen + 5))
+            push!(newfaces, TriangleFace{Int32}(vertlen + 5, vertlen + 3, vertlen + 6))
+            push!(newfaces, TriangleFace{Int32}(vertlen + 4, vertlen + 5, vertlen + 6))
             push!(newvertices, v1, v2, v3, v4, v5, v6)
         end
 		vertices, faces = subdivide(newvertices, newfaces, level - 1)
@@ -171,7 +171,7 @@ function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name="arrow", headrat
     conefaces = [v .+ Int32(length(cylmesh.vertices)+1) for v in conemesh.faces]
     allverts = Point3f0.([cylmesh.vertices;coneverts])
     allnorms = [cylmesh.normals;conemesh.normals]
-    allfaces = Face{3, Int32}.([cylmesh.faces;conefaces])
+    allfaces = TriangleFace{Int32}.([cylmesh.faces;conefaces])
 
 
     atdict = SymAnyDict(attributes)

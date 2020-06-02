@@ -1,7 +1,7 @@
 using Glimpse
 const Gl = Glimpse
 import Glimpse: RGBAf0
-using GeometryTypes
+using GeometryBasics
 using LinearAlgebra
 import LinearAlgebra: norm
 using ColorSchemes

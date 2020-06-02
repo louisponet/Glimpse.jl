@@ -1,10 +1,10 @@
-import GeometryTypes: vertices, normals, faces, decompose, normals
+import GeometryBasics: normals, faces, decompose, normals
 import GLAbstraction: INVALID_ATTRIBUTE, attribute_location, GEOMETRY_DIVISOR
 
-BasicMesh(geometry::T, ft=Face{3, GLint}) where T =
+BasicMesh(geometry::T, ft=TriangleFace{3, GLint}) where T =
     error("Please implement a `BasicMesh` constructor for type $T.")
 
-function BasicMesh(geometry::AbstractGeometry{D, T}, ft=Face{3, GLint}) where {D, T}
+function BasicMesh(geometry::AbstractGeometry{D, T}, ft=TriangleFace{3, GLint}) where {D, T}
     vertices = collect(decompose(Point{D, T}, geometry))
     faces    = collect(decompose(ft, geometry))
     norms    = collect(normals(vertices, faces))
@@ -23,12 +23,12 @@ end
 
 function BasicMesh(vec_geometry::Vector)
 	vertices = Point3f0.(vec_geometry)
-	faces    = Face{1}.([i for i=1:length(vec_geometry)])
+	faces    = SimplexFace{1}.([i for i=1:length(vec_geometry)])
 	normals  = Point3f0[]
 	return BasicMesh(vertices, faces, normals)
 end
 
-Base.eltype(::Type{BasicMesh{D, T, FD, FT}}) where {D, T, FD, FT} = (D, T, FD, FT)
+Base.eltype(::Type{BasicMesh{D, T, FT}}) where {D, T, FT} = (D, T, FT)
 Base.eltype(mesh::BM) where {BM <: BasicMesh} = eltype(BM)
 
 basicmesh(mesh::BasicMesh)          = mesh
@@ -37,7 +37,7 @@ normals(mesh::AbstractGlimpseMesh)  = basicmesh(mesh).normals
 faces(mesh::AbstractGlimpseMesh)    = basicmesh(mesh).faces
 
 facelength(mesh::AbstractGlimpseMesh)  = facelength(basicmesh(mesh))
-facelength(mesh::BasicMesh{D, T, FD, FT} where {D, T, FD}) where FT = length(FT)
+facelength(mesh::BasicMesh{D, T, FT} where {D, T, FD}) where FT = length(FT)
 
 Base.length(mesh::AbstractGlimpseMesh) = length(vertices(mesh))
 

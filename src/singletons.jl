@@ -66,7 +66,7 @@ end
     # framebuffer::FrameBuffer # this will become postprocessing passes. Each pp has a
 end
 
-Base.size(area::Area) = (area.w, area.h)
+Base.size(area::Area) = (GeometryBasics.widths(area)...,)
 
 function Canvas(name=:Glimpse; kwargs...)
     defaults = mergepop!(canvas_defaults(), kwargs)
@@ -77,7 +77,7 @@ function Canvas(name=:Glimpse; kwargs...)
     area = defaults[:area]
     if !isassigned(GLFW_context)
         GLFW_context[] = GLFW.Window(name = string(name),
-                     resolution   = (area.w, area.h),
+                     resolution   = (GeometryBasics.widths(area)...,),
                      debugging    = defaults[:debugging],
                      major        = defaults[:major],
                      minor        = defaults[:minor],
@@ -284,17 +284,4 @@ function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:Component
         push!(uc, T)
     end
 end
-
-@component struct FontStorage
-    atlas       ::AP.TextureAtlas
-    storage_fbo ::GLA.FrameBuffer #All Glyphs should be stored in the first color attachment
-end
-
-function FontStorage()
-    atlas = AP.get_texture_atlas()
-    fbo   = GLA.FrameBuffer(size(atlas.data), (eltype(atlas.data), ), [atlas.data]; minfilter=:linear, magfilter=:linear, anisotropic=16f0)
-    return FontStorage(atlas, fbo)
-end
-
-
 

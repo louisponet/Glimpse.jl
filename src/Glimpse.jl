@@ -4,16 +4,19 @@ using Reexport
 @reexport using ColorTypes
 
 @reexport using Overseer
-@reexport using GeometryTypes
-using GeometryTypes.StaticArrays
+@reexport using GeometryBasics
+using GeometryBasics.StaticArrays
 using Overseer: update
+using Packing
+using FreeTypeAbstraction
+using Serialization
+using SignedDistanceFields
 
 import AbstractPlotting # I'd like to get away from this
 const AP = AbstractPlotting
 
 using ModernGL
 using Quaternions
-Base.length(::Type{<:RGBA}) = 4
 
 using GLAbstraction
 const GLA = GLAbstraction
@@ -31,8 +34,7 @@ const Gui = CImGui
 
 using TimerOutputs
 const to = TimerOutput()
-
-
+include("utils.jl")
 include("extensions.jl")
 include("types.jl")
 include("entities.jl")
@@ -49,7 +51,7 @@ export RGBAf0
 export Diorama
 export expose, center_camera!
 # For now only one context allowed, could change later I guess
-const GLFW_context = Ref{GLFW.Window}()
 
+const GLFW_context = Ref{GLFW.Window}()
 #package exports, default geometries
 end # module
