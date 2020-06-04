@@ -230,11 +230,11 @@ struct Arrow{T} <: GeometryPrimitive{3, T}
     radius_ratio::T # cone_radius = radius_ratio * r
 end
 
-GeometryBasics.origin(c::Arrow{T}) where {T}    = c.origin
-GeometryBasics.extremity(c::Arrow{T}) where {T} = c.extremity
-GeometryBasics.radius(c::Arrow{T}) where {T}    = c.r
-GeometryBasics.height(c::Arrow{T}) where {T}    = norm(c.extremity - c.origin)
-GeometryBasics.direction(c::Arrow{T}) where {T} = (c.extremity .- c.origin) ./ GeometryBasics.height(c)
+GeometryBasics.origin(c::Arrow)    = c.origin
+GeometryBasics.extremity(c::Arrow) = c.extremity
+GeometryBasics.radius(c::Arrow)    = c.r
+GeometryBasics.height(c::Arrow)    = norm(c.extremity - c.origin)
+GeometryBasics.direction(c::Arrow) = (c.extremity .- c.origin) ./ GeometryBasics.height(c)
 
 GeometryBasics.Cylinder(c::Arrow) =
     Cylinder(c.origin, direction(c) * height(c) / (1 + c.length_ratio), c.r)

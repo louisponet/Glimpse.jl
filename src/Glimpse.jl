@@ -12,9 +12,6 @@ using FreeTypeAbstraction
 using Serialization
 using SignedDistanceFields
 
-import AbstractPlotting # I'd like to get away from this
-const AP = AbstractPlotting
-
 using ModernGL
 using Quaternions
 

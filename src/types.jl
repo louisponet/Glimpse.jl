@@ -15,7 +15,7 @@ const INSTANCED_MESHES = Dict{Type, AbstractGlimpseMesh}()
 struct BasicMesh{D, T, FT} <: AbstractGlimpseMesh
     vertices ::Vector{Point{D, T}}
     faces    ::Vector{FT}
-    normals  ::Vector{Point{D, T}}
+    normals  ::Vector{Vec{D, T}}
 end
 
 struct AttributeMesh{AT<:NamedTuple, BM <: BasicMesh} <: AbstractGlimpseMesh
@@ -43,3 +43,5 @@ include("singletons.jl")
 include("meshes.jl")
 include("system.jl")
 include("diorama.jl")
+
+glimpse_call(func::Function) = @tspawnat 2 func()

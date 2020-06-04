@@ -181,7 +181,7 @@ end
 @component_with_kw struct Text 
 	str      ::String = "test"
 	font_size::Float64  = 1
-	font     = AP.defaultfont()
+	font     = default_font()
 	align    ::Symbol = :right
 	offset   ::Vec3f0= zero(Vec3f0)
 end

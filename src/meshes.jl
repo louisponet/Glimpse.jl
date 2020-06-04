@@ -4,7 +4,7 @@ import GLAbstraction: INVALID_ATTRIBUTE, attribute_location, GEOMETRY_DIVISOR
 BasicMesh(geometry::T, ft=TriangleFace{3, GLint}) where T =
     error("Please implement a `BasicMesh` constructor for type $T.")
 
-function BasicMesh(geometry::AbstractGeometry{D, T}, ft=TriangleFace{3, GLint}) where {D, T}
+function BasicMesh(geometry::AbstractGeometry{D, T}, ft=TriangleFace{GLint}) where {D, T}
     vertices = collect(decompose(Point{D, T}, geometry))
     faces    = collect(decompose(ft, geometry))
     norms    = collect(normals(vertices, faces))
@@ -18,13 +18,13 @@ end
 
 function BasicMesh(geometry::String)
 	faces, vertices, normals = getfield.((load(geometry),), [:faces, :vertices, :normals])
-    return BasicMesh(vertices, faces, Point3f0.(normals))
+    return BasicMesh(vertices, faces, Vec3f0.(normals))
 end
 
 function BasicMesh(vec_geometry::Vector)
 	vertices = Point3f0.(vec_geometry)
 	faces    = SimplexFace{1}.([i for i=1:length(vec_geometry)])
-	normals  = Point3f0[]
+	normals  = Vec3f0[]
 	return BasicMesh(vertices, faces, normals)
 end
 

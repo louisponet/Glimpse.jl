@@ -15,7 +15,7 @@ function generate_sphere(complexity=2)
 		(10,1,6), (11,0,9), (2,11,9), (5,2,9), (11,2,7)] .+ 1
 
     outverts, outfaces = subdivide(vertices, faces, complexity)
-	normals = copy(outverts)
+	normals = Vec3f0.(copy(outverts))
     return outverts, normals, outfaces
 end
 

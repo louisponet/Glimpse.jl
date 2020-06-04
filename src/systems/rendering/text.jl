@@ -1,12 +1,14 @@
-using FreeTypeAbstraction: FTFont, FT_Get_Char_Index, leftinkbound, hadvance, ascender, descender
+using FreeTypeAbstraction: FTFont, FT_Get_Char_Index
 # Taken from JuliaPlots/AbstractPlotting.jl
+
 mutable struct TextureAtlas
     rectangle_packer::RectanglePacker
-    mapping::Dict{Tuple{Char, FTFont}, Int} # styled glyph to index in sprite_attributes
+    mapping::Dict{Any, Int} # styled glyph to index in sprite_attributes
     index::Int
     data::Matrix{Float16}
-    # rectangles we rendered our glyphs into in normalized uv coordinates
-    uv_rectangles::Vector{Vec4f0}
+    attributes::Vector{Vec4f0}
+    scale::Vector{Vec2f0}
+    extent::Vector{FontExtent{Float64}}
 end
 
 Base.size(atlas::TextureAtlas) = size(atlas.data)
@@ -16,33 +18,37 @@ Base.size(atlas::TextureAtlas) = size(atlas.data)
 const TEXTURE_RESOLUTION = Ref((2048, 2048))
 const CACHE_RESOLUTION_PREFIX = Ref("high")
 
-const HIGH_PIXELSIZE = 64
-const LOW_PIXELSIZE = 32
+const DOWN_SAMPLE_FACTOR = Ref(50)
+const DOWN_SAMPLE_HIGH = 50
+const DOWN_SAMPLE_LOW = 30
 
-const PIXELSIZE_IN_ATLAS = Ref(HIGH_PIXELSIZE)
+function size_factor()
+    return DOWN_SAMPLE_HIGH / DOWN_SAMPLE_FACTOR[]
+end
 
 function set_glyph_resolution!(res::GlyphResolution)
     if res == High
         TEXTURE_RESOLUTION[] = (2048, 2048)
         CACHE_RESOLUTION_PREFIX[] = "high"
-        PIXELSIZE_IN_ATLAS[] = HIGH_PIXELSIZE
+        DOWN_SAMPLE_FACTOR[] = DOWN_SAMPLE_HIGH
     else
         TEXTURE_RESOLUTION[] = (1024, 1024)
         CACHE_RESOLUTION_PREFIX[] = "low"
-        PIXELSIZE_IN_ATLAS[] = LOW_PIXELSIZE
+        DOWN_SAMPLE_FACTOR[] = DOWN_SAMPLE_LOW
     end
 end
 
 function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     return TextureAtlas(
-        RectanglePacker(Rect2D(0, 0, initial_size...)),
+        RectanglePacker(Area(0, 0, initial_size...)),
         Dict{Any, Int}(),
         1,
         zeros(Float16, initial_size...),
         Vec4f0[],
+        Vec2f0[],
+        FontExtent{Float64}[]
     )
 end
-
 
 function get_cache_path()
     return abspath(
@@ -147,361 +153,181 @@ function glyph_index!(atlas::TextureAtlas, c::Char, font::FTFont)
     return insert_glyph!(atlas, c, font)
 end
 
+glyph_scale!(c::Char, scale) = glyph_scale!(get_texture_atlas(), c, default_font(), scale)
+glyph_uv_width!(c::Char) = glyph_uv_width!(get_texture_atlas(), c, default_font())
+
 
 function glyph_uv_width!(atlas::TextureAtlas, c::Char, font::FTFont)
-    return atlas.uv_rectangles[glyph_index!(atlas, c, font)]
+    atlas.attributes[glyph_index!(atlas, c, font)]
 end
 
-function glyph_uv_width!(c::Char)
-    return glyph_uv_width!(get_texture_atlas(), c, default_font())
+function glyph_scale!(atlas::TextureAtlas, c::Char, font::FTFont, scale)
+    atlas.scale[glyph_index!(atlas, c, font)] .* (scale * 0.02) .* size_factor()
 end
 
-function glyph_boundingbox(c::Char, font::FTFont, pixelsize)
-    if FT_Get_Char_Index(font, c) == 0
-        for afont in alternative_fonts()
-            if FT_Get_Char_Index(afont, c) != 0
-                font = afont
-                break
-            end
-        end
-    end
-    bb, ext = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-    return bb
+function glyph_extent!(atlas::TextureAtlas, c::Char, font::FTFont)
+    atlas.extent[glyph_index!(atlas, c, font)]
+end
+
+function bearing(extent)
+    Point2f0(
+        extent.horizontal_bearing[1],
+        -(extent.scale[2] - extent.horizontal_bearing[2])
+    )
+end
+
+function glyph_bearing!(atlas::TextureAtlas, c::Char, font::FTFont, scale)
+    bearing(atlas.extent[glyph_index!(atlas, c, font)]) .* Point2f0(scale * 0.02) .* size_factor()
+end
+
+function glyph_advance!(atlas::TextureAtlas, c::Char, font::FTFont, scale)
+    atlas.extent[glyph_index!(atlas, c, font)].advance .* (scale * 0.02) .* size_factor()
 end
 
 function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::FTFont)
     return get!(atlas.mapping, (glyph, font)) do
-        downsample = 5 # render font 5x larger, and then downsample back to desired pixelsize
-        pad = 8 # padd rendered font by 6 pixel in each direction
-        uv_pixel = render(atlas, glyph, font, downsample, pad)
-        tex_size = Vec2f0(size(atlas.data) .- 1) # starts at 1
+        uv, extent, width_nopadd, pad = render(atlas, glyph, font)
+        tex_size = Vec2f0(size(atlas.data))
+        uv_start = Vec2f0(uv.origin...)
+        uv_width = Vec2f0(uv.widths...)
+        real_start = uv_start .+ pad .- 1 # include padding
+        # padd one additional pixel
+        relative_start = real_start ./ tex_size # use normalized texture coordinates
+        relative_width = (real_start .+ width_nopadd .+ 2) ./ tex_size
 
-        idx_left_bottom = minimum(uv_pixel)# 0 based!!!
-        idx_right_top = maximum(uv_pixel)
-
-        # include padding
-        left_bottom_pad = idx_left_bottom .+ pad .- 1
-        # -1 for indexing offset
-        right_top_pad = idx_right_top .- pad
-
-        # transform to normalized texture coordinates
-        uv_left_bottom_pad = (left_bottom_pad) ./ tex_size
-        uv_right_top_pad =  (right_top_pad) ./ tex_size
-
-        uv_offset_rect = Vec4f0(uv_left_bottom_pad..., uv_right_top_pad...)
+        uv_offset_width = Vec4f0(relative_start..., relative_width...)
         i = atlas.index
-        push!(atlas.uv_rectangles, uv_offset_rect)
+        push!(atlas.attributes, uv_offset_width)
+        push!(atlas.scale, Vec2f0(width_nopadd .+ 2))
+        push!(atlas.extent, extent)
         atlas.index = i + 1
         return i
     end
 end
 
-"""
-    sdistancefield(img, downsample, pad)
-Calculates a distance fields, that is downsampled `downsample` time,
-with a padding applied of `pad`.
-The padding is in units after downscaling!
-"""
-function sdistancefield(img, downsample, pad)
-    # we pad before downsampling, so we need to have `downsample` as much padding
-    pad = downsample * pad
-    # padd the image
-    padded_size = size(img) .+ 2pad
+function sdistancefield(img, downsample = 8, pad = 8*downsample)
+    w, h = size(img)
+    wpad = 0; hpad = 0;
+    while w % downsample != 0
+        w += 1
+    end
+    while h % downsample != 0
+        h += 1
+    end
+    w, h = w + 2pad, h + 2pad #pad this, to avoid cuttoffs
 
-    # for the downsampling, we need to make sure that
-    # we can divide the image size by `downsample` without reminder
-    dividable_size = ceil.(Int, padded_size ./ downsample) .* downsample
-
-    in_or_out = fill(false, dividable_size)
-    # the size we fill the image up to
-    wend, hend = size(img) .+ pad
-    in_or_out[pad+1:wend, pad+1:hend] .= img .> (0.5 * 255)
-
-    yres, xres = dividable_size .÷ downsample
-    # divide by downsample to normalize distances!
-    return Float16.(sdf(in_or_out, xres, yres) ./ downsample)
+    in_or_out = Matrix{Bool}(undef, w, h)
+    @inbounds for i=1:w, j=1:h
+        x, y = i-pad, j-pad
+        in_or_out[i,j] = checkbounds(Bool, img, x, y) && img[x,y] > 0.5 * 255
+    end
+    yres, xres = div(w, downsample), div(h, downsample)
+    sd = sdf(in_or_out, xres, yres)
+    Float16.(sd)
 end
 
-function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
+function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     #select_font_face(cc, font)
     if glyph == '\n' # don't render  newline
         glyph = ' '
     end
-    # the target pixel size of our distance field
-    pixelsize = PIXELSIZE_IN_ATLAS[]
-    # we render the font `downsample` sizes times bigger
-    bitmap, extent = renderface(font, glyph, pixelsize * downsample)
-    # Our downsampeld & padded distancefield
-    sd = sdistancefield(bitmap, downsample, pad)
-    rect = Rect2D(0, 0, size(sd)...)
-    uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
+    DF = DOWN_SAMPLE_FACTOR[]
+    bitmap, extent = renderface(font, glyph, DF*downsample)
+    sd = sdistancefield(bitmap, downsample, downsample*pad)
+    sd = sd ./ downsample;
+    extent = (extent ./ Vec2f0(downsample))
+    rect = Area(0, 0, size(sd)...)
+    uv = push!(atlas.rectangle_packer, rect) #find out where to place the rectangle
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at GLVisualize if you encounter this") #TODO resize surface
-    # write distancefield into texture
     atlas.data[uv.area] = sd
-    # return the area we rendered into!
-    return uv.area
+    uv.area, extent, Vec2f0(size(bitmap)) ./ (downsample), pad
 end
 
-one_attribute_per_char(attribute, string) = (attribute for char in string)
+make_iter(x) = repeated(x)
+make_iter(x::AbstractArray) = x
 
-function one_attribute_per_char(font::FTFont, string)
-    return (find_font_for_char(char, font) for char in string)
+function get_iter(defaultfunc, dictlike, key)
+    make_iter(get(defaultfunc, dictlike, key))
 end
 
-function attribute_per_char(string, attribute)
-    n_words = 0
-    if attribute isa AbstractVector
-        if length(attribute) == length(string)
-            return attribute
-        else
-            n_words = length(split(string, r"\s+"))
-            if length(attribute) == n_words
-                i = 1
-                return map(collect(string)) do char
-                    f = attribute[i]
-                    char == "\n" && (i += 1)
-                    return f
-                end
-            end
-        end
+function getposition(text, text2, fonts, scales, start_pos)
+    calc_position(text2, start_pos, scales, fonts, text.text.atlas)
+end
+function getoffsets(text, text2, fonts, scales)
+    calc_offset(text2, scales, fonts, text.text.atlas)
+end
+
+
+function calc_position(
+        last_pos, start_pos,
+        atlas, glyph, font,
+        scale, lineheight = 1.5
+    )
+    advance_x, advance_y = glyph_advance!(atlas, glyph, font, scale)
+    if glyph == '\n'
+        return Point2f0(start_pos[1], last_pos[2] - advance_y * lineheight) #reset to startx
     else
-        return one_attribute_per_char(attribute, string)
+        return last_pos + Point2f0(advance_x, 0)
     end
-    error("A vector of attributes with $(length(attribute)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
 end
 
-function layout_text(string::AbstractString, startpos::Union{Vec, Point}, textsize::VecOrT{Number}, font::VecOrT{FTFont}, align::Tuple{Symbol, Symbol},
-                     model::Mat4, justification, lineheight::Number)
-
-    offset = map(align) do x
-        (x == :center) && return 0.5f0
-        (x in (:left, :bottom)) && return 0.0f0
-        (x in (:right, :top)) && return 1.0f0
-        return 0.0f0 # 0 default, or better to error?
-    end
-
-    rscale = Float32(textsize)
-
-    atlas = get_texture_atlas()
-    mpos = model * Vec4f0(Vec3f0(startpos)..., 1f0)
-    pos = Point3f0(mpos[1:3]...)
-
-    fontperchar = attribute_per_char(string, font)
-    textsizeperchar = attribute_per_char(string, rscale)
-
-    glyphpos = glyph_positions(string, fontperchar, textsizeperchar, offset[1],
-        offset[2], lineheight, justification)
-
-    positions = Vec2f0[]
-    for (i, group) in enumerate(glyphpos)
-        for gp in group
-            push!(positions, gp)
-        end
-        # between groups, push a random point for newline, it doesn't matter
-        # what it is
-        if i < length(glyphpos)
-            push!(positions, Vec2f0(0))
+function calc_position(glyphs, start_pos, scales, fonts, atlas)
+    positions = zeros(Point2f0, length(glyphs))
+    last_pos  = Point2f0(start_pos)
+    # s, f = iter_or_array(scales), iter_or_array(fonts)
+    iter = enumerate(zip(glyphs, Iterators.repeated(scales), Iterators.repeated(fonts)))
+    next = iterate(iter)
+    if next !== nothing
+        (i, (char, scale, font)), state = next
+        first_bearing = glyph_bearing!(atlas, char, font, scale)
+        while next !== nothing
+            (i, (char, scale, font)), state = next
+            next = iterate(iter, state)
+            char == '\r' && continue # stupid windows!
+            # we draw the glyph at the last position we calculated
+            bearing = glyph_bearing!(atlas, char, font, scale)
+            # we substract the first bearing, since we want to start at
+            # startposition without any additional offset!
+            positions[i] = last_pos .+ bearing .- first_bearing
+            # then we add the advance for the next glyph to start
+            last_pos = calc_position(last_pos, start_pos, atlas, char, font, scale)
         end
     end
-
     return positions
 end
 
-# function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification)
-
-#     char_font_scale = collect(zip([c for c in str], font_per_char, fontscale_px))
-
-#     linebreak_indices = (i for (i, c) in enumerate(str) if c == '\n')
-
-#     groupstarts = [1; linebreak_indices .+ 1]
-#     groupstops = [linebreak_indices .- 1; length(str)]
-
-#     cfs_groups = map(groupstarts, groupstops) do start, stop
-#         char_font_scale[start:stop]
-#     end
-
-#     extents = map(cfs_groups) do group
-#         # TODO: scale as SVector not Number
-#         [FreeTypeAbstraction.get_extent(font, char) .* SVector(scale, scale) for (char, font, scale) in group]
-#     end
-
-#     # add or subtract kernings?
-#     xs = map(extents) do extgroup
-#         cumsum([isempty(extgroup) ? 0.0 : -leftinkbound(extgroup[1]); hadvance.(extgroup[1:end-1])])
-#     end
-
-#     # each linewidth is the last origin plus inkwidth
-#     linewidths = last.(xs) .+ [isempty(extgroup) ? 0.0 : FreeTypeAbstraction.inkwidth(extgroup[end]) for extgroup in extents]
-#     maxwidth = maximum(linewidths)
-
-#     width_differences = maxwidth .- linewidths
-
-#     xs_justified = map(xs, width_differences) do xsgroup, wd
-#         xsgroup .+ wd * justification
-#     end
-
-#     # make lineheight a multiple of the largest lineheight in each line
-#     lineheights = map(cfs_groups) do group
-#         maximum(group) do (char, font, scale)
-#             font.height / font.units_per_EM * lineheight_factor * scale
-#         end
-#     end
-
-#     # how to define line height relative to font size?
-#     ys = cumsum([0; -lineheights[2:end]])
-
-
-#     # x alignment
-#     xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs_justified]
-
-#     # y alignment
-#     # first_max_ascent = maximum(hbearing_ori_to_top, extents[1])
-#     # last_max_descent = maximum(x -> inkheight(x) - hbearing_ori_to_top(x), extents[end])
-
-#     first_line_ascender = maximum(cfs_groups[1]) do (char, font, scale)
-#         ascender(font) * scale
-#     end
-
-#     last_line_descender = minimum(cfs_groups[end]) do (char, font, scale)
-#         descender(font) * scale
-#     end
-
-#     overall_height = first_line_ascender - ys[end] - last_line_descender
-
-#     ys_aligned = ys .- first_line_ascender .+ (1 - valign) .* overall_height
-
-#     # we are still operating in freetype units, let's convert to the chosen scale by dividing with 64
-#     return [Vec2.(xsgroup, y) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
-# end
-
-# function text_bb(str, font, size)
-#     positions = layout_text(
-#         str, Point3f0(0), size,
-#         font, (:center, :center), Quaternion(0f0,0f0,0f0,1f0), Mat4f0(I), 0.5, 1.0
-#     )
-
-#     scale = widths.(first.(FreeTypeAbstraction.metrics_bb.(collect(str), font, size)))
-#     return union(FRect3D(positions),  FRect3D(positions .+ to_ndim.(Point3f0, scale, 0)))
-# end
-
-function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification)
-
-    char_font_scale = collect(zip([c for c in str], font_per_char, fontscale_px))
-
-    linebreak_indices = (i for (i, c) in enumerate(str) if c == '\n')
-
-    groupstarts = [1; linebreak_indices .+ 1]
-    groupstops = [linebreak_indices .- 1; length(str)]
-
-    cfs_groups = map(groupstarts, groupstops) do start, stop
-        char_font_scale[start:stop]
+function calc_offset(glyphs, scales, fonts, atlas)
+    offsets = fill(Point2f0(0.0), length(glyphs))
+    s, f = iter_or_array(scales), iter_or_array(fonts)
+    c1 = first(glyphs)
+    for (i, (c2, scale, font)) in enumerate(zip(glyphs, s, f))
+        c2 == '\r' && continue # stupid windows!
+        offsets[i] = Point2f0(glyph_bearing!(atlas, c2, font, scale))
+        c1 = c2
     end
-
-    extents = map(cfs_groups) do group
-        # TODO: scale as SVector not Number
-        [get_extent(font, char) .* SVector(scale, scale) for (char, font, scale) in group]
-    end
-
-    # add or subtract kernings?
-    xs = map(extents) do extgroup
-        cumsum([isempty(extgroup) ? 0.0 : -leftinkbound(extgroup[1]); hadvance.(extgroup[1:end-1])])
-    end
-
-    # each linewidth is the last origin plus inkwidth
-    linewidths = last.(xs) .+ [isempty(extgroup) ? 0.0 : inkwidth(extgroup[end]) for extgroup in extents]
-    maxwidth = maximum(linewidths)
-
-    width_differences = maxwidth .- linewidths
-
-    xs_justified = map(xs, width_differences) do xsgroup, wd
-        xsgroup .+ wd * justification
-    end
-
-    # make lineheight a multiple of the largest lineheight in each line
-    lineheights = map(cfs_groups) do group
-        maximum(group) do (char, font, scale)
-            font.height / font.units_per_EM * lineheight_factor * scale
-        end
-    end
-
-    # how to define line height relative to font size?
-    ys = cumsum([0; -lineheights[2:end]])
-
-
-    # x alignment
-    xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs_justified]
-
-    # y alignment
-    # first_max_ascent = maximum(hbearing_ori_to_top, extents[1])
-    # last_max_descent = maximum(x -> inkheight(x) - hbearing_ori_to_top(x), extents[end])
-
-    first_line_ascender = maximum(cfs_groups[1]) do (char, font, scale)
-        ascender(font) * scale
-    end
-
-    last_line_descender = minimum(cfs_groups[end]) do (char, font, scale)
-        descender(font) * scale
-    end
-
-    overall_height = first_line_ascender - ys[end] - last_line_descender
-
-    ys_aligned = ys .- first_line_ascender .+ (1 - valign) .* overall_height
-
-    # we are still operating in freetype units, let's convert to the chosen scale by dividing with 64
-    return [Vec2.(xsgroup, y) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
+    return offsets # bearing is the glyph offset
 end
 
-# function text_bb(str, font, size)
-#     positions = layout_text(
-#         str, Point2f0(0), size,
-#         font, Vec2f0(0), Quaternionf0(0,0,0,1), Mat4f0(I), 0.5, 1.0
-#     )
-
-#     scale = widths.(first.(FreeTypeAbstraction.metrics_bb.(collect(str), font, size)))
-#     return union(FRect3D(positions),  FRect3D(positions .+ to_ndim.(Point3f0, scale, 0)))
-# end
-
-
-# function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
-#                     font, align, rot, model, j, l) where T <: VecTypes
-#     atlas = get_texture_atlas()
-#     N = length(T)
-#     positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
-#     char_str_idx = iterate(string)
-#     offsets = Vec2f0[]
-#     broadcast_foreach(1:length(string), positions_per_char, textsize, font, align) do idx, pos, tsize, font, align
-#         char, str_idx = char_str_idx
-#         mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
-#         push!(positions, to_ndim(Point{3, Float32}, mpos, 0))
-#         push!(uv_offset_width, glyph_uv_width!(atlas, char, font))
-#         glyph_bb, ext = FreeTypeAbstraction.metrics_bb(char, font, tsize)
-#         if isa(tsize, Vec2f0) # this needs better unit support
-#             push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
-#         else
-#             push!(scale, widths(glyph_bb))
-#         end
-#         push!(offsets, minimum(glyph_bb))
-#         char_str_idx = iterate(string, str_idx)
-#     end
-#     return positions, offsets, uv_offset_width, scale
-# end
-
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
-    atlas = get_texture_atlas()
-    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model, j, l)
-    uv = Vec4f0[]
-    scales = Vec2f0[]
-    offsets = Vec2f0[]
-    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
-        push!(uv, glyph_uv_width!(atlas, c, font))
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-        push!(scales, widths(glyph_bb))
-        push!(offsets, minimum(glyph_bb))
+function align_offset(startpos, lastpos, atlas, rscale, font, align)
+    xscale, yscale = glyph_scale!('X', rscale)
+    xmove = (lastpos-startpos)[1] + xscale
+    if isa(align, Vec)
+        return -Vec2f0(xmove, yscale) .* align
+    elseif align == :top
+        return -Vec2f0(xmove/2f0, yscale)
+    elseif align == :right
+        return -Vec2f0(xmove, yscale/2f0)
+    else
+        error("Align $align not known")
     end
-    return positions, offsets, uv, scales
 end
 
-
+function alignment2num(x::Symbol)
+    (x == :center) && return 0.5f0
+    (x in (:left, :bottom)) && return 0.0f0
+    (x in (:right, :top)) && return 1.0f0
+    0.0f0 # 0 default, or better to error?
+end
 
 @component struct FontStorage
     atlas       ::TextureAtlas
@@ -525,11 +351,12 @@ struct TextUploader <: System end
 Overseer.requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
 
 function Overseer.prepare(::TextUploader, dio::Diorama)
+    e = Entity(dio[DioEntity], 1)
 	if isempty(dio[TextProgram])
-		dio[Entity(1)] = TextProgram(Program(text_shaders()))
+		dio[e] = TextProgram(Program(text_shaders()))
 	end
 	if isempty(dio[FontStorage])
-		dio[Entity(1)] =  FontStorage()
+		dio[e] =  FontStorage()
 	end
 end
 
@@ -568,8 +395,9 @@ function to_gl_text(string::AbstractString, textsize, font, align::Symbol, stora
     rscale          = Float32(textsize)
     chars           = Vector{Char}(string)
 
-    scale           = Vec2f0.(AP.glyph_scale!.(Ref(atlas), chars, (font,), rscale))
-    positions2d     = AP.calc_position(string, Point2f0(0), rscale, font, atlas)
+    scale           = Vec2f0.(glyph_scale!.(Ref(atlas), chars, (font,), rscale))
+    positions2d     = calc_position(string, Point2f0(0), rscale, font, atlas)
+    # @show positions2d
 
     aoffset         = align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, align)
 
