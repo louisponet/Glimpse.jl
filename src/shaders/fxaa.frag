@@ -1005,25 +1005,25 @@ in vec2 tex_coord;
 out vec4 fragment_color;
 void main(void)
 {
-    // fragment_color = texture(color_texture, tex_coord);
-    fragment_color.rgb = FxaaPixelShader(
-        tex_coord,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsolePosPos,
-        color_texture,                            // FxaaTex tex,
-        color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegOne,
-        color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegTwo,
-        RCPFrame,                            // FxaaFloat2 fxaaQualityRcpFrame,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt2,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsole360RcpFrameOpt2,
-        0.75f,                                    // FxaaFloat fxaaQualitySubpix,
-        0.166f,                                    // FxaaFloat fxaaQualityEdgeThreshold,
-        0.0833f,                                // FxaaFloat fxaaQualityEdgeThresholdMin,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeSharpness,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeThreshold,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeThresholdMin,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f)        // FxaaFloat fxaaConsole360ConstDir,
-    ).rgb;
+    fragment_color = texture(color_texture, tex_coord);
+    // fragment_color.rgb = FxaaPixelShader(
+    //     tex_coord,
+    //     FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsolePosPos,
+    //     color_texture,                            // FxaaTex tex,
+    //     color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegOne,
+    //     color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegTwo,
+    //     RCPFrame,                            // FxaaFloat2 fxaaQualityRcpFrame,
+    //     FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt,
+    //     FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt2,
+    //     FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsole360RcpFrameOpt2,
+    //     0.75f,                                    // FxaaFloat fxaaQualitySubpix,
+    //     0.166f,                                    // FxaaFloat fxaaQualityEdgeThreshold,
+    //     0.0833f,                                // FxaaFloat fxaaQualityEdgeThresholdMin,
+    //     0.0f,                                    // FxaaFloat fxaaConsoleEdgeSharpness,
+    //     0.0f,                                    // FxaaFloat fxaaConsoleEdgeThreshold,
+    //     0.0f,                                    // FxaaFloat fxaaConsoleEdgeThresholdMin,
+    //     FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f)        // FxaaFloat fxaaConsole360ConstDir,
+    // ).rgb;
     // fragment_color.r = 1.0f;
 }
 

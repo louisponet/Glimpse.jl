@@ -356,21 +356,20 @@ function Overseer.prepare(::TextUploader, dio::Diorama)
 		dio[e] = TextProgram(Program(text_shaders()))
 	end
 	if isempty(dio[FontStorage])
-		dio[e] =  FontStorage()
+		# dio[e] = FontStorage()
 	end
 end
 
 function Overseer.update(::TextUploader, m::AbstractLedger)
 	text = m[Text]
 	vao  = m[TextVao]
-	prog = singleton(m,TextProgram)
+	prog = singleton(m, TextProgram)
 	ucolor = m[UniformColor]
 	spatial= m[Spatial]
-	fontstorage = singleton(m, FontStorage)
-
+	atlas = get_texture_atlas()
 	for e in @entities_in(text && spatial && ucolor)
     	t=text[e]
-		offset_width, uv_texture_bbox  = to_gl_text(t, fontstorage)
+		offset_width, uv_texture_bbox  = to_gl_text(t, atlas)
 		nsprites = length(t.str)
 		if !(e ∈ vao) || nsprites > length(vao[e])
     		vao[e] = TextVao(VertexArray(generate_buffers(prog.program,
@@ -388,10 +387,10 @@ function Overseer.update(::TextUploader, m::AbstractLedger)
 	end
 end
 
-to_gl_text(t::Text, storage::FontStorage) = to_gl_text(t.str, t.font_size, t.font, t.align, storage)
+to_gl_text(t::Text, storage::FontStorage) = to_gl_text(t, storage.atlas)
+to_gl_text(t::Text, atlas) = to_gl_text(t.str, t.font_size, t.font, t.align, atlas)
 
-function to_gl_text(string::AbstractString, textsize, font, align::Symbol, storage::FontStorage)
-    atlas           = storage.atlas
+function to_gl_text(string::AbstractString, textsize, font, align::Symbol, atlas)
     rscale          = Float32(textsize)
     chars           = Vector{Char}(string)
 
@@ -434,8 +433,6 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
 	glDepthFunc(GL_ALWAYS)
 	glDisableCullFace()
 
-	glyph_fbo = singleton(m, FontStorage).storage_fbo
-	bind(color_attachment(glyph_fbo, 1))
     bind(iofbo)
     draw(iofbo)
 
@@ -444,7 +441,17 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
     set_uniform(prog, :projview, persp_mat)
     set_uniform(prog, :projection, projection_mat)
 
+    #Absolutely no clue why this needs to be here?...
+	if isempty(m[FontStorage])
+    	fontstorage = FontStorage()
+    	m[Entity(m[DioEntity],1)] = fontstorage
+	else
+    	fontstorage = singleton(m, FontStorage)
+	end
+	glyph_fbo = fontstorage.storage_fbo
+
     # Fragment uniforms
+    # GLA.gpu_setindex!(color_attachment(glyph_fbo, 1), singleton(m, FontStorage).atlas.data, 1:size(singleton(m, FontStorage).atlas.data, 1), 1:size(singleton(m, FontStorage).atlas.data, 2))
 	set_uniform(prog, :distancefield, 0, color_attachment(glyph_fbo, 1))
 	set_uniform(prog, :shape, 3)
 	#TODO make this changeable
