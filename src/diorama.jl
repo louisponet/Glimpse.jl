@@ -1,5 +1,12 @@
 import GLAbstraction: free!
 ########### Initialization
+const currentdio = Base.RefValue{Diorama}()
+
+getcurrentdio() = currentdio[]
+iscurrentdio(x) = x == currentdio[]
+function makecurrentdio(x)
+    currentdio[] = x
+end
 
 Overseer.ledger(dio::Diorama) = dio.ledger
 
@@ -36,7 +43,10 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 
     #assemble all rendering, canvas and camera components
 	t = Diorama(name, m, stages(m); kwargs...)
-	e = Entity(t, DioEntity(), TimingData())
+	e = Entity(t)
+	t[UpdatedComponents][e] = UpdatedComponents() 
+	t[e] = DioEntity()
+	t[e] = TimingData()
 	fetch(glimpse_call() do
 	          c = Canvas(name; kwargs...)
               m[e] = c
@@ -107,17 +117,18 @@ function renderloop(dio)
 				pollevents(canvas)
             	singleton(dio, Camera3D).locked = false
 			    update(dio)
-			    empty!(singleton(dio, UpdatedComponents))
+			    # empty!(singleton(dio, UpdatedComponents))
 		    end
 		    close(canvas)
 			dio.loop = nothing
-		catch
+    	catch e
 		    close(canvas)
             for stage in stages(dio)
                 # first(stage) == :setup && continue
                 Overseer.update(stage, dio)
             end
 			dio.loop = nothing
+			throw(e)
 		end
 	end
 end
@@ -143,14 +154,6 @@ end
 free!(dio::Diorama) = (close(dio); canvas_command(c -> free!(c), dio))
 
 isrendering(dio::Diorama) = dio.loop != nothing
-
-const currentdio = Base.RefValue{Diorama}()
-
-getcurrentdio() = currentdio[]
-iscurrentdio(x) = x == currentdio[]
-function makecurrentdio(x)
-    currentdio[] = x
-end
 
 Base.size(dio::Diorama)  = canvas_command(c -> windowsize(c), dio, x -> (0,0))
 set_background_color!(dio::Diorama, color) = canvas_command(c -> set_background_color!(c, color), dio)
@@ -220,5 +223,21 @@ function center_camera!(dio::Diorama, p::Point3f0)
     dio[Spatial][camera_entity] = Spatial(dio[Spatial][camera_entity], position = new_eye)
 end
 
+function Base.setindex!(dio::Diorama, v::T, e::Entity) where {T<:ComponentData}
+   setindex!(dio.ledger, v, e)
+   update_component!(dio, T)
+end
 
+function update_component!(dio::Diorama, ::Type{T}) where {T<:ComponentData}
+    uc = singleton(dio, UpdatedComponents)
+    if !in(T, uc.components)
+        push!(uc, T)
+    end
+end
 
+function reload_shaders(dio::Diorama)
+    glimpse_call(() -> for prog in components(dio, RenderProgram)
+    	ProgType = eltype(prog)
+		dio[Entity(1)] = ProgType(Program(shaders(ProgType)))
+	end)
+end

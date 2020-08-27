@@ -16,11 +16,12 @@ struct point_light {
 };
 
 uniform vec3 campos;
-uniform float specpow;
-uniform float specint;
+uniform vec2 material;
 
 uniform point_light plight;
 void main () {
+	float specpow = material[0];
+	float specint = material[1];
 	out_id_color = id_color;
 
     vec4 ambient_color  = vec4(plight.color * plight.amb_intensity, 1.0f);

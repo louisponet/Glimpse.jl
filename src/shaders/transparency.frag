@@ -13,12 +13,13 @@ struct point_light {
 };
 
 uniform vec3 campos;
-uniform float specpow;
-uniform float specint;
+uniform vec2 fragmaterial;
 uniform float alpha;
 
 uniform point_light plight;
 void main () {
+	float specpow = fragmaterial[0];
+	float specint = fragmaterial[1];
 
     vec4 ambient_color  = vec4(plight.color * plight.amb_intensity, 1.0f);
     vec3 light_position = normalize(plight.position - world_pos);

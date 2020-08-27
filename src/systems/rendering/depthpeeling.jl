@@ -85,8 +85,7 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
     end
 
 	set_model_material = (e_modelmat, e_material) -> begin
-		set_uniform(peeling_program, :specint, e_material.specint)
-		set_uniform(peeling_program, :specpow, e_material.specpow)
+		set_uniform(peeling_program, :material, Vec2(e_material.specpow, e_material.specint))
 		set_uniform(peeling_program, :modelmat, e_modelmat.modelmat)
 	end
 

@@ -68,21 +68,29 @@ GeometryBasics.direction(r::Rotation) = r.q * Z_AXIS
 	scale::Vec3f0 = Vec3f0(1f0)
 end
 Shape(f::Real) = Shape(Vec3f0(f))
+Base.length(::Type{Shape}) = 3
+Base.eltype(::Type{Shape}) = Float32
 
 @component_with_kw struct ModelMat 
 	modelmat::Mat4f0 = Eye4f0()
 end
+Base.length(::Type{ModelMat}) = 16
+Base.eltype(::Type{ModelMat}) = Float32
 
 @component_with_kw struct Material 
 	specpow ::Float32 = 0.8f0
 	specint ::Float32 = 0.8f0
 end
+Base.eltype(::Type{Material}) = Float32
+Base.length(::Type{Material}) = 2
 
 @component_with_kw struct PointLight 
     diffuse ::Float32  = 0.5f0
     specular::Float32  = 0.5f0
     ambient ::Float32  = 0.5f0
 end
+Base.length(::Type{PointLight}) = 3
+Base.eltype(::Type{PointLight}) = Float32
 
 @component struct DirectionLight 
 	direction::Vec3f0
@@ -99,6 +107,9 @@ end
 @component struct Alpha
     α::Float32
 end
+Base.length(::Type{Alpha}) = 1
+Base.eltype(::Type{Alpha}) = Float32
+
 
 abstract type Color <: ComponentData end
 
@@ -107,6 +118,8 @@ abstract type Color <: ComponentData end
 	color::RGBf0 = DEFAULT_COLOR 
 end
 UniformColor(x,y,z) = UniformColor(RGBf0(x, y, z))
+Base.length(::Type{UniformColor}) = 3
+Base.eltype(::Type{UniformColor}) = Float32
 
 # vector of colors, either supplied manually or filled in by mesher
 @component struct BufferColor <: Color

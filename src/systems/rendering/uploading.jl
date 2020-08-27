@@ -104,8 +104,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
 
     get_uniforms = (it, tmesh) -> begin
 		modelmats = Mat4f0[]
-		specints  = Float32[]
-		specpows  = Float32[]
+		materials  = Material[]
 		ids       = Entity[]
 		colors    = RGBf0[]
 		idcolors  = RGBf0[]
@@ -113,8 +112,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     		e_mesh, e_modelmat, e_material, e_color = mesh[e], modelmat[e], material[e], ucolor[e]
     		if e_mesh === tmesh
         		push!(modelmats, e_modelmat.modelmat)
-        		push!(specints,  e_material.specint)
-        		push!(specpows,  e_material.specpow)
+        		push!(materials,  e_material)
         		push!(colors, e_color.color)
         		if e ∈ idc
             		push!(idcolors,  idc[e].color)
@@ -124,20 +122,19 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
         		push!(ids, e)
     		end
 		end
-		return modelmats, specints, specpows, colors, idcolors, ids
+		return modelmats, materials, colors, idcolors, ids
 	end
 
 	for tmesh in mesh.shared
-    	default_modelmats, default_specints, default_specpows, default_colors, default_idcolors, default_ids = get_uniforms(default_it, tmesh)
-    	peeling_modelmats, peeling_specints, peeling_specpows, peeling_colors, peeling_idcolors, peeling_ids = get_uniforms(peeling_it, tmesh)
+    	default_modelmats, default_materials, default_colors, default_idcolors, default_ids = get_uniforms(default_it, tmesh)
+    	peeling_modelmats, peeling_materials, peeling_colors, peeling_idcolors, peeling_ids = get_uniforms(peeling_it, tmesh)
 		if !isempty(default_ids)
             indices = tmesh.mesh.faces .- GLint(1)
     		buffers = [generate_buffers(default_prog, tmesh.mesh);
                        generate_buffers(default_prog, GLA.UNIFORM_DIVISOR,
                                         color    = default_colors,
                                         modelmat = default_modelmats,
-                                        specint  = default_specints,
-                                        specpow  = default_specpows,
+                                        material  = default_materials,
                                         object_id_color = default_idcolors,
                                         )]
 			tvao = InstancedDefaultVao(VertexArray(buffers, indices, length(default_ids)), true)
@@ -152,8 +149,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                        generate_buffers(peeling_prog, GLA.UNIFORM_DIVISOR,
                                         color    = peeling_colors,
                                         modelmat = peeling_modelmats,
-                                        specint  = peeling_specints,
-                                        specpow  = peeling_specpows,
+                                        material  = peeling_materials,
                                         object_id_color = peeling_idcolors,
                                         alpha = alphas)]
 			tvao = InstancedPeelingVao(VertexArray(buffers, indices, length(peeling_ids)), true)
@@ -190,51 +186,43 @@ function Overseer.update(::UniformUploader, m::AbstractLedger)
 	uc = m[UpdatedComponents][1]
 	mat = m[ModelMat]
 	matsize = sizeof(eltype(mat))
+    ucolor = m[UniformColor]
+    material = m[Material]
 	for vao in (m[InstancedDefaultVao], m[InstancedPeelingVao])
-    	if ModelMat in uc
-        	it1 = @entities_in(vao && mat)
+    	reupload_uniform_component = (comp, comp_shader_symbol) -> begin
+    	    datsize = sizeof(eltype(comp))
+        	it1 = @entities_in(vao && comp)
     		for tvao in vao.shared
-    			modelmats = ModelMat[]
+    			comp_vector = eltype(comp)[]
 
-    			@timeit debug_timer(m) "mat creating" for e in it1
-                    e_vao, e_modelmat = vao[e], mat[e]
+    			for e in it1
+                    e_vao, e_comp = vao[e], comp[e]
     				if e_vao === tvao
-    					push!(modelmats, e_modelmat)
+    					push!(comp_vector, e_comp)
     				end
     			end
-    			@timeit debug_timer(m) "uploading" if !isempty(modelmats)
-    				binfo = GLA.bufferinfo(tvao.vertexarray, :modelmat)
-    				if binfo != nothing
+    			if !isempty(comp_vector)
+    				binfo = GLA.bufferinfo(tvao.vertexarray, comp_shader_symbol)
+    				if binfo !== nothing
     					GLA.bind(binfo.buffer)
-    					s = length(modelmats) * matsize
-    					glBufferData(binfo.buffer.buffertype, s, pointer(modelmats, 1), binfo.buffer.usage)
+    					s = length(comp_vector) * datsize
+    					glBufferData(binfo.buffer.buffertype, s, pointer(comp_vector, 1), binfo.buffer.usage)
     					GLA.unbind(binfo.buffer)
     				end
     			end
     		end
     	end
-        ucolor = m[UniformColor]
+    	if ModelMat in uc
+        	reupload_uniform_component(m[ModelMat], :modelmat)
+    	end
     	if UniformColor in uc.components
-        	colsize = sizeof(RGBf0)
-        	it2 = @entities_in(vao && m[UniformColor] && m[Selectable])
-    		for tvao in vao.shared
-    			colors = RGBf0[]
-    			for e in it2
-        			e_vao, e_color, = vao[e], ucolor[e]
-    				if e_vao === tvao
-    					push!(colors, e_color.color)
-    				end
-    			end
-    			if !isempty(colors)
-    				binfo = GLA.bufferinfo(tvao.vertexarray, :color)
-    				if binfo != nothing
-    					GLA.bind(binfo.buffer)
-    					s = length(colors) * colsize
-    					glBufferData(binfo.buffer.buffertype, s, pointer(colors, 1), binfo.buffer.usage)
-    					GLA.unbind(binfo.buffer)
-    				end
-    			end
-    		end
+        	reupload_uniform_component(m[UniformColor], :color)
     	end
+    	if Material in uc.components
+        	reupload_uniform_component(m[Material], :material)
+        end
+    	if Alpha in uc.components
+        	reupload_uniform_component(m[Alpha], :alpha)
+        end	
 	end
 end

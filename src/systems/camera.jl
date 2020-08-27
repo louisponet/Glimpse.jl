@@ -23,38 +23,29 @@ function Camera3D(width_pixels::Integer, height_pixels::Integer; eyepos = -10*Y_
                                                          right  = X_AXIS,
                                                          near   = 0.1f0,
                                                          far    = 3000f0,
-                                                         fov    = 42f0)
+                                                         fov    = 42f0,
+                                                         camerakind = Perspective)
     up    = normalizeperp(lookat - eyepos, up)
     right = normalize(cross(lookat - eyepos, up))
 
     viewm = lookatmat(eyepos, lookat, up)
-    projm = projmatpersp(width_pixels, height_pixels, near, far, fov)
-    return Camera3D(lookat=lookat, up=up, right=right, fov=fov, near=near, far=far, view=viewm, proj=projm, projview=projm * viewm) 
+    zoom  = norm(forward(eyepos, lookat))
+    projm = projmat(width_pixels, height_pixels, zoom, near, far, fov, camerakind)
+    return Camera3D(lookat=lookat, up=up, right=right, fov=fov, near=near, far=far, view=viewm, proj=projm, projview=projm * viewm, camerakind=camerakind) 
 end
+projmat(w::Integer, h::Integer, cam::Camera3D, zoom) = projmat(w, h, zoom, cam.near, cam.far, cam.fov, cam.camerakind)
 
-function Camera3D(old_cam::Camera3D, new_pos::Point3f0, new_lookat::Point3f0, u_forward::Vec3f0=unitforward(new_pos, new_lookat))
-	new_right    = unitright(u_forward, old_cam.up)
-	new_up       = unitup(u_forward, new_right)
-	new_view     = lookatmat(new_pos, new_lookat, new_up)
-	new_projview = old_cam.proj * new_view
-
-    return Camera3D(new_lookat, new_up, new_right, old_cam.fov, old_cam.near, old_cam.far, new_view,
-	                            old_cam.proj, new_projview, old_cam.rotation_speed, old_cam.translation_speed,
-	                            old_cam.mouse_pos, old_cam.scroll_dx, old_cam.scroll_dy, old_cam.camerakind)
-end
-
-function projmat(w::Integer, h::Integer, cam::Camera3D, zoom)
+function projmat(w::Integer, h::Integer, zoom, near, far, fov, camerakind)
     aspect = w/h
-    h = tan(cam.fov / 360.0f0 * pi) * cam.near
+    h = tan(fov / 360.0f0 * pi) * near
     w = h * aspect
-    if cam.camerakind == Pixel
-        return eye(Float32, 4)
-    elseif cam.camerakind == Orthographic
+    if camerakind == Pixel
+        return diagm(ones(Float32, 4))
+    elseif camerakind == Orthographic
         h, w = h * zoom*23f0, w * zoom*23f0
-	    return projmatortho(Float32, -w, w, -h, h, cam.near, cam.far)
-    elseif cam.camerakind == Perspective
-        # return projmatpersp(Float32, w, h, cam.fov, cam.near, cam.far)
-        return projmatpersp(Float32, cam.fov, aspect, cam.near, cam.far)
+	    return projmatortho(Float32, -w, w, -h, h, near, far)
+    elseif camerakind == Perspective
+        return projmatpersp(Float32, fov, aspect, near, far)
     end
 end
 

@@ -42,8 +42,7 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
     set_light_camera_uniforms(prog)
 
 	set_model_material = (e_modelmat, e_material) -> begin
-		set_uniform(prog, :specint, e_material.specint)
-		set_uniform(prog, :specpow, e_material.specpow)
+		set_uniform(prog, :material, Vec2(e_material.specpow, e_material.specint))
 		set_uniform(prog, :modelmat, e_modelmat.modelmat)
 	end
 

@@ -4,8 +4,7 @@ in vec3 fragnormal;
 in vec3 world_pos;
 in vec3 id_color;
 
-in float specPow;
-in float specInt;
+in vec2 fragmaterial;
 
 layout (location = 0) out vec4 out_color;
 layout (location = 1) out vec3 out_id_color;
@@ -22,6 +21,8 @@ uniform vec3 campos;
 
 uniform point_light plight;
 void main () {
+	float specPow = fragmaterial[0];
+	float specInt = fragmaterial[1];
 
     vec4 ambient_color  = vec4(plight.color * plight.amb_intensity, 1.0f);
     vec3 light_position = normalize(plight.position - world_pos);

@@ -47,13 +47,15 @@ Overseer.requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
 
 function Overseer.update(::Union{FunctionMesher, DensityMesher}, m::AbstractLedger)
 	mesh = m[Mesh]
-	geom = m[FunctionGeometry]
 	grid = m[Grid]
-	for e in @entities_in(geom && grid && !mesh)
-		points = grid[e].points
-		vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
-		faces         = [Face{3, GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
-		mesh[e] = Mesh(BasicMesh(vertices, faces, normals(vertices, faces)))
+	for geom in (m[FunctionGeometry], m[DensityGeometry])
+    	for e in @entities_in(geom && grid && !mesh)
+    		points = grid[e].points
+    		vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
+    		faces         = [GeometryBasics.TriangleFace{GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
+    		norms =  length(faces) == 0 ? Vec3f0[] : normals(vertices, faces) 
+    		mesh[e] = Mesh(BasicMesh(vertices, faces, norms))
+    	end
 	end
 end
 

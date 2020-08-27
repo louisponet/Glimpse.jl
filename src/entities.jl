@@ -50,7 +50,7 @@ function assemble_wire_axis_box(;
 
     coords = (Mat3([x y z]),) .* box_coordinates()
     return (BufferColor([color for i = 1:length(coords)]),
-            Spatial(),
+            Spatial(position=position),
             LineOptions(linewidth, miter),
             LineGeometry(Point3f0.(coords)))
 end
@@ -64,7 +64,7 @@ function assemble_box(left = Point3f0(-0.5), right=Point3f0(0.5);
        unit_direction = (right-left)/norm(right-left)
 
        return (Spatial((left+right)/2, velocity),
-               PolygonGeometry(HyperRectangle(Vec3f0(-unit_direction/2), Vec3f0(unit_direction/2))),
+               PolygonGeometry(GeometryBasics.HyperRectangle(Vec3f0(-unit_direction/2), Vec3f0(unit_direction/2))),
                Material(specint, specpow),
                UniformColor(color),
                Shape(norm(right-left)))
@@ -94,8 +94,7 @@ assemble_file_mesh(file;position::StaticArray{Tuple{3}} = zero(Point3f0),
             FileGeometry(file),
             Material(specint, specpow),
             UniformColor(color),
-            Shape(scale),
-            program)
+            Shape(scale))
 
 assemble_camera3d(width_pixels ::Int32,
 			      height_pixels::Int32; eyepos   = -10*Y_AXIS,

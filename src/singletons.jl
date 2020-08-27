@@ -268,8 +268,8 @@ GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
 
 generate_buffers(p::RenderProgram, args...; kwargs...) = generate_buffers(p.program, args...; kwargs...)
 
-@component struct UpdatedComponents
-    components::Vector{DataType}
+@component_with_kw struct UpdatedComponents
+    components::Vector{DataType} = DataType[]
 end
 
 Base.empty!(uc::UpdatedComponents) = empty!(uc.components)

@@ -69,8 +69,7 @@ function set_entity_uniforms_func(render_program::Union{DefaultProgram, PeelingP
     modelmat = component(system, ModelMat)
     ucolor   = component(system, UniformColor)
 	return e -> begin
-		set_uniform(prog, :specint, material[e].specint)
-		set_uniform(prog, :specpow, material[e].specpow)
+		set_uniform(prog, :material, Vec2(material[e].specpow, material[e].specint))
 		set_uniform(prog, :modelmat, modelmat[e].modelmat)
 		if has_entity(ucolor, e)
 			set_uniform(prog, :uniform_color, ucolor[e].color)

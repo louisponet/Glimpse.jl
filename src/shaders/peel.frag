@@ -15,8 +15,7 @@ struct point_light {
 };
 
 uniform vec3 campos;
-uniform float specpow;
-uniform float specint;
+uniform vec2 material;
 
 // peeling uniforms
 uniform float canvas_width;
@@ -27,6 +26,8 @@ layout(binding=0) uniform sampler2D depth_texture;
 
 uniform point_light plight;
 void main () {
+	float specpow = material[0];
+	float specint = material[1];
 	out_id_color = id_color;
     vec4 ambient_color  = vec4(plight.color * plight.amb_intensity, 1.0f);
     vec3 light_position = normalize(plight.position - world_pos);

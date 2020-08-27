@@ -22,11 +22,11 @@ function Overseer.update(::Sleeper, m::AbstractLedger)
 	dt = (curtime - sd[1].time)
 	sleep_time = 1/sd[1].preferred_fps - dt
     st         = sleep_time - 0.002
-    while (time() - curtime) < st
-        sleep(0.001) # sleep for the minimal amount of time
+    if st > 0.0
+        sleep(st)
+    else
+        yield()
     end
-	curtime    = time()
-	dt = (curtime - sd[1].time)
 end
 
 struct Resizer <: System end
