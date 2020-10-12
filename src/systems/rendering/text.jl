@@ -437,9 +437,9 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
     draw(iofbo)
 
 	bind(prog)
-	set_uniform(prog, :resolution, Vec2f0(wh))
-    set_uniform(prog, :projview, persp_mat)
-    set_uniform(prog, :projection, projection_mat)
+	gluniform(prog, :resolution, Vec2f0(wh))
+    gluniform(prog, :projview, persp_mat)
+    gluniform(prog, :projection, projection_mat)
 
     #Absolutely no clue why this needs to be here?...
 	if isempty(m[FontStorage])
@@ -452,18 +452,18 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
 
     # Fragment uniforms
     # GLA.gpu_setindex!(color_attachment(glyph_fbo, 1), singleton(m, FontStorage).atlas.data, 1:size(singleton(m, FontStorage).atlas.data, 1), 1:size(singleton(m, FontStorage).atlas.data, 2))
-	set_uniform(prog, :distancefield, 0, color_attachment(glyph_fbo, 1))
-	set_uniform(prog, :shape, 3)
+	gluniform(prog, :distancefield, 0, color_attachment(glyph_fbo, 1))
+	gluniform(prog, :shape, 3)
 	#TODO make this changeable
-	set_uniform(prog, :stroke_width, 0f0)
-	set_uniform(prog, :glow_width, 0f0)
-	set_uniform(prog, :billboard, true)
-	set_uniform(prog, :scale_primitive, false)
+	gluniform(prog, :stroke_width, 0f0)
+	gluniform(prog, :glow_width, 0f0)
+	gluniform(prog, :billboard, true)
+	gluniform(prog, :scale_primitive, false)
 	for e in @entities_in(vao && spat && text)
         e_vao, e_spat, e_text = vao[e], spat[e], text[e]
         if e_vao.visible
-    		set_uniform(prog,:model, m[ModelMat][e].modelmat)
-    		set_uniform(prog,:origin, e_text.offset)
+    		gluniform(prog,:model, m[ModelMat][e].modelmat)
+    		gluniform(prog,:origin, e_text.offset)
     		bind(e_vao)
     		draw(e_vao)
 		end

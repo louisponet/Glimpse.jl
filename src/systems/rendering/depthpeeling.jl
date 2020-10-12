@@ -77,16 +77,16 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 
 	set_light_camera_uniforms = (prog) -> begin
 	    for e  in @entities_in(light && ucolor && spatial)
-		    set_uniform(prog, light[e], ucolor[e], spatial[e])
+		    gluniform(prog, light[e], ucolor[e], spatial[e])
 	    end
 	    for e in @entities_in(spatial && camera)
-		    set_uniform(prog, spatial[e], camera[e])
+		    gluniform(prog, spatial[e], camera[e])
 	    end
     end
 
 	set_model_material = (e_modelmat, e_material) -> begin
-		set_uniform(peeling_program, :material, Vec2(e_material.specpow, e_material.specint))
-		set_uniform(peeling_program, :modelmat, e_modelmat.modelmat)
+		gluniform(peeling_program, :material, Vec2(e_material.specpow, e_material.specint))
+		gluniform(peeling_program, :modelmat, e_modelmat.modelmat)
 	end
 
     bind(colorblender)
@@ -105,23 +105,23 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 
 	# # first pass: Render the previous opaque stuff first
 	bind(peel_comp_program)
-	set_uniform(peel_comp_program, :first_pass, true)
-	set_uniform(peel_comp_program, :color_texture, 0, color_attachment(iofbo, 1))
-	set_uniform(peel_comp_program, :depth_texture, 1, depth_attachment(iofbo))
-	set_uniform(peel_comp_program, :color_id_texture, 3, color_attachment(iofbo, 2))
+	gluniform(peel_comp_program, :first_pass, true)
+	gluniform(peel_comp_program, :color_texture, 0, color_attachment(iofbo, 1))
+	gluniform(peel_comp_program, :depth_texture, 1, depth_attachment(iofbo))
+	gluniform(peel_comp_program, :color_id_texture, 3, color_attachment(iofbo, 2))
     bind(fullscreenvao)
     draw(fullscreenvao)
-	set_uniform(peel_comp_program, :first_pass, false)
+	gluniform(peel_comp_program, :first_pass, false)
 
 	it1 = @entities_in(vao && modelmat && material && ucolor)
 	it2 = @entities_in(vao && modelmat && material && bcolor && !ucolor)
 
 	ufunc = (e_color) -> begin
-		set_uniform(peeling_program, :uniform_color, e_color.color)
-		set_uniform(peeling_program, :is_uniform, true)
+		gluniform(peeling_program, :uniform_color, e_color.color)
+		gluniform(peeling_program, :is_uniform, true)
 	end
 	bfunc = (e_color) -> begin
-		set_uniform(peeling_program, :is_uniform, false)
+		gluniform(peeling_program, :is_uniform, false)
 	end
 
 	renderall_separate = () -> begin
@@ -153,11 +153,11 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
     function render_start(prog, renderfunc)
 	    bind(prog)
 	    set_light_camera_uniforms(prog)
-	    set_uniform(prog, :first_pass, true)
-	    set_uniform(prog, :canvas_width, canvas_width)
-	    set_uniform(prog, :canvas_height, canvas_height)
+	    gluniform(prog, :first_pass, true)
+	    gluniform(prog, :canvas_width, canvas_width)
+	    gluniform(prog, :canvas_height, canvas_height)
 		renderfunc()
-	    set_uniform(prog, :first_pass, false)
+	    gluniform(prog, :first_pass, false)
     end
 
  	# first pass: Render all the transparent stuff
@@ -179,18 +179,18 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 
 # 		# peel: Render all opaque stuff
 		bind(peel_comp_program)
-		set_uniform(peel_comp_program, :color_texture, 0, color_attachment(iofbo, 1))
-		set_uniform(peel_comp_program, :depth_texture, 1, depth_attachment(iofbo))
-		set_uniform(peel_comp_program, :prev_depth,    2, depth_attachment(prevfbo))
+		gluniform(peel_comp_program, :color_texture, 0, color_attachment(iofbo, 1))
+		gluniform(peel_comp_program, :depth_texture, 1, depth_attachment(iofbo))
+		gluniform(peel_comp_program, :prev_depth,    2, depth_attachment(prevfbo))
 	    bind(fullscreenvao)
 	    draw(fullscreenvao)
 
         bind(peeling_program)
-        set_uniform(peeling_program, :depth_texture, 0, depth_attachment(prevfbo))
+        gluniform(peeling_program, :depth_texture, 0, depth_attachment(prevfbo))
 		renderall_separate()
 
         bind(ipeeling_program)
-        set_uniform(ipeeling_program, :depth_texture, 0, depth_attachment(prevfbo))
+        gluniform(ipeeling_program, :depth_texture, 0, depth_attachment(prevfbo))
 		renderall_instanced()
         
         bind(colorblender)
@@ -202,7 +202,7 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
         glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA)
 
         bind(blending_program)
-        set_uniform(blending_program, :color_texture,    0, color_attachment(currfbo, 1))
+        gluniform(blending_program, :color_texture,    0, color_attachment(currfbo, 1))
 
         bind(fullscreenvao)
         draw(fullscreenvao)
@@ -212,8 +212,8 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 	glDisable(GL_BLEND)
 
     bind(compositing_program)
-    set_uniform(compositing_program, :color_texture, 0, color_attachment(colorblender, 1))
-    set_uniform(compositing_program, :color_id_texture, 1, color_attachment(colorblender, 2))
+    gluniform(compositing_program, :color_texture, 0, color_attachment(colorblender, 1))
+    gluniform(compositing_program, :color_id_texture, 1, color_attachment(colorblender, 2))
     bind(fullscreenvao)
     draw(fullscreenvao)
 end

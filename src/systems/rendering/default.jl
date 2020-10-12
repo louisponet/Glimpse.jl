@@ -1,4 +1,4 @@
-import GLAbstraction: set_uniform
+import GLAbstraction: gluniform
 
 @render_program DefaultProgram
 @render_program InstancedDefaultProgram
@@ -32,18 +32,18 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
 
     set_light_camera_uniforms = (prog) -> begin
         for e in @entities_in(light && ucolor && spat)
-    	    set_uniform(prog, light[e], ucolor[e], spat[e])
+    	    gluniform(prog, light[e], ucolor[e], spat[e])
         end
 
         for e in @entities_in(spat && cam)
-    	    set_uniform(prog, spat[e], cam[e])
+    	    gluniform(prog, spat[e], cam[e])
         end
     end
     set_light_camera_uniforms(prog)
 
 	set_model_material = (e_modelmat, e_material) -> begin
-		set_uniform(prog, :material, Vec2(e_material.specpow, e_material.specint))
-		set_uniform(prog, :modelmat, e_modelmat.modelmat)
+		gluniform(prog, :material, Vec2(e_material.specpow, e_material.specint))
+		gluniform(prog, :modelmat, e_modelmat.modelmat)
 	end
 
 	#Colors inside Vao
@@ -52,7 +52,7 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
 		if evao.visible
 			set_model_material(modelmat[e], material[e])
 			if e in idcolor
-    			set_uniform(prog, :object_id_color, idcolor[e].color)
+    			gluniform(prog, :object_id_color, idcolor[e].color)
 			end
 			GLA.bind(evao)
 			GLA.draw(evao)

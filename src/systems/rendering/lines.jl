@@ -10,9 +10,9 @@ function set_entity_uniforms_func(render_program::LineProgram, system::System)
     modelmat = comp(ModelMat)
     line     = comp(Line)
 	return e -> begin
-		set_uniform(prog, :modelmat,   modelmat[e].modelmat)
-		set_uniform(prog, :thickness,  line[e].thickness)
-		set_uniform(prog, :MiterLimit, line[e].miter)
+		gluniform(prog, :modelmat,   modelmat[e].modelmat)
+		gluniform(prog, :thickness,  line[e].thickness)
+		gluniform(prog, :MiterLimit, line[e].miter)
 	end
 end
 
@@ -36,24 +36,24 @@ function Overseer.update(::LineRenderer, m::AbstractLedger)
     light, ucolor, spat, modelmat, cam =
         m[PointLight], m[UniformColor], m[Spatial], m[ModelMat], m[Camera3D]
     for e in @entities_in(light && ucolor && spat)
-	    set_uniform(prog, light[e], ucolor[e], spat[e])
+	    gluniform(prog, light[e], ucolor[e], spat[e])
     end
     for e in @entities_in(spat && cam)
-	    set_uniform(prog, spat[e], cam[e])
+	    gluniform(prog, spat[e], cam[e])
     end
-	set_uniform(prog, :Viewport, Vec2f0(size(m[IOTarget][1])))
+	gluniform(prog, :Viewport, Vec2f0(size(m[IOTarget][1])))
     vao, modelmat, line = m[LineVao], m[ModelMat], m[LineOptions] 
 	for e in @entities_in(vao && modelmat && line)
         evao = vao[e]
         e_line = line[e]
 		if evao.visible
-			set_uniform(prog, :modelmat,   modelmat[e].modelmat)
-			set_uniform(prog, :thickness,  e_line.thickness)
-			set_uniform(prog, :MiterLimit, e_line.miter)
+			gluniform(prog, :modelmat,   modelmat[e].modelmat)
+			gluniform(prog, :thickness,  e_line.thickness)
+			gluniform(prog, :MiterLimit, e_line.miter)
 			if e in idc
-        		set_uniform(prog, :object_id_color, idc[e].color)
+        		gluniform(prog, :object_id_color, idc[e].color)
     		else
-        		set_uniform(prog, :object_id_color, RGBf0(1.0,1.0,1.0))
+        		gluniform(prog, :object_id_color, RGBf0(1.0,1.0,1.0))
     		end
 			GLA.bind(evao)
 			GLA.draw(evao)

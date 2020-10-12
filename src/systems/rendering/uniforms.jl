@@ -1,4 +1,4 @@
-import GLAbstraction: set_uniform
+import GLAbstraction: gluniform
 
 struct UniformCalculator <: System end
 
@@ -69,27 +69,27 @@ function set_entity_uniforms_func(render_program::Union{DefaultProgram, PeelingP
     modelmat = component(system, ModelMat)
     ucolor   = component(system, UniformColor)
 	return e -> begin
-		set_uniform(prog, :material, Vec2(material[e].specpow, material[e].specint))
-		set_uniform(prog, :modelmat, modelmat[e].modelmat)
+		gluniform(prog, :material, Vec2(material[e].specpow, material[e].specint))
+		gluniform(prog, :modelmat, modelmat[e].modelmat)
 		if has_entity(ucolor, e)
-			set_uniform(prog, :uniform_color, ucolor[e].color)
-			set_uniform(prog, :is_uniform, true)
+			gluniform(prog, :uniform_color, ucolor[e].color)
+			gluniform(prog, :is_uniform, true)
 		else
-			set_uniform(prog, :is_uniform, false)
-			set_uniform(prog, :specpow, material[e].specpow)
+			gluniform(prog, :is_uniform, false)
+			gluniform(prog, :specpow, material[e].specpow)
 		end
 	end
 end
 
-function set_uniform(program::GLA.Program, spatial, camera::Camera3D)
-    set_uniform(program, :projview, camera.projview)
-    set_uniform(program, :campos,   spatial.position)
+function gluniform(program::GLA.Program, spatial, camera::Camera3D)
+    gluniform(program, :projview, camera.projview)
+    gluniform(program, :campos,   spatial.position)
 end
 
-function set_uniform(program::GLA.Program, pointlight::PointLight, color::UniformColor, spatial::Spatial)
-    set_uniform(program, Symbol("plight.color"),              RGB(color.color))
-    set_uniform(program, Symbol("plight.position"),           spatial.position)
-    set_uniform(program, Symbol("plight.amb_intensity"),      pointlight.ambient)
-    set_uniform(program, Symbol("plight.specular_intensity"), pointlight.specular)
-    set_uniform(program, Symbol("plight.diff_intensity"),     pointlight.diffuse)
+function gluniform(program::GLA.Program, pointlight::PointLight, color::UniformColor, spatial::Spatial)
+    gluniform(program, Symbol("plight.color"),              RGB(color.color))
+    gluniform(program, Symbol("plight.position"),           spatial.position)
+    gluniform(program, Symbol("plight.amb_intensity"),      pointlight.ambient)
+    gluniform(program, Symbol("plight.specular_intensity"), pointlight.specular)
+    gluniform(program, Symbol("plight.diff_intensity"),     pointlight.diffuse)
 end

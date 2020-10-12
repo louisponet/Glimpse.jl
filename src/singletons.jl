@@ -264,7 +264,7 @@ bind(p::RenderProgram) = bind(p.program)
 
 unbind(p::RenderProgram) = unbind(p.program)
 
-GLA.set_uniform(p::RenderProgram, args...) = GLA.set_uniform(p.program, args...)
+GLA.gluniform(p::RenderProgram, args...) = GLA.gluniform(p.program, args...)
 
 generate_buffers(p::RenderProgram, args...; kwargs...) = generate_buffers(p.program, args...; kwargs...)
 
