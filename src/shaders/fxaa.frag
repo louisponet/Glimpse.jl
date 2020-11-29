@@ -11,11 +11,11 @@ void main(void)
     float FXAA_REDUCE_MUL = 1.0/8.0;
     float FXAA_REDUCE_MIN = 1.0/128.0;
 
-    vec3 rgbNW=texture2D(color_texture,tex_coord+(vec2(-1.0,-1.0)*RCPFrame)).xyz;
-    vec3 rgbNE=texture2D(color_texture,tex_coord+(vec2(1.0,-1.0)*RCPFrame)).xyz;
-    vec3 rgbSW=texture2D(color_texture,tex_coord+(vec2(-1.0,1.0)*RCPFrame)).xyz;
-    vec3 rgbSE=texture2D(color_texture,tex_coord+(vec2(1.0,1.0)*RCPFrame)).xyz;
-    vec4 rgbM=texture2D(color_texture,tex_coord);
+    vec3 rgbNW=texture(color_texture,tex_coord+(vec2(-1.0,-1.0)*RCPFrame)).xyz;
+    vec3 rgbNE=texture(color_texture,tex_coord+(vec2(1.0,-1.0)*RCPFrame)).xyz;
+    vec3 rgbSW=texture(color_texture,tex_coord+(vec2(-1.0,1.0)*RCPFrame)).xyz;
+    vec3 rgbSE=texture(color_texture,tex_coord+(vec2(1.0,1.0)*RCPFrame)).xyz;
+    vec4 rgbM=texture(color_texture,tex_coord);
 
     vec3 luma=vec3(0.299, 0.587, 0.114);
     float lumaNW = dot(rgbNW, luma);
@@ -42,11 +42,11 @@ void main(void)
           dir * rcpDirMin)) *RCPFrame;
 
     vec3 rgbA = (1.0/2.0) * (
-        texture2D(color_texture, tex_coord.xy + dir * (1.0/3.0 - 0.5)).xyz +
-        texture2D(color_texture, tex_coord.xy + dir * (2.0/3.0 - 0.5)).xyz);
+        texture(color_texture, tex_coord.xy + dir * (1.0/3.0 - 0.5)).xyz +
+        texture(color_texture, tex_coord.xy + dir * (2.0/3.0 - 0.5)).xyz);
     vec3 rgbB = rgbA * (1.0/2.0) + (1.0/4.0) * (
-        texture2D(color_texture, tex_coord.xy + dir * (0.0/3.0 - 0.5)).xyz +
-        texture2D(color_texture, tex_coord.xy + dir * (3.0/3.0 - 0.5)).xyz);
+        texture(color_texture, tex_coord.xy + dir * (0.0/3.0 - 0.5)).xyz +
+        texture(color_texture, tex_coord.xy + dir * (3.0/3.0 - 0.5)).xyz);
     float lumaB = dot(rgbB, luma);
 
     if((lumaB < lumaMin) || (lumaB > lumaMax)){
@@ -56,5 +56,5 @@ void main(void)
         fragment_color.xyz=rgbB;
         fragment_color.a = rgbM.a;
     }
-    // fragment_color = texture2D(color_texture,tex_coord);
+    // fragment_color = texture(color_texture,tex_coord);
 }
