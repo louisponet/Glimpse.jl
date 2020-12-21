@@ -49,6 +49,7 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 	t[e] = TimingData()
 	fetch(glimpse_call() do
 	          c = Canvas(name; kwargs...)
+	          make_current(c)
               m[e] = c
 	          wh = size(c)
               m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBAf0, GLA.Depth{Float32}), true), c.background)

@@ -1,9 +1,5 @@
 import GLAbstraction: bind, unbind, draw
 
-struct CanvasContext <: GLA.AbstractContext
-    nw::GLFW.Window
-    id::Int
-end
 #TODO think about contexts
 #TODO handle resizing properly
 @component mutable struct Canvas
@@ -12,7 +8,6 @@ end
     native_window    ::GLFW.Window
     imgui_context    ::UInt
     background       ::Colorant{Float32, 4}
-    context          ::CanvasContext
     cursor_position  ::NTuple{2, Float64}
     scroll           ::NTuple{2, Float64}
     has_focus        ::Bool
@@ -33,18 +28,18 @@ end
     ImGui_ImplOpenGL3_Init(420)
 
 
-    obj = new(name, area, nw, ctx, background, CanvasContext(nw, 1),
+    obj = new(name, area, nw, ctx, background, 
           (0.0,0.0), (0.0,0.0), true, (GLFW.MOUSE_BUTTON_1, GLFW.RELEASE, 0), (GLFW.KEY_UNKNOWN,0,GLFW.RELEASE,0), (0,0))
 
-        GLFW.SetCursorPosCallback(nw, (nw, x::Cdouble, y::Cdouble) -> begin
+    GLFW.SetCursorPosCallback(nw, (nw, x::Cdouble, y::Cdouble) -> begin
         obj.cursor_position = (x, y)
-        end)
+    end)
 
-        GLFW.SetScrollCallback(nw, (nw, xoffset::Cdouble, yoffset::Cdouble) -> begin
-            obj.scroll = (obj.scroll[1] + xoffset, obj.scroll[2] + yoffset)
-        end)
+    GLFW.SetScrollCallback(nw, (nw, xoffset::Cdouble, yoffset::Cdouble) -> begin
+        obj.scroll = (obj.scroll[1] + xoffset, obj.scroll[2] + yoffset)
+    end)
 
-        GLFW.SetWindowFocusCallback(nw, (nw, focus::Bool) -> begin
+    GLFW.SetWindowFocusCallback(nw, (nw, focus::Bool) -> begin
         obj.has_focus = focus
     end)
 
@@ -52,13 +47,13 @@ end
             obj.mouse_buttons = (button, action, Int(mods))
         end)
 
-        GLFW.SetKeyCallback(nw, (nw, button::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint) -> begin
-            obj.keyboard_buttons = (button, Int(scancode), action, Int(mods))
-        end)
+    GLFW.SetKeyCallback(nw, (nw, button::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint) -> begin
+        obj.keyboard_buttons = (button, Int(scancode), action, Int(mods))
+    end)
 
-        GLFW.SetFramebufferSizeCallback(nw, (nw, w::Cint, h::Cint) -> begin
-            obj.framebuffer_size = (Int(w), Int(h))
-        end)
+    GLFW.SetFramebufferSizeCallback(nw, (nw, w::Cint, h::Cint) -> begin
+        obj.framebuffer_size = (Int(w), Int(h))
+    end)
 
     finalizer(free!, obj)
     return obj
@@ -75,8 +70,9 @@ function Canvas(name=:Glimpse; kwargs...)
     context_hints = GLFW.standard_context_hints(defaults[:major], defaults[:minor])
 
     area = defaults[:area]
-    if !isassigned(GLFW_context)
-        GLFW_context[] = GLFW.Window(name = string(name),
+    # if !isassigned(GLFW_context)
+        # GLFW_context[] = GLFW.Window(name = string(name),
+        window = GLFW.Window(name = string(name),
                      resolution   = (GeometryBasics.widths(area)...,),
                      debugging    = defaults[:debugging],
                      major        = defaults[:major],
@@ -87,25 +83,22 @@ function Canvas(name=:Glimpse; kwargs...)
                      focus        = false,
                      fullscreen   = defaults[:fullscreen],
                      monitor      = defaults[:monitor])
-    end
 
     GLFW.SwapInterval(0) # deactivating vsync seems to make everything quite a bit smoother
 
     background = defaults[:background]
 
-    c = Canvas(name, area, GLFW_context[], background)
-    make_current(c)
+    c = Canvas(name, area, window, background)
     return c
 end
 
 function make_current(c::Canvas)
-    c.framebuffer_size = (GLFW.GetFramebufferSize(c.native_window)...,)
     GLFW.MakeContextCurrent(c.native_window)
-    GLA.set_context!(c.context)
+    GLA.set_context!(c)
 end
 
 function expose(c::Canvas)
-    c.framebuffer_size = (GLFW.GetFramebufferSize(c.native_window)...,)
+    make_current(c)
     GLFW.SetWindowShouldClose(c.native_window, false)
     GLFW.ShowWindow(c.native_window)
 end
