@@ -86,13 +86,13 @@ function canvas_command(command::Function, dio::Diorama, catchcommand = x -> not
 end
 
 function expose(dio::Diorama;  kwargs...)
-    if dio.loop == nothing
-	    canvas_command(dio, x -> m[Entity(m[DioEntity],1)] = Overseer.Entity(dio, Canvas(dio.name; kwargs...))) do x
-	        make_current(x)
-            renderloop(dio)
-            expose(x)
-        end
+    # if dio.loop == nothing
+    canvas_command(dio, x -> m[Entity(m[DioEntity],1)] = Overseer.Entity(dio, Canvas(dio.name; kwargs...))) do x
+        make_current(x)
+        renderloop(dio)
+        expose(x)
     end
+    # end
     return dio
 end
 

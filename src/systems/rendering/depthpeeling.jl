@@ -62,6 +62,7 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
 	bcolor   = m[BufferColor]
 	light    = m[PointLight]
 	camera   = m[Camera3D]
+	alpha = m[Alpha]
 
 	peeling_program  = m[PeelingProgram][1]
 	ipeeling_program  = m[InstancedPeelingProgram][1]
@@ -113,28 +114,18 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
     draw(fullscreenvao)
 	gluniform(peel_comp_program, :first_pass, false)
 
-	it1 = @entities_in(vao && modelmat && material && ucolor)
-	it2 = @entities_in(vao && modelmat && material && bcolor && !ucolor)
-
-	ufunc = (e_color) -> begin
-		gluniform(peeling_program, :uniform_color, e_color.color)
-		gluniform(peeling_program, :is_uniform, true)
-	end
-	bfunc = (e_color) -> begin
-		gluniform(peeling_program, :is_uniform, false)
-	end
+	it1 = @entities_in(vao && modelmat && material && bcolor)
 
 	renderall_separate = () -> begin
 		set_light_camera_uniforms(peeling_program)
-		for (it, f, color) in zip((it1,it2), (ufunc, bfunc),(ucolor,bcolor)) 
-			for e in it
-                evao = vao[e]
-				if evao.visible
-					set_model_material(modelmat[e], material[e])
-					f(color[e])
-					GLA.bind(evao)
-					GLA.draw(evao)
-				end
+		for e in it1
+            evao = vao[e]
+			if evao.visible
+				@show e
+				set_model_material(modelmat[e], material[e])
+				gluniform(peeling_program, :alpha, alpha[e])
+				GLA.bind(evao)
+				GLA.draw(evao)
 			end
 		end
 	end

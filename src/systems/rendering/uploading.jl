@@ -32,6 +32,7 @@ function Overseer.update(::Uploader, m::AbstractLedger)
     default_prog= singleton(m, DefaultProgram)
     line_prog   = singleton(m, LineProgram)
     uc = singleton(m, UpdatedComponents)
+    alpha = m[Alpha]
 
     #Buffer color entities are always not instanced
     for e in @entities_in(mesh && bcolor && !default_vao && !peeling_vao)
@@ -43,7 +44,7 @@ function Overseer.update(::Uploader, m::AbstractLedger)
             return VertexArray(buffers, faces(e_mesh.mesh) .- GLint(1))
         end
 
-        if any(x -> x.alpha < 1, bcolor[e].color)
+        if e in alpha && alpha[e].α < 1
 		    peeling_vao[e] = PeelingVao(gen_vao(peeling_prog))
 	    else
 		    default_vao[e] = DefaultVao(gen_vao(default_prog))

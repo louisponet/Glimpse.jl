@@ -6,6 +6,7 @@ layout(location = 2) in vec3 color;
 uniform mat4 projview;
 uniform mat4 modelmat;
 uniform vec3 object_id_color;
+uniform float alpha;
 
 out vec3 fragnormal;
 out vec3 world_pos;
@@ -17,5 +18,5 @@ void main () {
     fragnormal = normalize((modelmat * vec4(normals, 0.0f)).xyz);
     world_pos  = (modelmat * vec4(vertices, 1.0f)).xyz;
     gl_Position = projview * modelmat * vec4(vertices, 1.0f);
-	fragcolor = vec4(color, 1.0);
+	fragcolor = vec4(color, alpha);
 }

@@ -123,7 +123,7 @@ Base.eltype(::Type{UniformColor}) = Float32
 
 # vector of colors, either supplied manually or filled in by mesher
 @component struct BufferColor <: Color
-	color::Vector{RGBAf0}
+	color::Vector{RGBf0}
 end
 	
 # color function, mesher uses it to throw in points and get out colors
@@ -133,7 +133,7 @@ end
 end
 
 @component struct DensityColor <: Color 
-	color::Array{RGBAf0, 3}
+	color::Array{RGBf0, 3}
 end
 
 # Cycle, mesher uses it to iterate over together with points
@@ -193,8 +193,8 @@ end
 
 @component_with_kw struct Text 
 	str      ::String = "test"
-	font_size::Float64  = 1
+	font_size::Float64  = 20
 	font     = default_font()
-	align    ::Symbol = :right
+	align    ::Tuple{Symbol, Symbol} = (:bottom, :right)
 	offset   ::Vec3f0= zero(Vec3f0)
 end
