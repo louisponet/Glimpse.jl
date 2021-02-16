@@ -52,7 +52,7 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 	          make_current(c)
               m[e] = c
 	          wh = size(c)
-              m[e] = IOTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBAf0, GLA.Depth{Float32}), true), c.background)
+              m[e] = IOTarget(GLA.FrameBuffer(wh, GLA.Texture(RGBAf0, wh, internalformat=GL_RGBA), GLA.Texture(RGBAf0, wh, internalformat=GL_RGBA), GLA.Texture(GLA.Depth{Float32}, wh)), c.background)
               m[e] = FullscreenVao()
               m[e] = UpdatedComponents(DataType[])
               m[e] = Mouse(div.(wh, 2)..., 0, 0, (0, 0), (0, 0), GLFW.MOUSE_BUTTON_1, GLFW.RELEASE)

@@ -39,10 +39,10 @@ function Overseer.prepare(::DepthPeelingRenderer, dio::Diorama)
 	c = singleton(dio, Canvas)
 	wh = size(c)
 	while length(dio[PeelTarget]) < 2
-		Entity(dio.ledger, DioEntity(), PeelTarget(GLA.FrameBuffer(wh, (RGBAf0, GLA.Depth{Float32}), true), c.background))
+		Entity(dio.ledger, DioEntity(), PeelTarget(GLA.FrameBuffer(wh, GLA.Texture(RGBAf0, wh, internalformat=GL_RGBA), GLA.Texture(RGBAf0, wh, internalformat=GL_RGBA), GLA.Texture(GLA.Depth{Float32}, wh)), c.background))
 	end
 	if isempty(dio[ColorBlendTarget])
-		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, (RGBAf0, RGBAf0, GLA.Depth{Float32}), true), c.background)
+		dio[Entity(1)] = ColorBlendTarget(GLA.FrameBuffer(wh, map(x->GLA.Texture(x, wh), (RGBAf0, RGBAf0, GLA.Depth{Float32}))...), c.background)
 	end
 end
 
