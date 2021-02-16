@@ -90,7 +90,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
                 spatial[g] = t_spat
             end
             pos = t_spat.position
-            text[guide_entities[1]] = Text(str="Position: (x=$(pos[1]), y=$(pos[2]), z=$(pos[3]))", font_size=movable[e].font_size, align=:top, offset=Vec3f0(0, 0, -2f0))
+            text[guide_entities[1]] = Text(str="Position: (x=$(pos[1]), y=$(pos[2]), z=$(pos[3]))", font_size=movable[e].font_size, offset=Vec3f0(0, 0, -2f0))
         end
 
         #sanitize positions and orientiations of rotation_comp guides
@@ -106,7 +106,7 @@ function Overseer.update(::Editor, m::AbstractLedger)
             rotation_comp[guide_entities[2]] = Rotation(rot.q*rotation(X_AXIS, Z_AXIS))
             rotation_comp[guide_entities[3]] = Rotation(rot.q*rotation(Y_AXIS, Z_AXIS))
              #this is the out of plane one, so should rotate along the perpendicular direction of the object
-            text[guide_entities[1]] = Text(str="Orientation: (x=$(ax[1]), y=$(ax[2]), z=$(ax[3]))", font_size=rotatable[e].font_size, align=:top, offset=Vec3f0(0, 0, -2f0))
+            text[guide_entities[1]] = Text(str="Orientation: (x=$(ax[1]), y=$(ax[2]), z=$(ax[3]))", font_size=rotatable[e].font_size, offset=Vec3f0(0, 0, -2f0))
         end
 
         #handle moving
