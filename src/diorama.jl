@@ -34,10 +34,10 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 				                   LineRenderer(),
 	                               UniformUploader(),
 	                               DefaultRenderer(),
-	                               TextRenderer(),
 	                               DepthPeelingRenderer(),
-	                               GuiRenderer(),
-	                               FinalRenderer()]),
+	                               FinalRenderer(),
+	                               TextRenderer(),
+	                               GuiRenderer()]),
 
 			    Stage(:stop, [CameraOperator(), Sleeper()]))
 

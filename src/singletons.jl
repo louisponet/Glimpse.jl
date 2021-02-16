@@ -170,7 +170,8 @@ set_background_color!(canvas::Canvas, color::NTuple)   = canvas.background = con
 
 #---------------------DEFAULTS-------------------#
 
-canvas_defaults() = SymAnyDict(:area       => Area{Int}(0, 0, glfw_standard_screen_resolution()...),
+# canvas_defaults() = SymAnyDict(:area       => Area{Int}(0, 0, glfw_standard_screen_resolution()...),
+canvas_defaults() = SymAnyDict(:area       => Area{Int}(0, 0, 3840,2160),
                                   :background => RGBA(1.0f0),
                                   :depth      => GLA.Depth{Float32},
                                   :callbacks  => standard_callbacks(),

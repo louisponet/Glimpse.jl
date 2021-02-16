@@ -192,8 +192,8 @@ end
 end
 
 @component_with_kw struct Text 
-	str      ::String = "test"
-	font_size::Float64  = 20
+	str      ::String  = "test"
+	font_size::Float64 = 20
 	font     = default_font()
 	align    ::Tuple{Symbol, Symbol} = (:bottom, :right)
 	offset   ::Vec3f0= zero(Vec3f0)

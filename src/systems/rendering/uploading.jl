@@ -130,7 +130,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     	default_modelmats, default_materials, default_colors, default_idcolors, default_ids = get_uniforms(default_it, tmesh)
     	peeling_modelmats, peeling_materials, peeling_colors, peeling_idcolors, peeling_ids = get_uniforms(peeling_it, tmesh)
 		if !isempty(default_ids)
-            indices = tmesh.mesh.faces .- GLint(1)
+            indices = map(x->x.-GLint(1), tmesh.mesh.faces)
     		buffers = [generate_buffers(default_prog, tmesh.mesh);
                        generate_buffers(default_prog, GLA.UNIFORM_DIVISOR,
                                         color    = default_colors,
@@ -145,7 +145,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
 		end
 		if !isempty(peeling_ids)
     		alphas = [alpha[e].α for e in peeling_ids]
-            indices = tmesh.mesh.faces .- GLint(1)
+            indices = map(x->x.-GLint(1), tmesh.mesh.faces)
     		buffers = [generate_buffers(peeling_prog, tmesh.mesh);
                        generate_buffers(peeling_prog, GLA.UNIFORM_DIVISOR,
                                         color    = peeling_colors,

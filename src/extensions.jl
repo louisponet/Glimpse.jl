@@ -291,7 +291,8 @@ const GLFW_DEFAULT_WINDOW_HINTS = [(GLFW.SAMPLES,      0),
 		                           (GLFW.BLUE_BITS,    8),
 
 		                           (GLFW.STENCIL_BITS, 0),
-		                           (GLFW.AUX_BUFFERS,  0)]
+		                           (GLFW.AUX_BUFFERS,  0),
+		                           (GLFW.SCALE_TO_MONITOR, 1)]
 
 glfw_standard_screen_resolution() =
 	GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)

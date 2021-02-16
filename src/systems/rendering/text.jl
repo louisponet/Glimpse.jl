@@ -476,7 +476,7 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
 	prog           = singleton(m, TextProgram)
 	camera         = singleton(m, Camera3D)
 	vao            = m[TextVao]
-	iofbo          = singleton(m, IOTarget)
+	iofbo          = singleton(m, Canvas)
 	persp_mat      = camera.projview
 	projection_mat = camera.proj
 	text           = m[Text]
@@ -508,7 +508,6 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
 	glyph_fbo = fontstorage.storage_fbo
 
     # Fragment uniforms
-    # GLA.gpu_setindex!(color_attachment(glyph_fbo, 1), singleton(m, FontStorage).atlas.data, 1:size(singleton(m, FontStorage).atlas.data, 1), 1:size(singleton(m, FontStorage).atlas.data, 2))
 	gluniform(prog, :distancefield, 0, color_attachment(glyph_fbo, 1))
 	gluniform(prog, :shape, 3)
 	#TODO make this changeable
