@@ -26,7 +26,8 @@ import GLAbstraction: bind, unbind, draw
     end
     ImGui_ImplGlfw_InitForOpenGL(nw, true)
     ImGui_ImplOpenGL3_Init(420)
-
+    CImGui.Set_KeyMap(CImGui.GetIO(), CImGui.LibCImGui.ImGuiKey_Backspace, GLFW.KEY_BACKSPACE)
+    CImGui.Set_KeyMap(CImGui.GetIO(), CImGui.LibCImGui.ImGuiKey_Delete, GLFW.KEY_DELETE)
 
     obj = new(name, area, nw, ctx, background, 
           (0.0,0.0), (0.0,0.0), true, (GLFW.MOUSE_BUTTON_1, GLFW.RELEASE, 0), (GLFW.KEY_UNKNOWN,0,GLFW.RELEASE,0), (0,0))
