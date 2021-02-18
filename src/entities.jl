@@ -102,14 +102,14 @@ assemble_camera3d(width_pixels ::Int32,
 	   					                                                      Camera3D(width_pixels, height_pixels;
 		                                                                               eyepos = eyepos, kwargs...))
 
-function assemble_line(points::Vector{Point3f0};
+function assemble_line(points::Vector{<:Point3};
                        origin = zero(Point3f0),
                        color ::RGBf0 = DEFAULT_COLOR,
                        thickness::Float32 = 2f0,
                        miter::Float32=0.6f0)
 
     spatial = Spatial(position=origin)
-    return (spatial, UniformColor(color), LineGeometry(points), LineOptions(thickness, miter))
+    return (spatial, UniformColor(color), LineGeometry(Point3f0.(points)), LineOptions(thickness, miter))
 end
 
 

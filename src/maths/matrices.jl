@@ -37,7 +37,7 @@ function translmat(t::Vec{3, T}) where T
 end
 translmat(t::Point{3, T}) where T = translmat(convert(Vec{3, T}, t))
 
-function rotate(a::T, axis::Vec{3, T}) where T
+function rotate(a::Number, axis::Vec{3, T}) where T
     axis = normalize(axis)
     u, v, w = axis
     return Mat4{T}( u^2 + (1 - u^2) * cos(a), u * v * (1 - cos(a)) + w * sin(a), u * w * (1 - cos(a)) - v * sin(a), 0.0,
@@ -47,6 +47,12 @@ function rotate(a::T, axis::Vec{3, T}) where T
 end
 
 rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
+
+rotate(v1::T, angle::Number, axis) where {T<:StaticArray{Tuple{3}}} =
+    T((rotate(angle, axis)*SVector{4}(v1..., 1.0))[1:3]...)
+rotate(v1::T, angle::Number, origin, axis) where {T<:StaticArray{Tuple{3}}} =
+    T((translmat(origin) * rotate(angle, axis)*translmat(-origin) * SVector{4}(v1..., 1.0))[1:3]...)
+
 
 function rotate(v1::Vec3{T}, v2::Vec3{T}) where T
 	vr = v2 - v1

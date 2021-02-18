@@ -29,7 +29,7 @@ mutable struct Diorama <: AbstractLedger
 	renderloop_stages::Vector{Stage}
     loop      ::Union{Task, Nothing}
     reupload  ::Bool
-    function Diorama(name::Symbol, ledger::Ledger, renderloop_stages::Vector{Stage}; kwargs...)
+    function Diorama(name::Symbol, ledger::Ledger, renderloop_stages::Vector{Stage})
         dio = new(name, ledger, renderloop_stages, nothing, true)
 
         makecurrentdio(dio)

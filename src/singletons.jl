@@ -72,17 +72,17 @@ function Canvas(name=:Glimpse; kwargs...)
     area = defaults[:area]
     # if !isassigned(GLFW_context)
         # GLFW_context[] = GLFW.Window(name = string(name),
-        window = GLFW.Window(name = string(name),
-                     resolution   = (GeometryBasics.widths(area)...,),
-                     debugging    = defaults[:debugging],
-                     major        = defaults[:major],
-                     minor        = defaults[:minor],
-                     windowhints  = window_hints,
-                     contexthints = context_hints,
-                     visible      = false,
-                     focus        = false,
-                     fullscreen   = defaults[:fullscreen],
-                     monitor      = defaults[:monitor])
+    window = GLFW.Window(name = string(name),
+                 resolution   = (GeometryBasics.widths(area)...,),
+                 debugging    = defaults[:debugging],
+                 major        = defaults[:major],
+                 minor        = defaults[:minor],
+                 windowhints  = window_hints,
+                 contexthints = context_hints,
+                 visible      = false,
+                 focus        = false,
+                 fullscreen   = defaults[:fullscreen],
+                 monitor      = defaults[:monitor])
 
     GLFW.SwapInterval(0) # deactivating vsync seems to make everything quite a bit smoother
 

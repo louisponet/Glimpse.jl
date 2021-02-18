@@ -42,7 +42,7 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
 			    Stage(:stop, [CameraOperator(), Sleeper()]))
 
     #assemble all rendering, canvas and camera components
-	t = Diorama(name, m, stages(m); kwargs...)
+	t = Diorama(name, m, stages(m))
 	e = Entity(t)
 	t[UpdatedComponents][e] = UpdatedComponents() 
 	t[e] = DioEntity()

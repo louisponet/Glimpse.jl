@@ -51,7 +51,6 @@ function Overseer.update(::Uploader, m::AbstractLedger)
 	    end
     end
     line_geom = m[LineGeometry]
-
     #Line Entities
     for e in @entities_in(line_geom)
         e_geom = line_geom[e]
@@ -71,6 +70,7 @@ function Overseer.update(::Uploader, m::AbstractLedger)
             points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)
             line_vao[e] = LineVao(VertexArray([points_attach, color_attach], GL_LINE_STRIP_ADJACENCY), true)
         else 
+            # @show "ping"
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e_geom.points)
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer, color_vec)
         end
