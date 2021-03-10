@@ -54,7 +54,7 @@ released(m::Mouse)    = m.action == GLFW.RELEASE
 released(k::Keyboard) = k.action == GLFW.RELEASE
 
 # Mouse Picking Stuff
-@component_with_kw struct Selectable <: ComponentData
+@component @with_kw struct Selectable <: ComponentData
 	selected::Bool = false
 	color_modifier::Float32 = 1.3f0
 end

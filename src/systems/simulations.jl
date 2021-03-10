@@ -1,6 +1,6 @@
 abstract type SimulationSystem <: System end
 
-@component_with_kw struct Spring
+@component @with_kw struct Spring
 	center::Point3f0 = zero(Point3f0)
 	k     ::Float32  = 0.01f0
 	damping::Float32 = 0.0001f0
@@ -27,17 +27,17 @@ function Overseer.update(::Oscillator, m::AbstractLedger)
 	push!(m[UpdatedComponents][1].components, Spatial)
 end
 
-@component struct Rotation
+@component struct Orbit
 	omega::Float32
 	center::Point3f0
 	axis::Vec3f0
 end
 
 struct Rotator <: System  end
-Overseer.requested_components(::Rotator) = (Spatial, Rotation, TimingData)
+Overseer.requested_components(::Rotator) = (Spatial, Orbit, TimingData)
 
 function Overseer.update(::Rotator, dio::AbstractLedger)
-	rotation  = dio[Rotation]
+	rotation  = dio[Orbit]
 	spatial   = dio[Spatial]
 	dt        = Float32(dio[TimingData][1].dtime)
 	it = @entities_in(rotation && spatial)

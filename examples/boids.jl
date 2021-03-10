@@ -5,8 +5,7 @@ const Gl = Glimpse
 using Glimpse: Spatial, Line, BufferColor, LineGeometry, VectorGeometry
 using NearestNeighbors
 using StaticArrays
-const COMPONENTDATA_TYPES = copy(Gl.COMPONENTDATA_TYPES)
-@component_with_kw struct WallPlane <: ComponentData
+@component @with_kw struct WallPlane <: ComponentData
     w1::Vec3{Float64} = Vec3(1.0,0.0,0.0)
     w2::Vec3{Float64} = Vec3(0.0,1.0,0.0)
     normal::Vec3{Float64} = normalize(cross(w1, w2)) 
@@ -115,7 +114,6 @@ function Gl.update(::Boids, m::Diorama)
     end
     end
 end
-
 dio = Gl.Diorama(Stage(:boids, [Boids(), WallBouncer(), VelocityDrawer()]), background=RGBAf0(0.0,0.0,0.0,1.0));
 cube_planes(dio, Vec3(-60.0), Vec3(60.0))
 expose(dio);

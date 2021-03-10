@@ -38,11 +38,9 @@ function Overseer.update(::Resizer, m::AbstractLedger)
 
 	fwh = c.framebuffer_size
 	resize!(c, fwh)
-	for c in components(m)
-		if eltype(c) <: RenderTarget
-			for rt in c
-				resize!(rt, fwh)
-			end
+	for c in components(m, RenderTarget)
+		for rt in c
+			resize!(rt, fwh)
 		end
 	end
     bind(iofbo)

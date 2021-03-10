@@ -33,7 +33,7 @@ function Overseer.update(::FinalRenderer, m::AbstractLedger)
 
     gluniform(fxaa_program, :u_showEdges, false)
     gluniform(fxaa_program, :u_fxaaOn, true)
-    gluniform(fxaa_program, :u_lumaThreshold, 0.5f0)
+    gluniform(fxaa_program, :u_lumaThreshold, 0.3f0)
     gluniform(fxaa_program, :u_mulReduce, 1/8f0)
     gluniform(fxaa_program, :u_minReduce, 1/128f0)
     gluniform(fxaa_program, :u_maxSpan, 8f0)

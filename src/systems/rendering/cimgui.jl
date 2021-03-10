@@ -2,7 +2,7 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 
 #TODO what to do with contexts, do we actually need to save them? Should they all be in the canvas?
-@component_with_kw mutable struct GuiInfo
+@component @with_kw mutable struct GuiInfo
     show_gui::Bool = false
 end
 
@@ -10,7 +10,7 @@ end
 	text::String
 end
 
-@component_with_kw struct GuiFuncs
+@component @with_kw struct GuiFuncs
 	funcs::Vector{Function} = Function[]
 end
 

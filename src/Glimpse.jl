@@ -11,6 +11,7 @@ using Packing
 using FreeTypeAbstraction
 using Serialization
 using SignedDistanceFields
+using Parameters
 
 using ModernGL
 using Quaternions

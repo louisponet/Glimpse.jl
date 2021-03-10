@@ -14,7 +14,7 @@ abstract type Vao <: ComponentData end
 
 macro vao(name)
     esc(quote
-        @component_with_kw mutable struct $name <: Vao
+        @component @with_kw mutable struct $name <: Vao
         	vertexarray::VertexArray
         	visible    ::Bool = true
     	end
@@ -24,7 +24,7 @@ end
 
 macro instanced_vao(name)
     esc(quote
-        @shared_component_with_kw mutable struct $name <: Vao
+        @shared_component @with_kw mutable struct $name <: Vao
         	vertexarray::VertexArray
         	visible    ::Bool = true
     	end
@@ -41,7 +41,7 @@ GLA.upload!(vao::Vao; kwargs...) = GLA.upload!(vao.vertexarray; kwargs...)
 
 # NON rendering Components
 @component struct Dynamic  end
-@component_with_kw struct Spatial 
+@component @with_kw struct Spatial 
 	position::Point3f0 = zero(Point3f0)
 	velocity::Vec3f0   = zero(Vec3f0)
 end
@@ -64,27 +64,27 @@ Quaternions.angle(r::Rotation)     = Quaternions.angle(r.q)
 
 GeometryBasics.direction(r::Rotation) = r.q * Z_AXIS
 
-@component_with_kw struct Shape 
+@component @with_kw struct Shape 
 	scale::Vec3f0 = Vec3f0(1f0)
 end
 Shape(f::Real) = Shape(Vec3f0(f))
 Base.length(::Type{Shape}) = 3
 Base.eltype(::Type{Shape}) = Float32
 
-@component_with_kw struct ModelMat 
+@component @with_kw struct ModelMat 
 	modelmat::Mat4f0 = Eye4f0()
 end
 Base.length(::Type{ModelMat}) = 16
 Base.eltype(::Type{ModelMat}) = Float32
 
-@component_with_kw struct Material 
+@component @with_kw struct Material 
 	specpow ::Float32 = 0.8f0
 	specint ::Float32 = 0.8f0
 end
 Base.eltype(::Type{Material}) = Float32
 Base.length(::Type{Material}) = 2
 
-@component_with_kw struct PointLight 
+@component @with_kw struct PointLight 
     diffuse ::Float32  = 0.5f0
     specular::Float32  = 0.5f0
     ambient ::Float32  = 0.5f0
@@ -114,7 +114,7 @@ Base.eltype(::Type{Alpha}) = Float32
 abstract type Color <: ComponentData end
 
 # one color, will be put as a uniform in the shader
-@component_with_kw struct UniformColor <: Color 
+@component @with_kw struct UniformColor <: Color 
 	color::RGBf0 = DEFAULT_COLOR 
 end
 UniformColor(x,y,z) = UniformColor(RGBf0(x, y, z))
@@ -186,12 +186,12 @@ end
     end
 end
 
-@component_with_kw struct LineOptions 
+@component @with_kw struct LineOptions 
 	thickness::Float32 = 2.0f0
 	miter    ::Float32 = 0.6f0
 end
 
-@component_with_kw struct Text 
+@component @with_kw struct Text 
 	str      ::String  = "test"
 	font_size::Float64 = 20
 	font     = default_font()

@@ -5,13 +5,13 @@ end
     es::NTuple{3, Entity} 
 end
 
-@component_with_kw struct Movable
+@component @with_kw struct Movable
     axis_thickness::Float32 = 0.2f0
     axis_length::Float32    = 5f0
     font_size::Float32 = 0.3f0
 end
 
-@component_with_kw struct Rotatable
+@component @with_kw struct Rotatable
     ring_radii::Float32 = 5f0
     rotation_speed::Float32 = 0.02f0/200
     font_size::Float32 = 0.3f0

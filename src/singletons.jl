@@ -236,7 +236,7 @@ GLA.free!(r::RenderTarget) = free!(r.target)
 
 Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
 
-@component_with_kw mutable struct TimingData
+@component @with_kw mutable struct TimingData
     time          ::Float64 = time()
     dtime         ::Float64 = 0.0
     frames        ::Int     = 0
@@ -263,7 +263,7 @@ GLA.gluniform(p::RenderProgram, args...) = GLA.gluniform(p.program, args...)
 
 generate_buffers(p::RenderProgram, args...; kwargs...) = generate_buffers(p.program, args...; kwargs...)
 
-@component_with_kw struct UpdatedComponents
+@component @with_kw struct UpdatedComponents
     components::Vector{DataType} = DataType[]
 end
 
