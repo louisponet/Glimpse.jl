@@ -388,9 +388,9 @@ function FontStorage()
 end
 
 @render_program TextProgram
-shaders(::Type{TextProgram}) = [load_shader_source("sprites.geom"),
-                                load_shader_source("sprites.vert"),
-                                load_shader_source("distance_shape.frag")]
+shaders(::Type{TextProgram}) = [load_shader("sprites.geom"),
+                                load_shader("sprites.vert"),
+                                load_shader("distance_shape.frag")]
 
 @vao TextVao
 

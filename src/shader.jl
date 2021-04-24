@@ -1,33 +1,33 @@
 import GLAbstraction: Shader
 import FileIO: load
 
-load_shader_source(source_file) = load(joinpath(@__DIR__, "shaders", source_file))
+load_shader(source_file) = Shader(joinpath(@__DIR__, "shaders", source_file))
 
-default_shaders() = [load_shader_source("default.vert"),
-                     load_shader_source("default.frag")]
-instanced_default_shaders() = [load_shader_source("default_instanced.vert"),
-                               load_shader_source("default_instanced.frag")]
+default_shaders() = [load_shader("default.vert"),
+                     load_shader("default.frag")]
+instanced_default_shaders() = [load_shader("default_instanced.vert"),
+                               load_shader("default_instanced.frag")]
 
-transparency_shaders() = [load_shader_source("default.vert"),
-                          load_shader_source("transparency.frag")]
+transparency_shaders() = [load_shader("default.vert"),
+                          load_shader("transparency.frag")]
 
-peeling_shaders() = [load_shader_source("default.vert"),
-                     load_shader_source("peel.frag")]
-peeling_compositing_shaders() = [load_shader_source("composite.vert"),
-                                 load_shader_source("fullscreen_peel.frag")]
-instanced_peeling_shaders() = [load_shader_source("default_instanced.vert"),
-                               load_shader_source("peel_instanced.frag")]
+peeling_shaders() = [load_shader("default.vert"),
+                     load_shader("peel.frag")]
+peeling_compositing_shaders() = [load_shader("composite.vert"),
+                                 load_shader("fullscreen_peel.frag")]
+instanced_peeling_shaders() = [load_shader("default_instanced.vert"),
+                               load_shader("peel_instanced.frag")]
 
-compositing_shaders() = [load_shader_source("composite.vert"),
-                         load_shader_source("composite.frag")]
+compositing_shaders() = [load_shader("composite.vert"),
+                         load_shader("composite.frag")]
 
-blending_shaders() = [load_shader_source("blend.vert"),
-                      load_shader_source("blend.frag")]
+blending_shaders() = [load_shader("blend.vert"),
+                      load_shader("blend.frag")]
 
 
-line_shaders() = [load_shader_source("lines.vert"),
-                  load_shader_source("lines.geom"),
-                  load_shader_source("lines.frag")]
+line_shaders() = [load_shader("lines.vert"),
+                  load_shader("lines.geom"),
+                  load_shader("lines.frag")]
 
-fxaa_shaders() = [load_shader_source("composite.vert"),
-                  load_shader_source("fxaa.frag")]
+fxaa_shaders() = [load_shader("composite.vert"),
+                  load_shader("fxaa.frag")]
