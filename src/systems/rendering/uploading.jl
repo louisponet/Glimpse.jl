@@ -106,7 +106,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     get_uniforms = (it, tmesh) -> begin
 		modelmats = Mat4f0[]
 		materials  = Material[]
-		ids       = Entity[]
+		ids       = Overseer.EntityState[]
 		colors    = RGBf0[]
 		idcolors  = RGBf0[]
 		for e in it

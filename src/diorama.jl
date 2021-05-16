@@ -168,27 +168,25 @@ reset_debug_timers!(dio::Diorama) = reset_timer!(singleton(dio, TimingData).time
 # set_rotation_speed!(dio::Diorama, rotation_speed::Number) = dio.camera.rotation_speed = Float32(rotation_speed)
 
 function center_cameras(dio::Diorama)
-	spat = component(dio, Spatial)
-	cam = component(dio, Camera3D)
-	lights = component(dio, PointLight)
-	scene_entities = setdiff(valid_entities(spat), valid_entities(cam) ∪ valid_entities(lights))
+	spat = dio[Spatial]
+	cam = dio[Camera3D]
+	lights = dio[PointLight]
 	center = zero(Point3f0)
 	e_counter = 0 
-	for e in scene_entities 
-		center += spat[e].position
+	for e in @entities_in(spat && !cam && !lights) 
+		center += e.position
 		e_counter += 1
 	end
 	center /= e_counter
 
-	for id in valid_entities(spat, cam)
-		c            = cam[id]
-		current_pos  = spat[id].position
-		current_dist = norm(c.lookat - current_pos)
+	for e in @entities_in(spat && cam)
+		current_pos  = e.position
+		current_dist = norm(e.lookat - current_pos)
 		# we want to keep the distance to the lookat constant
 		u_forward    = unitforward(current_pos, center)
 		new_pos      = center - current_dist * u_forward
-		spat[id]     = Spatial(new_pos, spat[id].velocity)
-		overwrite!(cam, Camera3D(c, new_pos, center, u_forward), id)
+		e[Spatial]     = Spatial(new_pos, e.velocity)
+		e.lookat = Vec3f0(center)
     end
 end
 
