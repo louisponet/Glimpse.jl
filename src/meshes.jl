@@ -17,15 +17,15 @@ function BasicMesh(geometry::HyperSphere, complexity=2)
 end
 
 function BasicMesh(geometry::String)
-	faces, vertices, normals = getfield.((load(geometry),), [:faces, :vertices, :normals])
+    faces, vertices, normals = getfield.((load(geometry),), [:faces, :vertices, :normals])
     return BasicMesh(vertices, faces, Vec3f0.(normals))
 end
 
 function BasicMesh(vec_geometry::Vector)
-	vertices = Point3f0.(vec_geometry)
-	faces    = SimplexFace{1}.([i for i=1:length(vec_geometry)])
-	normals  = Vec3f0[]
-	return BasicMesh(vertices, faces, normals)
+    vertices = Point3f0.(vec_geometry)
+    faces    = SimplexFace{1}.([i for i=1:length(vec_geometry)])
+    normals  = Vec3f0[]
+    return BasicMesh(vertices, faces, normals)
 end
 
 Base.eltype(::Type{BasicMesh{D, T, FT}}) where {D, T, FT} = (D, T, FT)

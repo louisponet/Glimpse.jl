@@ -19,22 +19,22 @@ geometry_type(::Type{VectorMesher}) = VectorGeometry
 geometry_type(::Type{FileMesher}) = FileGeometry
 
 function Overseer.update(::Union{M}, m::AbstractLedger) where {M<:Mesher}
-	mesh = m[Mesh]
-	geom = m[geometry_type(M)]
-	it = @entities_in(geom && !mesh)
-	if iterate(it) === nothing
-    	return
-	end
-	geometries_handled = geometry_type(M)[]
-	u_geoms = Iterators.unique(geom.data)
-	meshes = [Mesh(BasicMesh(g.geometry)) for g in u_geoms]
-	prevlen = length(mesh.shared)
+    mesh = m[Mesh]
+    geom = m[geometry_type(M)]
+    it = @entities_in(geom && !mesh)
+    if iterate(it) === nothing
+        return
+    end
+    geometries_handled = geometry_type(M)[]
+    u_geoms = Iterators.unique(geom.data)
+    meshes = [Mesh(BasicMesh(g.geometry)) for g in u_geoms]
+    prevlen = length(mesh.shared)
     append!(mesh.shared, meshes)
-	for e in it
-    	egeom = geom[e]
-    	push!(mesh.indices, e.id)
-    	push!(mesh.data, prevlen + findfirst(x -> x == egeom, u_geoms))
-	end
+    for e in it
+        egeom = geom[e]
+        push!(mesh.indices, e.id)
+        push!(mesh.data, prevlen + findfirst(x -> x == egeom, u_geoms))
+    end
 end
 
 struct FunctionMesher <: Mesher end
@@ -46,17 +46,14 @@ struct DensityMesher <: Mesher end
 Overseer.requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
 
 function Overseer.update(::Union{FunctionMesher, DensityMesher}, m::AbstractLedger)
-	mesh = m[Mesh]
-	grid = m[Grid]
-	for geom in (m[FunctionGeometry], m[DensityGeometry])
-    	for e in @entities_in(geom && grid && !mesh)
-    		points = grid[e].points
-    		vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
-    		faces         = [GeometryBasics.TriangleFace{GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
-    		norms =  length(faces) == 0 ? Vec3f0[] : normals(vertices, faces) 
-    		mesh[e] = Mesh(BasicMesh(vertices, faces, norms))
-    	end
-	end
+    for geom in (FunctionGeometry, DensityGeometry)
+        for e in @entities_in(m, geom && Grid && !Mesh)
+            vertices, ids = marching_cubes(e.geometry, e.points, e.iso)
+            faces         = [GeometryBasics.TriangleFace{GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
+            norms =  length(faces) == 0 ? Vec3f0[] : normals(vertices, faces) 
+            e[Mesh] = Mesh(BasicMesh(vertices, faces, norms))
+        end
+    end
 end
 
 struct FunctionColorizer <: System end
@@ -64,10 +61,7 @@ struct FunctionColorizer <: System end
 Overseer.requested_components(::FunctionColorizer) = (FunctionColor, Mesh, BufferColor)
 
 function Overseer.update(::FunctionColorizer, m::AbstractLedger)
-	colorbuffers = m[BufferColor]
-	fcolor       = m[FunctionColor]
-	mesh         = m[Mesh]
-	for e in @entities_in(fcolor && mesh && !colorbuffers)
-		colorbuffers[e] = BufferColor(fcolor[e].color.(mesh[e].mesh.vertices))
-	end
+    for e in @entities_in(m, FunctionColor && Mesh && !BufferColor)
+        e[BufferColor] = BufferColor(e.color.(e.mesh.vertices))
+    end
 end

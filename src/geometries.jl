@@ -3,19 +3,19 @@ import GeometryBasics: Sphere, decompose, normals
 
 #-----------------------------Generated geometries------------------------#
 function generate_sphere(complexity=2)
-	X = .525731112f0
+    X = .525731112f0
     Z = .850650808f0
-	vertices = Point3f0[(-X,0,Z), (X,0,Z), (-X,0,-Z), (X,0,-Z),
-		(0,Z,X), (0,Z,-X), (0,-Z,X), (0,-Z,-X),
-		(Z,X,0), (-Z,X,0), (Z,-X,0), (-Z,-X,0)]
+    vertices = Point3f0[(-X,0,Z), (X,0,Z), (-X,0,-Z), (X,0,-Z),
+        (0,Z,X), (0,Z,-X), (0,-Z,X), (0,-Z,-X),
+        (Z,X,0), (-Z,X,0), (Z,-X,0), (-Z,-X,0)]
 
-	faces = map(x-> x.+1, TriangleFace{Int32}[(1,4,0), (4,9,0), (4,5,9), (8,5,4), (1,8,4),
-	      (1,10,8), (10,3,8), (8,3,5), (3,2,5), (3,7,2),
-		(3,10,7), (10,6,7), (6,11,7), (6,0,11), (6,1,0),
-		(10,1,6), (11,0,9), (2,11,9), (5,2,9), (11,2,7)])
+    faces = map(x-> x.+1, TriangleFace{Int32}[(1,4,0), (4,9,0), (4,5,9), (8,5,4), (1,8,4),
+          (1,10,8), (10,3,8), (8,3,5), (3,2,5), (3,7,2),
+        (3,10,7), (10,6,7), (6,11,7), (6,0,11), (6,1,0),
+        (10,1,6), (11,0,9), (2,11,9), (5,2,9), (11,2,7)])
 
     outverts, outfaces = subdivide(vertices, faces, complexity)
-	normals = Vec3f0.(copy(outverts))
+    normals = Vec3f0.(copy(outverts))
     return outverts, normals, outfaces
 end
 
@@ -25,14 +25,14 @@ function subdivide(vertices, faces, level)
     newfaces = TriangleFace{Int32}[]
     newvertices = Point3f0[]
     if level > 0
-    	for face in faces
-    		v1 = vertices[face[1]]
-    		v2 = vertices[face[2]]
-    		v3 = vertices[face[3]]
+        for face in faces
+            v1 = vertices[face[1]]
+            v2 = vertices[face[2]]
+            v3 = vertices[face[3]]
 
-			v4 = normalize((v1 + v2) / 2.0)
-			v5 = normalize((v2 + v3) / 2.0)
-			v6 = normalize((v1 + v3) / 2.0)
+            v4 = normalize((v1 + v2) / 2.0)
+            v5 = normalize((v2 + v3) / 2.0)
+            v6 = normalize((v1 + v3) / 2.0)
 
             vertlen = length(newvertices)
             push!(newfaces, TriangleFace{Int32}(vertlen + 1, vertlen + 4, vertlen + 6))
@@ -41,7 +41,7 @@ function subdivide(vertices, faces, level)
             push!(newfaces, TriangleFace{Int32}(vertlen + 4, vertlen + 5, vertlen + 6))
             push!(newvertices, v1, v2, v3, v4, v5, v6)
         end
-		vertices, faces = subdivide(newvertices, newfaces, level - 1)
+        vertices, faces = subdivide(newvertices, newfaces, level - 1)
     end
     return vertices, faces
 end

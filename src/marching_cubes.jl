@@ -23,7 +23,7 @@ function marching_cubes(values::Union{Function, Array}, points::Array{Point3{PT}
     edge_table,tri_table = get_edge_tri_table()
     i_max,j_max,k_max    = size(points)
 
-	val = (i, j, k) -> value(values, points, i, j, k)
+    val = (i, j, k) -> value(values, points, i, j, k)
     @inbounds for k=1:cube_size:k_max-1, j=1:cube_size:j_max-1, i=1:cube_size:i_max-1
         cube_index = val(i,j,k) < iso ? 1 : 0
         val(i+cube_size,j,k) < iso && (cube_index |= 2)
@@ -41,7 +41,7 @@ function marching_cubes(values::Union{Function, Array}, points::Array{Point3{PT}
         end
         if edge_entry & 1 == 1
             vertex_list[1] = vertex_interp(iso, points[i,j,k], points[i+cube_size,j,k],
-            									val(i, j, k), val(i+cube_size,j,k))
+                                                val(i, j, k), val(i+cube_size,j,k))
         end
         if edge_entry & 2 == 2
             vertex_list[2] = vertex_interp(iso,points[i+cube_size,j,k],points[i+cube_size,j+cube_size,k],val(i+cube_size,j,k),val(i+cube_size,j+cube_size,k))

@@ -12,6 +12,6 @@ cs = [RGBAf0(0.1, 0.5, 0.9, 0.4), RGBAf0(0.9,0.1,0.5, 0.4)]
 sph_geom = Gl.PolygonGeometry(Gl.Sphere(Point3f0(0.0), 1f0))
 
 for i = 1:nspheres
-	color = cs[mod1(i, 2)] 
-	Entity(dio, Gl.assemble_sphere(position=ps[i], color=color)...)
+    color = cs[mod1(i, 2)] 
+    Entity(dio, Gl.assemble_sphere(position=ps[i], color=color)...)
 end

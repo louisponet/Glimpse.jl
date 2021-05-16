@@ -10,12 +10,12 @@ push_system(dio, Gl.Rotator());
 geom = Gl.PolygonGeometry(Sphere(Point3f0(0.0), 1.0f0))
 progtag = Gl.ProgramTag{Gl.PeelingProgram}()
 for i = 1:2
-	Entity(dio, Gl.UniformColor(rand(RGBAf0)),
-	                              Gl.Spatial(50*(1 .- rand(Point3f0)), rand(Vec3f0)),
-	                              Gl.Material(),
-	                              Gl.Shape(),
-	                              Gl.Rotation(0.2f0, 50*(1 .- rand(Point3f0)), normalize(1 .- rand(Vec3f0))),
-	                              Gl.Dynamic(),
-	                              progtag,
+    Entity(dio, Gl.UniformColor(rand(RGBAf0)),
+                                  Gl.Spatial(50*(1 .- rand(Point3f0)), rand(Vec3f0)),
+                                  Gl.Material(),
+                                  Gl.Shape(),
+                                  Gl.Rotation(0.2f0, 50*(1 .- rand(Point3f0)), normalize(1 .- rand(Vec3f0))),
+                                  Gl.Dynamic(),
+                                  progtag,
                         geom)
 end

@@ -7,12 +7,12 @@ Overseer.requested_components(::FinalRenderer) = (Canvas, FullscreenVao, FXAAPro
 
 function Overseer.prepare(::FinalRenderer, dio::Diorama)
     e = Entity(dio[DioEntity], 1)
-	if isempty(dio[CompositingProgram])
-		dio[e] = CompositingProgram(Program(compositing_shaders()))
-	end
-	if isempty(dio[FXAAProgram])
-    	dio[e] = FXAAProgram(Program(fxaa_shaders()))
-	end
+    if isempty(dio[CompositingProgram])
+        dio[e] = CompositingProgram(Program(compositing_shaders()))
+    end
+    if isempty(dio[FXAAProgram])
+        dio[e] = FXAAProgram(Program(fxaa_shaders()))
+    end
 end
 
 function Overseer.update(::FinalRenderer, m::AbstractLedger)

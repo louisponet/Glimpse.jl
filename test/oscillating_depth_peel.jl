@@ -11,12 +11,12 @@ cs = [RGBAf0(0.1, 0.5, 0.9, 0.4), RGBAf0(0.9,0.1,0.5, 0.4)]
 sph_geom = Gl.PolygonGeometry(Gl.Sphere(Point3f0(0.0), 1f0))
 spring   = Gl.Spring()
 for i = 1:nspheres
-	color = cs[mod1(i, 2)] 
-	Entity(dio, Gl.Spatial(position=ps[i]),
-	                              Gl.Material(),
-	                              Gl.Shape(),
-	                              Gl.UniformColor(color),
-	                              Gl.Dynamic(),
-	                              Gl.Selectable(),
-	                              sph_geom, spring);
+    color = cs[mod1(i, 2)] 
+    Entity(dio, Gl.Spatial(position=ps[i]),
+                                  Gl.Material(),
+                                  Gl.Shape(),
+                                  Gl.UniformColor(color),
+                                  Gl.Dynamic(),
+                                  Gl.Selectable(),
+                                  sph_geom, spring);
 end

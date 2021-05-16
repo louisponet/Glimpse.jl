@@ -399,27 +399,27 @@ Overseer.requested_components(::TextUploader) = (Text, TextVao, TextProgram, Fon
 
 function Overseer.prepare(::TextUploader, dio::Diorama)
     e = Entity(dio[DioEntity], 1)
-	if isempty(dio[TextProgram])
-		dio[e] = TextProgram(Program(text_shaders()))
-	end
-	if isempty(dio[FontStorage])
-		# dio[e] = FontStorage()
-	end
+    if isempty(dio[TextProgram])
+        dio[e] = TextProgram(Program(text_shaders()))
+    end
+    if isempty(dio[FontStorage])
+        # dio[e] = FontStorage()
+    end
 end
 
 function Overseer.update(::TextUploader, m::AbstractLedger)
-	text = m[Text]
-	vao  = m[TextVao]
-	prog = singleton(m, TextProgram)
-	ucolor = m[UniformColor]
-	spatial= m[Spatial]
-	atlas = get_texture_atlas()
-	for e in @entities_in(text && spatial && ucolor)
-    	t=text[e]
-		offset_width, uv_texture_bbox  = to_gl_text(t, atlas)
-		nsprites = length(t.str)
-		if !(e ∈ vao) || nsprites > length(vao[e])
-    		vao[e] = TextVao(VertexArray(generate_buffers(prog.program,
+    text = m[Text]
+    vao  = m[TextVao]
+    prog = singleton(m, TextProgram)
+    ucolor = m[UniformColor]
+    spatial= m[Spatial]
+    atlas = get_texture_atlas()
+    for e in @entities_in(text && spatial && ucolor)
+        t=text[e]
+        offset_width, uv_texture_bbox  = to_gl_text(t, atlas)
+        nsprites = length(t.str)
+        if !(e ∈ vao) || nsprites > length(vao[e])
+            vao[e] = TextVao(VertexArray(generate_buffers(prog.program,
                                    GLint(0),
                                    color = fill(ucolor[e].color, nsprites),
                                    rotation = fill(Vec4f0(0), nsprites),
@@ -431,7 +431,7 @@ function Overseer.update(::TextUploader, m::AbstractLedger)
                             offset_width    = offset_width,
                             uv_texture_bbox = uv_texture_bbox)
         end
-	end
+    end
 end
 
 to_gl_text(t::Text, storage::FontStorage) = to_gl_text(t, storage.atlas)
@@ -449,18 +449,17 @@ function to_gl_text(string::AbstractString, textsize, font, align::Tuple{Symbol,
     end
     # scale           = Vec2f0.(glyph_scale!.(Ref(atlas), chars, (font,), rscale))
     positions2d     = layout_text(string, textsize, font, align)
-    # @show positions2d
 
     # aoffset         = align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, align)
 
     uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
     out_uv_offset_width= Vec4f0[]
     for uv in uv_offset_width
-	    push!(out_uv_offset_width, Vec4f0(uv[1], uv[2], uv[3], uv[4] ))
+        push!(out_uv_offset_width, Vec4f0(uv[1], uv[2], uv[3], uv[4] ))
     end
     out_pos_scale = Vec4f0[]
     for (p, sc) in zip(positions2d .+ offset, scale)
-	    push!(out_pos_scale, Vec4f0(p[1], p[2], sc[1], sc[2]))
+        push!(out_pos_scale, Vec4f0(p[1], p[2], sc[1], sc[2]))
     end
     return out_pos_scale, out_uv_offset_width
 end
@@ -468,24 +467,24 @@ end
 struct TextRenderer <: AbstractRenderSystem end
 
 Overseer.requested_components(::TextRenderer) =
-	(Spatial, UniformColor, Camera3D, TextVao, Text,
-		TextProgram, IOTarget, FontStorage)
+    (Spatial, UniformColor, Camera3D, TextVao, Text,
+        TextProgram, IOTarget, FontStorage)
 
 function Overseer.update(::TextRenderer, m::AbstractLedger)
-	spat           = m[Spatial]
-	prog           = singleton(m, TextProgram)
-	camera         = singleton(m, Camera3D)
-	vao            = m[TextVao]
-	iofbo          = singleton(m, Canvas)
-	persp_mat      = camera.projview
-	projection_mat = camera.proj
-	text           = m[Text]
-	wh = size(iofbo)
+    spat           = m[Spatial]
+    prog           = singleton(m, TextProgram)
+    camera         = singleton(m, Camera3D)
+    vao            = m[TextVao]
+    iofbo          = singleton(m, Canvas)
+    persp_mat      = camera.projview
+    projection_mat = camera.proj
+    text           = m[Text]
+    wh = size(iofbo)
 
-	glDisable(GL_DEPTH_TEST)
-	glDepthFunc(GL_ALWAYS)
-	glDisableCullFace()
-	
+    glDisable(GL_DEPTH_TEST)
+    glDepthFunc(GL_ALWAYS)
+    glDisableCullFace()
+    
     glEnablei(GL_BLEND, 0)
     glDisablei(GL_BLEND, 1)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -493,39 +492,39 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
     bind(iofbo)
     draw(iofbo)
 
-	bind(prog)
-	gluniform(prog, :resolution, Vec2f0(wh))
+    bind(prog)
+    gluniform(prog, :resolution, Vec2f0(wh))
     gluniform(prog, :projview, persp_mat)
     gluniform(prog, :projection, projection_mat)
 
     #Absolutely no clue why this needs to be here?...
-	if isempty(m[FontStorage])
-    	fontstorage = FontStorage()
-    	m[Entity(m[DioEntity],1)] = fontstorage
-	else
-    	fontstorage = singleton(m, FontStorage)
-	end
-	glyph_fbo = fontstorage.storage_fbo
+    if isempty(m[FontStorage])
+        fontstorage = FontStorage()
+        m[Entity(m[DioEntity],1)] = fontstorage
+    else
+        fontstorage = singleton(m, FontStorage)
+    end
+    glyph_fbo = fontstorage.storage_fbo
 
     # Fragment uniforms
-	gluniform(prog, :distancefield, 0, color_attachment(glyph_fbo, 1))
-	gluniform(prog, :shape, 3)
-	#TODO make this changeable
-	# gluniform(prog, :stroke_color, zero(Vec4f0))
-	# gluniform(prog, :glow_color, zero(Vec4f0))
-	gluniform(prog, :stroke_width, 0f0)
-	gluniform(prog, :glow_width, 0f0)
-	gluniform(prog, :billboard, true)
-	gluniform(prog, :scale_primitive, true)
-	for e in @entities_in(vao && spat && text)
+    gluniform(prog, :distancefield, 0, color_attachment(glyph_fbo, 1))
+    gluniform(prog, :shape, 3)
+    #TODO make this changeable
+    # gluniform(prog, :stroke_color, zero(Vec4f0))
+    # gluniform(prog, :glow_color, zero(Vec4f0))
+    gluniform(prog, :stroke_width, 0f0)
+    gluniform(prog, :glow_width, 0f0)
+    gluniform(prog, :billboard, true)
+    gluniform(prog, :scale_primitive, true)
+    for e in @entities_in(vao && spat && text)
         e_vao, e_spat, e_text = vao[e], spat[e], text[e]
         if e_vao.visible
-    		gluniform(prog,:model, m[ModelMat][e].modelmat)
-    		gluniform(prog,:origin, e_text.offset)
-    		bind(e_vao)
-    		draw(e_vao)
-		end
-	end
+            gluniform(prog,:model, m[ModelMat][e].modelmat)
+            gluniform(prog,:origin, e_text.offset)
+            bind(e_vao)
+            draw(e_vao)
+        end
+    end
     glDisablei(GL_BLEND, 0)
     glEnablei(GL_BLEND, 1)
 end

@@ -55,11 +55,11 @@ rotate(v1::T, angle::Number, origin, axis) where {T<:StaticArray{Tuple{3}}} =
 
 
 function rotate(v1::Vec3{T}, v2::Vec3{T}) where T
-	vr = v2 - v1
-	l = norm(vr)
-	angle = acos(vr[3] / l)
+    vr = v2 - v1
+    l = norm(vr)
+    angle = acos(vr[3] / l)
     axis = normalize(cross( Vec3(0.0000000001f0, 0.0f0, 1.0f0), vr))
-	if length(axis) > 0.0001
+    if length(axis) > 0.0001
         return rotate(angle, axis)
     end
     return Mat4(Eye4f0(T, 4))
@@ -190,23 +190,23 @@ function lookatmat(::Type{T}, eyePos, lookAt::Vec{3}, up::Vec{3}) where T
 end
 
 """
-	projmatortho(left::T, right::T, bottom::T, top::T) where T
+    projmatortho(left::T, right::T, bottom::T, top::T) where T
 
 2D orthographic projection.
 """
 function projmatortho(left::T, right::T, bottom::T, top::T) where T
-	out = zeros(T, 4, 4)
-	out[1, 1] = 2 / (right - left)
-	out[2, 2] = 2 / (top - bottom)
-	out[3, 3] = -1
-	out[4, 1] = - (right + left) / (right - left)
-	out[4, 2] = - (top + bottom) / (top - bottom)
-	out[4, 4] = 1
-	return Mat4{T}(out')
+    out = zeros(T, 4, 4)
+    out[1, 1] = 2 / (right - left)
+    out[2, 2] = 2 / (top - bottom)
+    out[3, 3] = -1
+    out[4, 1] = - (right + left) / (right - left)
+    out[4, 2] = - (top + bottom) / (top - bottom)
+    out[4, 4] = 1
+    return Mat4{T}(out')
 end
 
 projmatortho(::Type{T}, left::Number, right::Number, bottom::Number, top::Number) where T =
-	projmatortho(T(left), T(right), T(bottom), T(top))
+    projmatortho(T(left), T(right), T(bottom), T(top))
 
 
 function projmatortho(wh::Area, near::T, far::T) where T
@@ -221,20 +221,20 @@ projmatortho(w::Integer, h::Integer, near::T, far::T) where T =
     projmatortho(zero(T), T(w), zero(T), T(h), near, far)
 
 """
-	projmatortho(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
+    projmatortho(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
 
 3D orthographic projection.
 """
 function projmatortho(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
-	if right==left || bottom==top || znear==zfar
-		return Mat4{T}(I)
-	else
-		out = zeros(T, 4, 4)
-		out[1, 1] =   2 / (right - left)
-		out[2, 2] =   2 / (top - bottom)
-		out[3, 3] = - 2 / (zfar - znear)
-		out[4, 1] = - (right + left) / (right - left)
-		out[4, 2] = - (top + bottom) / (top - bottom)
+    if right==left || bottom==top || znear==zfar
+        return Mat4{T}(I)
+    else
+        out = zeros(T, 4, 4)
+        out[1, 1] =   2 / (right - left)
+        out[2, 2] =   2 / (top - bottom)
+        out[3, 3] = - 2 / (zfar - znear)
+        out[4, 1] = - (right + left) / (right - left)
+        out[4, 2] = - (top + bottom) / (top - bottom)
         out[4, 3] = - (zfar + znear) / (zfar - znear)
         out[4, 4] = 1
         return Mat4{T}(out')

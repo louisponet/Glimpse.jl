@@ -137,12 +137,12 @@ end
 glDisableCullFace() = glDisable(GL_CULL_FACE)
 
 function generate_buffers(program::Program, divisor::GLint; name_buffers...)
-	buflen  = 0
+    buflen  = 0
     buffers = BufferAttachmentInfo[]
     for (name, val) in pairs(name_buffers)
         loc = attribute_location(program, name)
         if loc != INVALID_ATTRIBUTE
-	        buflen = buflen == 0 ? length(val) : buflen 
+            buflen = buflen == 0 ? length(val) : buflen 
             vallen = length(val)
             if vallen == buflen
                 push!(buffers, BufferAttachmentInfo(name, loc, Buffer(val, usage=GL_DYNAMIC_DRAW), divisor))
@@ -283,19 +283,19 @@ Standard window hints for creating a plain context without any multisampling
 or extra buffers beside the color buffer
 """
 const GLFW_DEFAULT_WINDOW_HINTS = [(GLFW.SAMPLES,      0),
-		                           (GLFW.DEPTH_BITS,   32),
+                                   (GLFW.DEPTH_BITS,   32),
 
-		                           (GLFW.ALPHA_BITS,   8),
-		                           (GLFW.RED_BITS,     8),
-		                           (GLFW.GREEN_BITS,   8),
-		                           (GLFW.BLUE_BITS,    8),
+                                   (GLFW.ALPHA_BITS,   8),
+                                   (GLFW.RED_BITS,     8),
+                                   (GLFW.GREEN_BITS,   8),
+                                   (GLFW.BLUE_BITS,    8),
 
-		                           (GLFW.STENCIL_BITS, 0),
-		                           (GLFW.AUX_BUFFERS,  0),
-		                           (GLFW.SCALE_TO_MONITOR, 1)]
+                                   (GLFW.STENCIL_BITS, 0),
+                                   (GLFW.AUX_BUFFERS,  0),
+                                   (GLFW.SCALE_TO_MONITOR, 1)]
 
 glfw_standard_screen_resolution() =
-	GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
+    GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
 
 ## Colorutils
 import ColorTypes: RGBA, Colorant, RGB

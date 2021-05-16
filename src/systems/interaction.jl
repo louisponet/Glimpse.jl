@@ -29,23 +29,23 @@ function Overseer.update(::EventPoller, m::AbstractLedger)
     keyboard = singleton(m, Keyboard)
     pollevents(c)
 
-	x, y = c.cursor_position
+    x, y = c.cursor_position
 
-	mouse_button         = c.mouse_buttons
-	keyboard_button      = c.keyboard_buttons
+    mouse_button         = c.mouse_buttons
+    keyboard_button      = c.keyboard_buttons
 
-	mouse.dx = x - mouse.x
-	mouse.dy = y - mouse.y
-	mouse.x  = x
-	mouse.y  = y
-	mouse.button = mouse_button[1]
-	mouse.action = mouse_button[2] 
-	mouse.dscroll = c.scroll .- mouse.scroll
-	mouse.scroll  = c.scroll
+    mouse.dx = x - mouse.x
+    mouse.dy = y - mouse.y
+    mouse.x  = x
+    mouse.y  = y
+    mouse.button = mouse_button[1]
+    mouse.action = mouse_button[2] 
+    mouse.dscroll = c.scroll .- mouse.scroll
+    mouse.scroll  = c.scroll
 
-	keyboard.button    = keyboard_button[1]
-	keyboard.action   = keyboard_button[3]
-	keyboard.modifiers = keyboard_button[4]
+    keyboard.button    = keyboard_button[1]
+    keyboard.action   = keyboard_button[3]
+    keyboard.modifiers = keyboard_button[4]
 end
 
 pressed(m::Mouse)     = m.action ∈ (GLFW.PRESS, GLFW.REPEAT)
@@ -54,20 +54,21 @@ released(m::Mouse)    = m.action == GLFW.RELEASE
 released(k::Keyboard) = k.action == GLFW.RELEASE
 
 # Mouse Picking Stuff
-@component @with_kw struct Selectable <: ComponentData
-	selected::Bool = false
-	color_modifier::Float32 = 1.3f0
+@component @with_kw mutable struct Selectable
+    color::RGBf0 = RGBf0(0, 0, 0)
+    selected::Bool = false
+    color_modifier::Float32 = 1.3f0
 end
 
 struct IDColorGenerator <: System end
 
-Overseer.requested_components(::IDColorGenerator) = (PolygonGeometry, Selectable, IDColor)
+Overseer.requested_components(::IDColorGenerator) = (PolygonGeometry, Selectable)
 
 function Overseer.update(::IDColorGenerator, m::AbstractLedger)
-	idc, selectable =  m[IDColor], m[Selectable]
-	i = length(idc)
-    for e in @entities_in(selectable && !idc)
-        idc[e] = IDColor(RGBf0(((i & 0x000000FF) >>  0)/ 255,((i & 0x0000FF00) >>  8)/255, ((i & 0x00FF0000) >> 16)/255))
+    sel = m[Selectable]
+    i = length(sel)
+    @inbounds for s in sel
+        s.color = RGBf0(((i & 0x000000FF) >>  0)/ 255,((i & 0x0000FF00) >>  8)/255, ((i & 0x00FF0000) >> 16)/255)
         i+=1
     end
 end
@@ -77,64 +78,59 @@ struct MousePicker <: System end
 Overseer.requested_components(::MousePicker) = (Selectable, Camera3D, Spatial, UniformColor, Canvas, UpdatedComponents)
 
 function Overseer.update(::MousePicker, m::AbstractLedger)
-	col                = m[IDColor]
-	ucolor             = m[UniformColor]
-	bcolor             = m[BufferColor]
-	sel                = m[Selectable]
-	canvas             = singleton(m, Canvas)
-	updated_components = singleton(m, UpdatedComponents)
-	mouse = singleton(m, Mouse)
-	keyboard = singleton(m, Keyboard)
-	wh                 = size(canvas)
+    ucolor             = m[UniformColor]
+    bcolor             = m[BufferColor]
+    canvas             = singleton(m, Canvas)
+    updated_components = singleton(m, UpdatedComponents)
+    mouse = singleton(m, Mouse)
+    keyboard = singleton(m, Keyboard)
+    wh                 = size(canvas)
 
-	iofbo = singleton(m, IOTarget).target
+    iofbo = singleton(m, IOTarget).target
 
-	@inbounds if pressed(keyboard) && keyboard.button ∈ CTRL_KEYS && mouse.button == GLFW.MOUSE_BUTTON_1
+    @inbounds if pressed(keyboard) && keyboard.button ∈ CTRL_KEYS && mouse.button == GLFW.MOUSE_BUTTON_1 && pressed(mouse)
 
         glFlush()
-    	bind(iofbo)
-    	glReadBuffer(GL_COLOR_ATTACHMENT1)
+        bind(iofbo)
+        glReadBuffer(GL_COLOR_ATTACHMENT1)
 
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
         dat = Ref{RGBf0}()
-    	# screenspace = (2 * cursor_position[1] / wh[1] - 1,  1-2*cursor_position[2]/wh[2])
+        # screenspace = (2 * cursor_position[1] / wh[1] - 1,  1-2*cursor_position[2]/wh[2])
         glReadPixels(mouse.x, wh[2]-mouse.y, 1, 1, GL_RGB, GL_FLOAT, dat)
         unbind(iofbo)
         selected_color = dat[]
-
-		for e in @entities_in(col)
-    		e_color = col[e]
-    		s = sel[e]
-    		mod = s.color_modifier
-    		if isapprox(e_color.color, selected_color) && pressed(mouse)
-				was_selected = s.selected
-				sel[e] = Selectable(true, s.color_modifier)
-				if !was_selected
-    				if e in ucolor
-                		o_c = ucolor[e].color
-    					ucolor[e] = UniformColor(RGB(o_c.r * mod, o_c.g * mod, o_c.b * mod))
-    					push!(updated_components.components, UniformColor)
-					elseif e in bcolor
-    					bcolor[e].color .*= mod
-    					push!(updated_components.components, BufferColor)
-					end
-				end
-			elseif !isapprox(e_color.color, selected_color) && released(mouse)
-				was_not_selected = s.selected
-				sel[e] = Selectable(false, s.color_modifier)
-				if was_not_selected 
-    				if e in ucolor
-                		o_c = ucolor[e].color
-    					ucolor[e] = UniformColor(RGB(o_c.r / mod, o_c.g / mod, o_c.b / mod))
-    					push!(updated_components.components, UniformColor)
-					elseif e in bcolor
-    					bcolor[e].color ./= mod
-    					push!(updated_components.components, BufferColor)
-					end
-				end
-			end
-		end
-	end
+        for e in @entities_in(m, Selectable)
+            mod = e.color_modifier
+            if isapprox(e.color, selected_color)
+                was_selected = e.selected
+                e.selected = true
+                if !was_selected
+                    if e in ucolor
+                        o_c = ucolor[e].color
+                        ucolor[e] = UniformColor(RGB(o_c.r * mod, o_c.g * mod, o_c.b * mod))
+                        register_update(m, UniformColor)
+                    elseif e in bcolor
+                        bcolor[e].color .*= mod
+                        register_update(m, BufferColor)
+                    end
+                end
+            elseif !isapprox(e.color, selected_color)
+                was_not_selected = e.selected
+                e.selected = false
+                if was_not_selected 
+                    if e in ucolor
+                        o_c = ucolor[e].color
+                        ucolor[e] = UniformColor(RGB(o_c.r / mod, o_c.g / mod, o_c.b / mod))
+                        register_update(m, UniformColor)
+                    elseif e in bcolor
+                        bcolor[e].color ./= mod
+                        register_update(m, BufferColor)
+                    end
+                end
+            end
+        end
+    end
 end
 
 mouse_to_screenspace(m::Mouse, c::Canvas) = (2 * m.x / size(c, 1) - 1,  1-2*m.y/size(c, 2))

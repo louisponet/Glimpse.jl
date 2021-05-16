@@ -4,8 +4,8 @@ const DEFAULT_COLOR = RGBf0(0.0,0.4,0.8)
 # All entity Assemblages go here
 
 assemble_sphere(position::StaticArray{Tuple{3}} = zero(Point3f0);
-	   velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
-	   color   = DEFAULT_COLOR,
+       velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
+       color   = DEFAULT_COLOR,
        radius  ::Float32       = 1f0,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
@@ -23,7 +23,7 @@ box_coordinates() = [zero(Point3f0), zero(Point3f0), Vec3f0(1, 0, 0),
                           Point3f0(1, 1, 0), Point3f0(0,1,0), Point3f0(0, 1, 1), Point3f0(0,1,1)]
 
 function assemble_wire_box(;velocity::StaticArray{Tuple{3}}= zero(Vec3f0),
-	   color   ::RGB{Float32} = DEFAULT_COLOR,
+       color   ::RGB{Float32} = DEFAULT_COLOR,
        left    ::StaticArray{Tuple{3}}       = Vec3f0(-10),
        right   ::StaticArray{Tuple{3}}       = Vec3f0(10),
        linewidth::Float32      = 2f0,
@@ -43,7 +43,7 @@ function assemble_wire_axis_box(;
        y::StaticArray{Tuple{3}}              = Vec3f0(0,1,0),
        z::StaticArray{Tuple{3}}              = Vec3f0(0,0,1),
        velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
-	   color   ::RGB{Float32} = DEFAULT_COLOR,
+       color   ::RGB{Float32} = DEFAULT_COLOR,
        linewidth::Float32      = 2f0,
        miter ::Float32         = 0.6f0,
        )
@@ -57,8 +57,8 @@ end
 
 
 function assemble_box(left = Point3f0(-0.5), right=Point3f0(0.5);
-	   velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
-	   color   ::RGB{Float32} = DEFAULT_COLOR,
+       velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
+       color   ::RGB{Float32} = DEFAULT_COLOR,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0)
        unit_direction = (right-left)/norm(right-left)
@@ -71,8 +71,8 @@ function assemble_box(left = Point3f0(-0.5), right=Point3f0(0.5);
 end
 
 assemble_pyramid(;position::StaticArray{Tuple{3}} = zero(Point3f0),
-	   velocity  ::StaticArray{Tuple{3}}       = zero(Vec3f0),
-	   color     ::RGB{Float32} = DEFAULT_COLOR,
+       velocity  ::StaticArray{Tuple{3}}       = zero(Vec3f0),
+       color     ::RGB{Float32} = DEFAULT_COLOR,
        width     ::Float32      = 1.0f0,
        height    ::Float32      = 1.0f0,
        specint   ::Float32       = 0.8f0,
@@ -85,8 +85,8 @@ assemble_pyramid(;position::StaticArray{Tuple{3}} = zero(Point3f0),
            Shape(scale))
 
 assemble_file_mesh(file;position::StaticArray{Tuple{3}} = zero(Point3f0),
-	   velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
-	   color   ::RGB{Float32} = DEFAULT_COLOR,
+       velocity::StaticArray{Tuple{3}}       = zero(Vec3f0),
+       color   ::RGB{Float32} = DEFAULT_COLOR,
        specint ::Float32       = 0.8f0,
        specpow ::Float32       = 0.8f0,
        scale   ::Float32       = 1.0f0,
@@ -97,10 +97,10 @@ assemble_file_mesh(file;position::StaticArray{Tuple{3}} = zero(Point3f0),
             Shape(scale))
 
 assemble_camera3d(width_pixels ::Int32,
-			      height_pixels::Int32; eyepos   = -10*Y_AXIS,
-			   					        velocity = zero(Vec3f0), kwargs...) = (Spatial(eyepos, velocity),
-	   					                                                      Camera3D(width_pixels, height_pixels;
-		                                                                               eyepos = eyepos, kwargs...))
+                  height_pixels::Int32; eyepos   = -10*Y_AXIS,
+                                           velocity = zero(Vec3f0), kwargs...) = (Spatial(eyepos, velocity),
+                                                                                 Camera3D(width_pixels, height_pixels;
+                                                                                       eyepos = eyepos, kwargs...))
 
 function assemble_line(points::Vector{<:Point3};
                        origin = zero(Point3f0),

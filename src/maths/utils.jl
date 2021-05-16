@@ -30,25 +30,25 @@ w_component(::Point{N, T}) where {N, T} = T(1)
 w_component(::Vec{N, T}) where {N, T} = T(0)
 
 # @component struct AABB
-# 	origin  ::Vec3f0
-# 	diagonal::Vec3f0
+#     origin  ::Vec3f0
+#     diagonal::Vec3f0
 # end
 
 # function aabb_ray_intersect(aabb::AABB, entity_pos::Point3f0, ray_origin::Point3f0, ray_direction::Vec3f0)
-# 	dirfrac = 1.0f0 ./ ray_direction
-# 	right   = aabb.origin + aabb.diagonal
+#     dirfrac = 1.0f0 ./ ray_direction
+#     right   = aabb.origin + aabb.diagonal
 
-# 	real_origin = aabb.origin + entity_pos
-# 	real_right  = right + entity_pos
-# 	t1 = (real_origin - ray_origin) .* dirfrac
-# 	t2 = (real_right - ray_origin)  .* dirfrac
-# 	tsmaller = min.(t1, t2)
-# 	tbigger  = max.(t1,t2)
+#     real_origin = aabb.origin + entity_pos
+#     real_right  = right + entity_pos
+#     t1 = (real_origin - ray_origin) .* dirfrac
+#     t2 = (real_right - ray_origin)  .* dirfrac
+#     tsmaller = min.(t1, t2)
+#     tbigger  = max.(t1,t2)
 
-# 	tmin = maximum(tsmaller)
-# 	tmax = minimum(tbigger)
-	
+#     tmin = maximum(tsmaller)
+#     tmax = minimum(tbigger)
+    
 
-# 	return tmin < tmax
+#     return tmin < tmax
 # end
 

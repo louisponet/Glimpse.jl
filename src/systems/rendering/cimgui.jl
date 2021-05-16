@@ -7,11 +7,11 @@ using CImGui.CSyntax.CStatic
 end
 
 @component struct GuiText
-	text::String
+    text::String
 end
 
 @component @with_kw struct GuiFuncs
-	funcs::Vector{Function} = Function[]
+    funcs::Vector{Function} = Function[]
 end
 
 struct GuiRenderer <: AbstractRenderSystem end
@@ -33,46 +33,46 @@ function Overseer.update(::GuiRenderer, m::AbstractLedger)
         ImGui_ImplOpenGL3_NewFrame()
         ImGui_ImplGlfw_NewFrame()
         Gui.NewFrame()
-    	# if Gui.Checkbox("Show GUI")
-    	if !isempty(m[GuiText])
-        	Gui.Begin("User Text")
-        	camera.locked = Gui.IsWindowFocused() || camera.locked
+        # if Gui.Checkbox("Show GUI")
+        if !isempty(m[GuiText])
+            Gui.Begin("User Text")
+            camera.locked = Gui.IsWindowFocused() || camera.locked
             Gui.SetWindowFontScale(2.0f0)
             for e in m[GuiText]
                 Gui.Text(e.text)
             end
-        	Gui.End()
+            Gui.End()
         end
 
-    	# Submitted Gui Funcs
-    	fs = singleton(m, GuiFuncs).funcs
-    	for (i, f) in enumerate(fs)
-    		f()
-    	end
-    	empty!(fs)
-    	camera.locked = Gui.IsAnyItemActive() || camera.locked
+        # Submitted Gui Funcs
+        fs = singleton(m, GuiFuncs).funcs
+        for (i, f) in enumerate(fs)
+            f()
+        end
+        empty!(fs)
+        camera.locked = Gui.IsAnyItemActive() || camera.locked
         Gui.Render()
         ImGui_ImplOpenGL3_RenderDrawData(Gui.GetDrawData())
-	end
+    end
 
 
-	# Components Debug
-	# Gui.Begin("Components")
+    # Components Debug
+    # Gui.Begin("Components")
  #    Gui.SetWindowFontScale(2.0f0)
-	# for c in filter(x -> !isempty(x), renderer.data.components)
-	# 	if Gui.TreeNode(replace("$(eltype(c))", "Glimpse." => ""))
-	# 		eids = @valid_entities_in(c)
-	# 		if length(eids) < 5
-	# 			for e in eids
-	# 				if Gui.TreeNode("$e")
-	# 					Gui.Text("$(c[e])")
-	# 					Gui.TreePop()
-	# 				end
-	# 			end
-	# 		end
-	# 		Gui.TreePop()
-	# 	end
-	# end
-	# Gui.End()
-	###
+    # for c in filter(x -> !isempty(x), renderer.data.components)
+    #     if Gui.TreeNode(replace("$(eltype(c))", "Glimpse." => ""))
+    #         eids = @valid_entities_in(c)
+    #         if length(eids) < 5
+    #             for e in eids
+    #                 if Gui.TreeNode("$e")
+    #                     Gui.Text("$(c[e])")
+    #                     Gui.TreePop()
+    #                 end
+    #             end
+    #         end
+    #         Gui.TreePop()
+    #     end
+    # end
+    # Gui.End()
+    ###
 end

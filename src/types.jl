@@ -25,8 +25,8 @@ end
 
 mutable struct Diorama <: AbstractLedger
     name      ::Symbol
-	ledger    ::Ledger
-	renderloop_stages::Vector{Stage}
+    ledger    ::Ledger
+    renderloop_stages::Vector{Stage}
     loop      ::Union{Task, Nothing}
     reupload  ::Bool
     function Diorama(name::Symbol, ledger::Ledger, renderloop_stages::Vector{Stage})
