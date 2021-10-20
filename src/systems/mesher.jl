@@ -43,15 +43,26 @@ Overseer.requested_components(::FunctionMesher) = (FunctionGeometry, Mesh, Grid)
 
 struct DensityMesher <: Mesher end
 
-Overseer.requested_components(::DensityMesher) = (DensityGeometry, Mesh, Grid)
+Overseer.requested_components(::DensityMesher) = (DensityGeometry, DensityColor, Mesh, Grid)
 
 function Overseer.update(::Union{FunctionMesher, DensityMesher}, m::AbstractLedger)
-    for geom in (FunctionGeometry, DensityGeometry)
-        for e in @entities_in(m, geom && Grid && !Mesh)
-            vertices, ids = marching_cubes(e.geometry, e.points, e.iso)
+    mesh = m[Mesh]
+    grid = m[Grid]
+    dens_c = m[DensityColor]
+    for geom in (m[FunctionGeometry], m[DensityGeometry])
+        for e in @entities_in(geom && grid && !mesh)
+            points = grid[e].points
+            vertices, ids = marching_cubes(geom[e].geometry, points, geom[e].iso)
+            if isempty(vertices)
+                continue
+            end
             faces         = [GeometryBasics.TriangleFace{GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
             norms =  length(faces) == 0 ? Vec3f0[] : normals(vertices, faces) 
-            e[Mesh] = Mesh(BasicMesh(vertices, faces, norms))
+            mesh[e] = Mesh(BasicMesh(vertices, faces, norms))
+            if e in dens_c
+                d = dens_c[e]
+                m[BufferColor][e] = BufferColor(map(x->d.color[x...], ids))
+            end
         end
     end
 end

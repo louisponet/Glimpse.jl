@@ -39,9 +39,9 @@ function Overseer.update(::Uploader, m::AbstractLedger)
         e_mesh = mesh[e]
         e_color = bcolor[e].color
         gen_vao = prog -> begin
-            buffers = [generate_buffers(prog, e_mesh.mesh);
-                       generate_buffers(prog, GEOMETRY_DIVISOR, color=e_color)]
-            return VertexArray(buffers, faces(e_mesh.mesh) .- GLint(1))
+    		buffers = [generate_buffers(prog, e_mesh.mesh);
+    	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e_color)]
+            return VertexArray(buffers, map(x-> x.-GLint(1), faces(e_mesh.mesh)))
         end
 
         if e in alpha && alpha[e].α < 1
