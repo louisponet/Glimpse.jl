@@ -25,7 +25,7 @@ Overseer.requested_components(::LineRenderer) =
 function Overseer.update(::LineRenderer, m::AbstractLedger)
     fbo  = singleton(m, IOTarget)
     prog = singleton(m, LineProgram)
-    idc  = m[IDColor]
+    idc  = m[Selectable]
     bind(fbo)
     draw(fbo)
     glDisable(GL_BLEND)
