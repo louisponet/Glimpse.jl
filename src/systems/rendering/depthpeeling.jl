@@ -75,6 +75,7 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
     peeling_targets     = m[PeelTarget].data[1:2]
     iofbo               = m[IOTarget][1]
     fullscreenvao       = m[FullscreenVao][1]
+    vis = m[Visible]
 
     set_light_camera_uniforms = (prog) -> begin
         for e  in @entities_in(light && ucolor && spatial)
@@ -120,9 +121,9 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
         set_light_camera_uniforms(peeling_program)
         for e in it1
             evao = vao[e]
-            if evao.visible
+            if vis[e].visible
                 set_model_material(modelmat[e], material[e])
-                gluniform(peeling_program, :alpha, alpha[e])
+                gluniform(peeling_program, :alpha, alpha[e].α)
                 GLA.bind(evao)
                 GLA.draw(evao)
             end

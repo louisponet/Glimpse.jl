@@ -28,6 +28,9 @@ uniform point_light plight;
 layout(binding=0) uniform sampler2D depth_texture;
 
 void main () {
+	if (fragcolor[3] == 0) {
+		discard;
+	}
 	float specPow = fragmaterial.x;
 	float specInt = fragmaterial.y;
     vec3 ambient_color  = plight.color * plight.amb_intensity;

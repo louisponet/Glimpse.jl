@@ -424,7 +424,7 @@ function Overseer.update(::TextUploader, m::AbstractLedger)
                                    color = fill(ucolor[e].color, nsprites),
                                    rotation = fill(Vec4f0(0), nsprites),
                                    offset_width    = offset_width,
-                                   uv_texture_bbox = uv_texture_bbox), GL_POINTS), true)
+                                   uv_texture_bbox = uv_texture_bbox), GL_POINTS))
         else
             GLA.upload!(vao[e], color       = fill(ucolor[e].color, nsprites),
                             rotation        = fill(Vec4f0(0), nsprites),
@@ -479,6 +479,7 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
     persp_mat      = camera.projview
     projection_mat = camera.proj
     text           = m[Text]
+    vis            = m[Visible]
     wh = size(iofbo)
 
     glDisable(GL_DEPTH_TEST)
@@ -518,7 +519,7 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
     gluniform(prog, :scale_primitive, true)
     for e in @entities_in(vao && spat && text)
         e_vao, e_spat, e_text = vao[e], spat[e], text[e]
-        if e_vao.visible
+        if vis[e].visible
             gluniform(prog,:model, m[ModelMat][e].modelmat)
             gluniform(prog,:origin, e_text.offset)
             bind(e_vao)

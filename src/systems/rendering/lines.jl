@@ -42,11 +42,11 @@ function Overseer.update(::LineRenderer, m::AbstractLedger)
         gluniform(prog, spat[e], cam[e])
     end
     gluniform(prog, :Viewport, Vec2f0(size(m[IOTarget][1])))
-    vao, modelmat, line = m[LineVao], m[ModelMat], m[LineOptions] 
+    vao, modelmat, line, vis = m[LineVao], m[ModelMat], m[LineOptions], m[Visible]
     for e in @entities_in(vao && modelmat && line)
         evao = vao[e]
         e_line = line[e]
-        if evao.visible
+        if vis[e].visible
             gluniform(prog, :modelmat,   modelmat[e].modelmat)
             gluniform(prog, :thickness,  e_line.thickness)
             gluniform(prog, :MiterLimit, e_line.miter)

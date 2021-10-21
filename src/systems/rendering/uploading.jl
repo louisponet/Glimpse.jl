@@ -1,7 +1,7 @@
 struct Uploader <: System end
 
 Overseer.requested_components(::Uploader) =
-    (Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao, LineGeometry, Alpha)
+    (Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao, LineGeometry, Alpha, Visible)
 
 shaders(::Type{DefaultProgram}) = default_shaders()
 shaders(::Type{PeelingProgram}) = peeling_shaders()
@@ -68,12 +68,22 @@ function Overseer.update(::Uploader, m::AbstractLedger)
         if !(e in line_vao)
             color_attach = BufferAttachmentInfo(:color, color_loc, Buffer(color_vec), GEOMETRY_DIVISOR)
             points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)
-            line_vao[e] = LineVao(VertexArray([points_attach, color_attach], GL_LINE_STRIP_ADJACENCY), true)
+            line_vao[e] = LineVao(VertexArray([points_attach, color_attach], GL_LINE_STRIP_ADJACENCY))
         else 
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e_geom.points)
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer, color_vec)
         end
     end
+
+    # Add rendered entities to the Visible component if it's not existing yet.
+    # I.e. if not set to be invisible they will be visible
+    vis = m[Visible]
+    for comp in (default_vao, peeling_vao, line_vao)
+        for e in @entities_in(comp && !vis)
+            vis[e] = Visible()
+        end
+    end
+            
 end
 
 struct InstancedUploader <: System end
@@ -92,6 +102,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     modelmat = m[ModelMat]
     material = m[Material]
     alpha = m[Alpha]
+    vis = m[Visible]
 
 
     default_it   = @entities_in(!default_vao && mesh && ucolor && modelmat && material && !alpha)
@@ -125,25 +136,46 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
         return modelmats, materials, colors, idcolors, ids
     end
 
+    # TODO merge both into 1
     for tmesh in mesh.shared
-        default_modelmats, default_materials, default_colors, default_idcolors, default_ids = get_uniforms(default_it, tmesh)
-        peeling_modelmats, peeling_materials, peeling_colors, peeling_idcolors, peeling_ids = get_uniforms(peeling_it, tmesh)
+        default_modelmats, default_materials, default_colors, default_idcolors, default_ids =
+            get_uniforms(default_it, tmesh)
+        peeling_modelmats, peeling_materials, peeling_colors, peeling_idcolors, peeling_ids =
+            get_uniforms(peeling_it, tmesh)
         if !isempty(default_ids)
             indices = map(x->x.-GLint(1), tmesh.mesh.faces)
+            visibles = similar(default_modelmats, Float32)
+            for (ii, e) in enumerate(default_ids)
+                # Automatically set the visibility if it wasn't set before
+                if !(e in vis)
+                    vis[e] = Visible()
+                    visibles[ii] = 1.0f0
+                else
+                    visibles[ii] = vis[e].visible ? 1.0f0 : 0.0f0
+                end
+            end
             buffers = [generate_buffers(default_prog, tmesh.mesh);
                        generate_buffers(default_prog, GLA.UNIFORM_DIVISOR,
                                         color    = default_colors,
                                         modelmat = default_modelmats,
                                         material  = default_materials,
                                         object_id_color = default_idcolors,
+                                        alpha = visibles
                                         )]
-            tvao = InstancedDefaultVao(VertexArray(buffers, indices, length(default_ids)), true)
+            tvao = InstancedDefaultVao(VertexArray(buffers, indices, length(default_ids)))
             for e in default_ids
                 default_vao[e] = tvao
             end
         end
         if !isempty(peeling_ids)
             alphas = [alpha[e].α for e in peeling_ids]
+            for (ii, e) in enumerate(peeling_ids)
+                if !(e in vis)
+                    vis[e] = Visible()
+                elseif !vis[e].visible
+                    alphas[ii] = 0
+                end
+            end
             indices = map(x->x.-GLint(1), tmesh.mesh.faces)
             buffers = [generate_buffers(peeling_prog, tmesh.mesh);
                        generate_buffers(peeling_prog, GLA.UNIFORM_DIVISOR,
@@ -152,7 +184,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                                         material  = peeling_materials,
                                         object_id_color = peeling_idcolors,
                                         alpha = alphas)]
-            tvao = InstancedPeelingVao(VertexArray(buffers, indices, length(peeling_ids)), true)
+            tvao = InstancedPeelingVao(VertexArray(buffers, indices, length(peeling_ids)))
             for e in peeling_ids
                 peeling_vao[e] = tvao
             end
@@ -188,21 +220,43 @@ function Overseer.update(::UniformUploader, m::AbstractLedger)
     matsize = sizeof(eltype(mat))
     ucolor = m[UniformColor]
     material = m[Material]
+    vis = m[Visible]
+    alpha = m[Alpha]
     for vao in (m[InstancedDefaultVao], m[InstancedPeelingVao])
         reupload_uniform_component = (comp, comp_shader_symbol) -> begin
-            datsize = sizeof(eltype(comp))
             it1 = @entities_in(vao && comp)
             for tvao in vao.shared
-                comp_vector = eltype(comp)[]
+                if comp_shader_symbol == :visible
+                    comp_vector = Alpha[]
+                    for e in it1
+                        e_vao, e_comp =
+                            vao[e], comp[e]
 
-                for e in it1
-                    e_vao, e_comp = vao[e], comp[e]
-                    if e_vao === tvao
-                        push!(comp_vector, e_comp)
+                        if e_vao === tvao
+                            if e_comp.visible
+                                if e in alpha
+                                    push!(comp_vector, alpha[e])
+                                else
+                                    push!(comp_vector, Alpha(1))
+                                end
+                            else
+                                push!(comp_vector, Alpha(0))
+                            end
+                        end
+                    end
+                    comp_shader_symbol = :alpha
+                else
+                    comp_vector = eltype(comp)[]
+                    for e in it1
+                        e_vao, e_comp = vao[e], comp[e]
+                        if e_vao === tvao
+                            push!(comp_vector, e_comp)
+                        end
                     end
                 end
                 if !isempty(comp_vector)
                     binfo = GLA.bufferinfo(tvao.vertexarray, comp_shader_symbol)
+                    datsize = sizeof(eltype(comp_vector))
                     if binfo !== nothing
                         GLA.bind(binfo.buffer)
                         s = length(comp_vector) * datsize
@@ -221,8 +275,9 @@ function Overseer.update(::UniformUploader, m::AbstractLedger)
         if Material in uc.components
             reupload_uniform_component(m[Material], :material)
         end
-        if Alpha in uc.components
-            reupload_uniform_component(m[Alpha], :alpha)
-        end    
+        # if Alpha in uc.components
+        #     reupload_uniform_component(m[Alpha], :alpha)
+        # end    
+        reupload_uniform_component(m[Visible], :visible)
     end
 end

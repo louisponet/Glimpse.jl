@@ -16,10 +16,10 @@ out vec2 fragmaterial;
 out vec3 id_color;
 
 void main () {
-	id_color = object_id_color;
-    fragcolor = vec4(color, alpha);
-    fragmaterial = material;
-    fragnormal = normalize((modelmat * vec4(normals, 0.0f)).xyz);
-    world_pos  = (modelmat * vec4(vertices, 1.0f)).xyz;
-    gl_Position = projview * modelmat * vec4(vertices, 1.0f);
+		id_color = object_id_color;
+	    fragcolor = vec4(color, alpha);
+	    fragmaterial = material;
+	    fragnormal = normalize((modelmat * vec4(normals, 0.0f)).xyz);
+	    world_pos  = (modelmat * vec4(vertices, 1.0f)).xyz;
+	    gl_Position = projview * modelmat * vec4(vertices, 1.0f);
 }

@@ -16,9 +16,7 @@ macro vao(name)
     esc(quote
         @component @with_kw mutable struct $name <: Vao
             vertexarray::VertexArray
-            visible    ::Bool = true
         end
-        $name(v::VertexArray) = $name(vertexarray=v)
     end)
 end
 
@@ -26,9 +24,7 @@ macro instanced_vao(name)
     esc(quote
         @shared_component @with_kw mutable struct $name <: Vao
             vertexarray::VertexArray
-            visible    ::Bool = true
         end
-        $name(v::VertexArray) = $name(vertexarray=v)
     end)
 end
 
@@ -37,7 +33,11 @@ GLA.bind(vao::Vao) = GLA.bind(vao.vertexarray)
 
 GLA.draw(vao::Vao) = GLA.draw(vao.vertexarray)
 
-GLA.upload!(vao::Vao; kwargs...) = GLA.upload!(vao.vertexarray; kwargs...) 
+GLA.upload!(vao::Vao; kwargs...) = GLA.upload!(vao.vertexarray; kwargs...)
+
+@component @with_kw struct Visible
+    visible::Bool = true
+end
 
 # NON rendering Components
 @component struct Dynamic  end

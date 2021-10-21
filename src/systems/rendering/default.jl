@@ -27,8 +27,8 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
 
     bind(prog)
 
-    light, ucolor, spat, cam, modelmat, material, vao =
-        m[PointLight], m[UniformColor],  m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[DefaultVao]
+    light, ucolor, spat, cam, modelmat, material, vao, vis =
+        m[PointLight], m[UniformColor],  m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[DefaultVao], m[Visible]
 
     set_light_camera_uniforms = (prog) -> begin
         for e in @entities_in(m, PointLight  && UniformColor && Spatial)
@@ -46,10 +46,11 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
         gluniform(prog, :modelmat, e_modelmat.modelmat)
     end
 
+    idcolor = m[Selectable]
     #Colors inside Vao
     for e in @entities_in(vao && modelmat && material && !ucolor)
         evao = vao[e]
-        if evao.visible
+        if vis[e].visible
             set_model_material(modelmat[e], material[e])
             if e in idcolor
                 gluniform(prog, :object_id_color, idcolor[e].color)
@@ -63,9 +64,7 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
     set_light_camera_uniforms(iprog)
     ivao = m[InstancedDefaultVao]
     for evao in ivao.shared
-        if evao.visible
-            GLA.bind(evao)
-            GLA.draw(evao)
-        end
+        GLA.bind(evao)
+        GLA.draw(evao)
     end
 end
