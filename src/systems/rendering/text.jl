@@ -413,9 +413,10 @@ function Overseer.update(::TextUploader, m::AbstractLedger)
     prog = singleton(m, TextProgram)
     ucolor = m[UniformColor]
     spatial= m[Spatial]
+    vis = m[Visible]
     atlas = get_texture_atlas()
     for e in @entities_in(text && spatial && ucolor)
-        t=text[e]
+        t = text[e]
         offset_width, uv_texture_bbox  = to_gl_text(t, atlas)
         nsprites = length(t.str)
         if !(e ∈ vao) || nsprites > length(vao[e])
@@ -430,6 +431,9 @@ function Overseer.update(::TextUploader, m::AbstractLedger)
                             rotation        = fill(Vec4f0(0), nsprites),
                             offset_width    = offset_width,
                             uv_texture_bbox = uv_texture_bbox)
+        end
+        if !(e in vis)
+            vis[e] = Visible()
         end
     end
 end

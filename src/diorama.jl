@@ -80,7 +80,7 @@ end
 #i.e All GL calls should be inside one of these otherwise it might be bad.
 function canvas_command(command::Function, dio::Diorama, catchcommand = x -> nothing)
     canvas = dio.ledger[Canvas][1]
-    if canvas != nothing
+    if canvas !== nothing
         glimpse_call(() -> command(canvas))
     else
         glimpse_call(() -> catchcommand(canvas))
@@ -88,13 +88,13 @@ function canvas_command(command::Function, dio::Diorama, catchcommand = x -> not
 end
 
 function expose(dio::Diorama;  kwargs...)
-    # if dio.loop == nothing
-    canvas_command(dio, x -> m[Entity(m[DioEntity],1)] = Overseer.Entity(dio, Canvas(dio.name; kwargs...))) do x
-        make_current(x)
-        renderloop(dio)
-        expose(x)
+    if dio.loop === nothing
+        canvas_command(dio, x -> m[Entity(m[DioEntity],1)] = Overseer.Entity(dio, Canvas(dio.name; kwargs...))) do x
+            make_current(x)
+            expose(x)
+            renderloop(dio)
+        end
     end
-    # end
     return dio
 end
 
@@ -127,10 +127,8 @@ function renderloop(dio)
         catch e
             close(canvas)
             for stage in stages(dio)
-                # first(stage) == :setup && continue
                 Overseer.update(stage, dio)
             end
-            dio.loop = nothing
             throw(e)
         end
     end
@@ -139,7 +137,7 @@ end
 function reload(dio::Diorama)
     close(dio)
     canvas_command(dio) do canvas
-        while isopen(canvas) && dio.loop != nothing
+        while isopen(canvas) && dio.loop !== nothing
             sleep(0.01)
         end
         dio.reupload = true
@@ -156,7 +154,7 @@ end
 
 free!(dio::Diorama) = (close(dio); canvas_command(c -> free!(c), dio))
 
-isrendering(dio::Diorama) = dio.loop != nothing
+isrendering(dio::Diorama) = dio.loop !== nothing
 
 Base.size(dio::Diorama)  = canvas_command(c -> windowsize(c), dio, x -> (0,0))
 set_background_color!(dio::Diorama, color) = canvas_command(c -> set_background_color!(c, color), dio)
