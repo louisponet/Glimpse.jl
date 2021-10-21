@@ -69,7 +69,9 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
     return t
 end
 
-
+function Base.show(io::IO, d::Diorama)
+    println(io, "Diorama with $(length(entities(d))) entities.")
+end
 # "Darken all the lights in the dio by a certain amount"
 # darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
 # lighten!(dio::Diorama, percentage) = lighten!.(dio.lights, percentage)
