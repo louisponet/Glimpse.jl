@@ -36,12 +36,10 @@ function Overseer.update(::Uploader, m::AbstractLedger)
 
     #Buffer color entities are always not instanced
     for e in @entities_in(mesh && bcolor && !default_vao && !peeling_vao)
-        e_mesh = mesh[e]
-        e_color = bcolor[e].color
         gen_vao = prog -> begin
-    		buffers = [generate_buffers(prog, e_mesh.mesh);
-    	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e_color)]
-            return VertexArray(buffers, map(x-> x.-GLint(1), faces(e_mesh.mesh)))
+    		buffers = [generate_buffers(prog, e.mesh);
+    	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e.color)]
+            return VertexArray(buffers, map(x-> x.-GLint(1), faces(e.mesh)))
         end
 
         if e in alpha && alpha[e].α < 1
@@ -53,12 +51,11 @@ function Overseer.update(::Uploader, m::AbstractLedger)
     line_geom = m[LineGeometry]
     #Line Entities
     for e in @entities_in(line_geom)
-        e_geom = line_geom[e]
         vert_loc = attribute_location(line_prog.program, :vertices)
         color_loc = attribute_location(line_prog.program, :color)
 
         if e in ucolor
-            color_vec = fill(ucolor[e].color, length(e_geom.points))
+            color_vec = fill(ucolor[e].color, length(e.points))
         elseif e in bcolor
             color_vec = bcolor[e].color
         else
@@ -67,10 +64,10 @@ function Overseer.update(::Uploader, m::AbstractLedger)
 
         if !(e in line_vao)
             color_attach = BufferAttachmentInfo(:color, color_loc, Buffer(color_vec), GEOMETRY_DIVISOR)
-            points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e_geom.points), GEOMETRY_DIVISOR)
+            points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e.points), GEOMETRY_DIVISOR)
             line_vao[e] = LineVao(VertexArray([points_attach, color_attach], GL_LINE_STRIP_ADJACENCY))
         else 
-            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e_geom.points)
+            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e.points)
             GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer, color_vec)
         end
     end
@@ -103,90 +100,85 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     material = m[Material]
     alpha = m[Alpha]
     vis = m[Visible]
-
-
-    default_it   = @entities_in(!default_vao && mesh && ucolor && modelmat && material && !alpha)
-    peeling_it   = @entities_in(!peeling_vao && mesh && ucolor && modelmat && material && alpha)
-
-    timing = singleton(m, TimingData).timer
-    if iterate(default_it) === nothing && iterate(peeling_it) === nothing
+    
+    default_entities = @entities_in(mesh && ucolor && modelmat && material && !alpha)
+    peeling_entities = @entities_in(mesh && ucolor && modelmat && material && alpha)
+    n_default = length(default_entities)
+    n_peeling = length(peeling_entities)
+    
+    if n_default == length(default_vao) && n_peeling == length(peeling_vao)
         return
     end
 
-    get_uniforms = (it, tmesh) -> begin
-        modelmats = Mat4f0[]
-        materials  = Material[]
-        ids       = Entity[]
-        colors    = RGBf0[]
-        idcolors  = RGBf0[]
-        for e in it
-            e_mesh, e_modelmat, e_material, e_color = mesh[e], modelmat[e], material[e], ucolor[e]
-            if e_mesh === tmesh
-                push!(modelmats, e_modelmat.modelmat)
-                push!(materials,  e_material)
-                push!(colors, e_color.color)
-                if e ∈ idc
-                    push!(idcolors,  idc[e].color)
-                else
-                    push!(idcolors, RGBf0(1,1,1))
-                end
-                push!(ids, e.e)
+    max_entities = maximum(mesh.group_size)
+    modelmats    = Vector{Mat4f0}(undef,   max_entities) 
+    materials    = Vector{Material}(undef, max_entities) 
+    ids          = Vector{Entity}(undef,   max_entities)
+    colors       = Vector{RGBf0}(undef,    max_entities)
+    idcolors     = Vector{RGBf0}(undef,    max_entities)
+    alphas       = Vector{Float32}(undef,  max_entities)
+    
+    for (i, m) in enumerate(mesh)
+        default_it = @entities_in(entity_group(mesh, i) && ucolor && modelmat && material && !alpha)
+        peeling_it = @entities_in(entity_group(mesh, i) && ucolor && modelmat && material && alpha)
+        for (it, vao, prog) in zip((default_it, peeling_it), (default_vao, peeling_vao), (default_prog, peeling_prog))
+            tot = length(it)
+            if i <= length(vao.group_size) && tot == vao.group_size[i]
+                # Nothing to be done for this meshgroup
+                continue
             end
-        end
-        return modelmats, materials, colors, idcolors, ids
-    end
 
-    # TODO merge both into 1
-    for tmesh in mesh.shared
-        default_modelmats, default_materials, default_colors, default_idcolors, default_ids =
-            get_uniforms(default_it, tmesh)
-        peeling_modelmats, peeling_materials, peeling_colors, peeling_idcolors, peeling_ids =
-            get_uniforms(peeling_it, tmesh)
-        if !isempty(default_ids)
-            indices = map(x->x.-GLint(1), tmesh.mesh.faces)
-            visibles = similar(default_modelmats, Float32)
-            for (ii, e) in enumerate(default_ids)
-                # Automatically set the visibility if it wasn't set before
-                if !(e in vis)
-                    vis[e] = Visible()
-                    visibles[ii] = 1.0f0
+            for (ie, e) in enumerate(it)
+                modelmats[ie] = e.modelmat
+                materials[ie] = e[Material]
+                ids[ie] = e.e
+                colors[ie] = e[UniformColor].color
+                if e in idc
+                    idcolors[ie] = idc[e].color
                 else
-                    visibles[ii] = vis[e].visible ? 1.0f0 : 0.0f0
+                    idcolors[ie] = RGBf0(1,1,1)
                 end
-            end
-            buffers = [generate_buffers(default_prog, tmesh.mesh);
-                       generate_buffers(default_prog, GLA.UNIFORM_DIVISOR,
-                                        color    = default_colors,
-                                        modelmat = default_modelmats,
-                                        material  = default_materials,
-                                        object_id_color = default_idcolors,
-                                        alpha = visibles
-                                        )]
-            tvao = InstancedDefaultVao(VertexArray(buffers, indices, length(default_ids)))
-            for e in default_ids
-                default_vao[e] = tvao
-            end
-        end
-        if !isempty(peeling_ids)
-            alphas = [alpha[e].α for e in peeling_ids]
-            for (ii, e) in enumerate(peeling_ids)
                 if !(e in vis)
                     vis[e] = Visible()
-                elseif !vis[e].visible
-                    alphas[ii] = 0
+                end
+                if e in alpha
+                    alphas[ie] = vis[e].visible ? alpha[e].α : 0
+                else
+                    alphas[ie] = vis[e].visible ? 1 : 0
                 end
             end
-            indices = map(x->x.-GLint(1), tmesh.mesh.faces)
-            buffers = [generate_buffers(peeling_prog, tmesh.mesh);
-                       generate_buffers(peeling_prog, GLA.UNIFORM_DIVISOR,
-                                        color    = peeling_colors,
-                                        modelmat = peeling_modelmats,
-                                        material  = peeling_materials,
-                                        object_id_color = peeling_idcolors,
-                                        alpha = alphas)]
-            tvao = InstancedPeelingVao(VertexArray(buffers, indices, length(peeling_ids)))
-            for e in peeling_ids
-                peeling_vao[e] = tvao
+            @show i
+            @show tot
+            @show ids[1]
+                
+            
+            if (tot > 0 && length(vao.group_size) < i)
+                # Mesh needs to be uploaded
+                buffers = [generate_buffers(prog, m.mesh);
+                           generate_buffers(prog, GLA.UNIFORM_DIVISOR,
+                                        color    = view(colors, 1:tot),
+                                        modelmat = view(modelmats, 1:tot),
+                                        material  = view(materials, 1:tot),
+                                        object_id_color = view(idcolors, 1:tot),
+                                        alpha = view(alphas, 1:tot)
+                                        )]
+                vao[ids[1]] = InstancedDefaultVao(VertexArray(buffers, map(x->x.-GLint(1), m.mesh.faces), tot))
+                for e in ids[2:tot]
+                    vao[e] = ids[1]
+                end
+                
+                # mesh needs to be uploaded
+            elseif i <= length(vao.group_size) && tot > vao.group_size[i]
+                # buffers need to be reuploaded because extra entities were added
+                buffers = generate_buffers(prog, GLA.UNIFORM_DIVISOR,
+                                        color    = view(colors, 1:tot),
+                                        modelmat = view(modelmats, 1:tot),
+                                        material  = view(materials, 1:tot),
+                                        object_id_color = view(idcolors, 1:tot),
+                                        alpha = view(alphas, 1:tot)
+                                        )
+                tvao = vao.data[i]
+                #TODO handle this
             end
         end
     end
@@ -225,7 +217,7 @@ function Overseer.update(::UniformUploader, m::AbstractLedger)
     for vao in (m[InstancedDefaultVao], m[InstancedPeelingVao])
         reupload_uniform_component = (comp, comp_shader_symbol) -> begin
             it1 = @entities_in(vao && comp)
-            for tvao in vao.shared
+            for tvao in vao.data
                 if comp_shader_symbol == :visible
                     comp_vector = Alpha[]
                     for e in it1

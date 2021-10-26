@@ -21,7 +21,7 @@ uniform vec3 campos;
 
 uniform point_light plight;
 void main () {
-	if (fragcolor.a == 0.0f) {
+	if (fragcolor[3] == 0) {
 		discard;
 	}
 	float specPow = fragmaterial[0];

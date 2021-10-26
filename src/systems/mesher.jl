@@ -25,15 +25,17 @@ function Overseer.update(::Union{M}, m::AbstractLedger) where {M<:Mesher}
     if iterate(it) === nothing
         return
     end
-    geometries_handled = geometry_type(M)[]
-    u_geoms = Iterators.unique(geom.data)
-    meshes = [Mesh(BasicMesh(g.geometry)) for g in u_geoms]
-    prevlen = length(mesh.shared)
-    append!(mesh.shared, meshes)
+    u_geoms = []
+    parents = Entity[]
     for e in it
-        egeom = geom[e]
-        push!(mesh.indices, e.id)
-        push!(mesh.data, prevlen + findfirst(x -> x == egeom, u_geoms))
+        parid = findfirst(x -> x == e.geometry, u_geoms)
+        if parid === nothing # Geometry was not added to meshes yet
+            push!(parents, e.e)
+            push!(u_geoms, e.geometry)
+            mesh[e] = Mesh(BasicMesh(e.geometry))
+        else
+            mesh[e] = parents[parid]
+        end
     end
 end
 

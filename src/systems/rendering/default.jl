@@ -63,7 +63,7 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
     bind(iprog)
     set_light_camera_uniforms(iprog)
     ivao = m[InstancedDefaultVao]
-    for evao in ivao.shared
+    for evao in ivao.data
         GLA.bind(evao)
         GLA.draw(evao)
     end

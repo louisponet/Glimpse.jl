@@ -133,10 +133,8 @@ function Overseer.update(renderer::DepthPeelingRenderer, m::AbstractLedger)
     renderall_instanced = () -> begin
         set_light_camera_uniforms(ipeeling_program)
         for evao in ivao
-            if evao.visible
-                GLA.bind(evao)
-                GLA.draw(evao)
-            end
+            GLA.bind(evao)
+            GLA.draw(evao)
         end
     end
 

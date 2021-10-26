@@ -22,7 +22,7 @@ end
 
 macro instanced_vao(name)
     esc(quote
-        @shared_component @with_kw mutable struct $name <: Vao
+        @grouped_component @with_kw mutable struct $name <: Vao
             vertexarray::VertexArray
         end
     end)
@@ -100,7 +100,7 @@ Base.eltype(::Type{PointLight}) = Float32
 end
 
 # Meshing and the like
-@shared_component struct Mesh 
+@grouped_component struct Mesh 
     mesh
 end
 
