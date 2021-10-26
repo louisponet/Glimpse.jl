@@ -22,19 +22,15 @@ function Overseer.update(::Union{M}, m::AbstractLedger) where {M<:Mesher}
     mesh = m[Mesh]
     geom = m[geometry_type(M)]
     it = @entities_in(geom && !mesh)
-    if iterate(it) === nothing
-        return
-    end
-    u_geoms = []
-    parents = Entity[]
+    
+    length(it) == 0 && return
+    
     for e in it
-        parid = findfirst(x -> x == e.geometry, u_geoms)
-        if parid === nothing # Geometry was not added to meshes yet
-            push!(parents, e.e)
-            push!(u_geoms, e.geometry)
+        parid = Entity(geom, findfirst(x -> x.geometry == e.geometry, geom.data))
+        if parid == e # Geometry was not added to meshes yet
             mesh[e] = Mesh(BasicMesh(e.geometry))
         else
-            mesh[e] = parents[parid]
+            mesh[e] = parid
         end
     end
 end

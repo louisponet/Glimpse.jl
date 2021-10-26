@@ -1,5 +1,7 @@
 import Base.Iterators: Cycle
 
+shader_symbol(::Type{<:ComponentData}) = :none
+
 @component struct DioEntity end
 
 #TODO get rid of this in favor of a correct iterator
@@ -76,6 +78,8 @@ Base.eltype(::Type{Shape}) = Float32
 end
 Base.length(::Type{ModelMat}) = 16
 Base.eltype(::Type{ModelMat}) = Float32
+shader_symbol(::Type{ModelMat}) = :modelmat
+Base.size(::Type{ModelMat}) = size(Mat4f0)
 
 @component @with_kw struct Material 
     specpow ::Float32 = 0.8f0
@@ -83,6 +87,7 @@ Base.eltype(::Type{ModelMat}) = Float32
 end
 Base.eltype(::Type{Material}) = Float32
 Base.length(::Type{Material}) = 2
+shader_symbol(::Type{Material}) = :material
 
 @component @with_kw struct PointLight 
     diffuse ::Float32  = 0.5f0
@@ -109,6 +114,7 @@ end
 end
 Base.length(::Type{Alpha}) = 1
 Base.eltype(::Type{Alpha}) = Float32
+shader_symbol(::Type{Alpha}) = :alpha
 
 
 abstract type Color <: ComponentData end
@@ -120,6 +126,7 @@ end
 UniformColor(x,y,z) = UniformColor(RGBf0(x, y, z))
 Base.length(::Type{UniformColor}) = 3
 Base.eltype(::Type{UniformColor}) = Float32
+shader_symbol(::Type{UniformColor}) = :color
 
 # vector of colors, either supplied manually or filled in by mesher
 @component struct BufferColor <: Color

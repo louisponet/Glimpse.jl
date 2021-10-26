@@ -105,34 +105,37 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     peeling_entities = @entities_in(mesh && ucolor && modelmat && material && alpha)
     n_default = length(default_entities)
     n_peeling = length(peeling_entities)
-    
-    if n_default == length(default_vao) && n_peeling == length(peeling_vao)
+
+    ndef = isempty(default_vao) ? 0 : sum(x -> x.vertexarray.ninst, default_vao)
+    npeel = isempty(peeling_vao) ? 0 : sum(x -> x.vertexarray.ninst, peeling_vao)
+        
+    if n_default == ndef && n_peeling == npeel
         return
     end
 
     max_entities = maximum(mesh.group_size)
-    modelmats    = Vector{Mat4f0}(undef,   max_entities) 
+    modelmats    = Vector{ModelMat}(undef,   max_entities) 
     materials    = Vector{Material}(undef, max_entities) 
     ids          = Vector{Entity}(undef,   max_entities)
-    colors       = Vector{RGBf0}(undef,    max_entities)
+    colors       = Vector{UniformColor}(undef,    max_entities)
     idcolors     = Vector{RGBf0}(undef,    max_entities)
-    alphas       = Vector{Float32}(undef,  max_entities)
+    alphas       = Vector{Alpha}(undef,  max_entities)
     
     for (i, m) in enumerate(mesh)
         default_it = @entities_in(entity_group(mesh, i) && ucolor && modelmat && material && !alpha)
         peeling_it = @entities_in(entity_group(mesh, i) && ucolor && modelmat && material && alpha)
-        for (it, vao, prog) in zip((default_it, peeling_it), (default_vao, peeling_vao), (default_prog, peeling_prog))
+        for (it, vao, prog, vao_T) in zip((default_it, peeling_it), (default_vao, peeling_vao), (default_prog, peeling_prog), (InstancedDefaultVao, InstancedPeelingVao))
             tot = length(it)
-            if i <= length(vao.group_size) && tot == vao.group_size[i]
+            if i <= length(vao.group_size) && tot == vao.data[i].vertexarray.ninst 
                 # Nothing to be done for this meshgroup
                 continue
             end
 
             for (ie, e) in enumerate(it)
-                modelmats[ie] = e.modelmat
+                modelmats[ie] = e[ModelMat]
                 materials[ie] = e[Material]
                 ids[ie] = e.e
-                colors[ie] = e[UniformColor].color
+                colors[ie] = e[UniformColor]
                 if e in idc
                     idcolors[ie] = idc[e].color
                 else
@@ -142,18 +145,15 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                     vis[e] = Visible()
                 end
                 if e in alpha
-                    alphas[ie] = vis[e].visible ? alpha[e].α : 0
+                    alphas[ie] = vis[e].visible ? alpha[e] : Alpha(0)
                 else
-                    alphas[ie] = vis[e].visible ? 1 : 0
+                    alphas[ie] = vis[e].visible ? Alpha(1) : Alpha(0)
                 end
             end
-            @show i
-            @show tot
-            @show ids[1]
-                
+                            
             
             if (tot > 0 && length(vao.group_size) < i)
-                # Mesh needs to be uploaded
+                # Mesh needs to be uploaded, only time when a vao gets created
                 buffers = [generate_buffers(prog, m.mesh);
                            generate_buffers(prog, GLA.UNIFORM_DIVISOR,
                                         color    = view(colors, 1:tot),
@@ -162,23 +162,33 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                                         object_id_color = view(idcolors, 1:tot),
                                         alpha = view(alphas, 1:tot)
                                         )]
-                vao[ids[1]] = InstancedDefaultVao(VertexArray(buffers, map(x->x.-GLint(1), m.mesh.faces), tot))
+                vao[ids[1]] = vao_T(VertexArray(buffers, map(x->x.-GLint(1), m.mesh.faces), tot))
                 for e in ids[2:tot]
                     vao[e] = ids[1]
                 end
                 
-                # mesh needs to be uploaded
-            elseif i <= length(vao.group_size) && tot > vao.group_size[i]
-                # buffers need to be reuploaded because extra entities were added
-                buffers = generate_buffers(prog, GLA.UNIFORM_DIVISOR,
-                                        color    = view(colors, 1:tot),
-                                        modelmat = view(modelmats, 1:tot),
-                                        material  = view(materials, 1:tot),
-                                        object_id_color = view(idcolors, 1:tot),
-                                        alpha = view(alphas, 1:tot)
-                                        )
-                tvao = vao.data[i]
-                #TODO handle this
+            elseif i <= length(vao.group_size) && tot != vao.data[i].vertexarray.ninst 
+                # buffers need to be reuploaded because entities were added
+                upload_buffer!(vao.data[i], view(colors, 1:tot))
+                upload_buffer!(vao.data[i], view(modelmats, 1:tot))
+                upload_buffer!(vao.data[i], view(materials, 1:tot))
+                upload_buffer!(vao.data[i], view(idcolors, 1:tot), :object_id_color)
+                upload_buffer!(vao.data[i], view(alphas, 1:tot))
+                vao.data[i].vertexarray.ninst = tot
+                to_remove = Entity[]
+                for e in entity_group(vao, i)
+                    if !in(e, it)
+                        push!(to_remove, e)
+                    end
+                end
+                delete!(vao, to_remove)
+                p = parent(vao, i)
+                for e in ids
+                    if e == p
+                        continue
+                    end
+                    vao[e] = p
+                end
             end
         end
     end
@@ -206,70 +216,66 @@ Overseer.requested_components(::UniformUploader) =
 #     return ranges
 # end
 
+"Uploads buffer using glBufferSubData."
+function upload_buffer!(vao, vec::AbstractVector{T}, sym = shader_symbol(T)) where {T}
+    binfo = GLA.bufferinfo(vao.vertexarray, sym)
+    if binfo !== nothing
+        datsize = sizeof(T)
+        b = binfo.buffer
+        GLA.bind(b)
+        n = length(vec)
+        s = n * datsize
+        if n <= length(b)
+            glBufferSubData(b.buffertype, 0, s, pointer(vec, 1))
+        else
+            glBufferData(b.buffertype, s, pointer(vec, 1), b.usage)
+        end
+        b.len = n
+        GLA.unbind(binfo.buffer)
+    end
+end
+
+function upload_to_vao!(f::Function, vao_comp, comp, buffer = Vector{eltype(comp)}(undef, maximum(vao_comp.group_size)))
+    for (i, v) in enumerate(vao_comp)
+        for (ie, e) in enumerate(entity_group(vao_comp, i))
+            buffer[ie] = f(comp, e)
+        end
+        upload_buffer!(v, view(buffer, 1:vao_comp.group_size[i]))
+    end
+end
+upload_to_vao!(vao_comp::Overseer.AbstractComponent, args...) = upload_to_vao!((c, e) -> (@inbounds c[e]), vao_comp, args...)
+
 function Overseer.update(::UniformUploader, m::AbstractLedger)
     uc = m[UpdatedComponents][1]
-    mat = m[ModelMat]
-    matsize = sizeof(eltype(mat))
-    ucolor = m[UniformColor]
-    material = m[Material]
     vis = m[Visible]
     alpha = m[Alpha]
-    for vao in (m[InstancedDefaultVao], m[InstancedPeelingVao])
-        reupload_uniform_component = (comp, comp_shader_symbol) -> begin
-            it1 = @entities_in(vao && comp)
-            for tvao in vao.data
-                if comp_shader_symbol == :visible
-                    comp_vector = Alpha[]
-                    for e in it1
-                        e_vao, e_comp =
-                            vao[e], comp[e]
+    peel = m[InstancedPeelingVao]
+    default = m[InstancedDefaultVao]
+    maxsize = max(isempty(peel) ? 0 : maximum(peel.group_size), isempty(default) ? 0 : maximum(default.group_size))
+    if maxsize == 0
+        return
+    end
 
-                        if e_vao === tvao
-                            if e_comp.visible
-                                if e in alpha
-                                    push!(comp_vector, alpha[e])
-                                else
-                                    push!(comp_vector, Alpha(1))
-                                end
-                            else
-                                push!(comp_vector, Alpha(0))
-                            end
-                        end
-                    end
-                    comp_shader_symbol = :alpha
-                else
-                    comp_vector = eltype(comp)[]
-                    for e in it1
-                        e_vao, e_comp = vao[e], comp[e]
-                        if e_vao === tvao
-                            push!(comp_vector, e_comp)
-                        end
+    # always reupload visible
+    push!(uc.components, Alpha)
+    for c in filter(x -> shader_symbol(x) != :none, uc.components)
+        comp = m[c]
+        vec  = Vector{eltype(comp)}(undef, maxsize)
+        for vao in (default, peel)
+            if isempty(vao)
+                continue
+            end
+            if c == Alpha
+                upload_to_vao!(vao, comp, vec) do a, e
+                    if e in a
+                        return @inbounds vis[e].visible ? a[e] : Alpha(0.0)
+                    else
+                        return @inbounds vis[e].visible ? Alpha(1.0) : Alpha(0.0)
                     end
                 end
-                if !isempty(comp_vector)
-                    binfo = GLA.bufferinfo(tvao.vertexarray, comp_shader_symbol)
-                    datsize = sizeof(eltype(comp_vector))
-                    if binfo !== nothing
-                        GLA.bind(binfo.buffer)
-                        s = length(comp_vector) * datsize
-                        glBufferData(binfo.buffer.buffertype, s, pointer(comp_vector, 1), binfo.buffer.usage)
-                        GLA.unbind(binfo.buffer)
-                    end
-                end
+            else
+                upload_to_vao!(vao, comp, vec)
             end
         end
-        if ModelMat in uc.components
-            reupload_uniform_component(m[ModelMat], :modelmat)
-        end
-        if UniformColor in uc.components
-            reupload_uniform_component(m[UniformColor], :color)
-        end
-        if Material in uc.components
-            reupload_uniform_component(m[Material], :material)
-        end
-        # if Alpha in uc.components
-        #     reupload_uniform_component(m[Alpha], :alpha)
-        # end    
-        reupload_uniform_component(m[Visible], :visible)
     end
 end
