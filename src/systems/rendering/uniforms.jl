@@ -2,7 +2,9 @@ import GLAbstraction: gluniform
 
 struct UniformCalculator <: System end
 
-Overseer.requested_components(::UniformCalculator) = (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents, Rotation)
+function Overseer.requested_components(::UniformCalculator)
+    return (Spatial, Shape, ModelMat, Dynamic, Camera3D, UpdatedComponents, Rotation)
+end
 
 function Overseer.update(::UniformCalculator, m::AbstractLedger)
     uc        = singleton(m, UpdatedComponents)
@@ -15,7 +17,11 @@ function Overseer.update(::UniformCalculator, m::AbstractLedger)
     rotation  = m[Rotation]
 
     for e in @entities_in(spatial)
-        if !in(e, modelmat) || in(e, dyn) || in(e, camera) || in(Spatial, uc) || in(Rotation, uc)
+        if !in(e, modelmat) ||
+           in(e, dyn) ||
+           in(e, camera) ||
+           in(Spatial, uc) ||
+           in(Rotation, uc)
             m_updated = true
 
             tmat = translmat(spatial[e].position)
@@ -62,9 +68,9 @@ end
 #     push!(uc, ModelMat)
 # end
 
-
-function set_entity_uniforms_func(render_program::Union{DefaultProgram, PeelingProgram, LineProgram}, system::System)
-    prog = render_program.program
+function set_entity_uniforms_func(render_program::Union{DefaultProgram,PeelingProgram,
+                                                        LineProgram}, system::System)
+    prog     = render_program.program
     material = component(system, Material)
     modelmat = component(system, ModelMat)
     ucolor   = component(system, UniformColor)
@@ -83,13 +89,14 @@ end
 
 function gluniform(program::GLA.Program, spatial, camera::Camera3D)
     gluniform(program, :projview, camera.projview)
-    gluniform(program, :campos,   spatial.position)
+    return gluniform(program, :campos, spatial.position)
 end
 
-function gluniform(program::GLA.Program, pointlight::PointLight, color::UniformColor, spatial::Spatial)
-    gluniform(program, Symbol("plight.color"),              RGB(color.color))
-    gluniform(program, Symbol("plight.position"),           spatial.position)
-    gluniform(program, Symbol("plight.amb_intensity"),      pointlight.ambient)
+function gluniform(program::GLA.Program, pointlight::PointLight, color::UniformColor,
+                   spatial::Spatial)
+    gluniform(program, Symbol("plight.color"), RGB(color.color))
+    gluniform(program, Symbol("plight.position"), spatial.position)
+    gluniform(program, Symbol("plight.amb_intensity"), pointlight.ambient)
     gluniform(program, Symbol("plight.specular_intensity"), pointlight.specular)
-    gluniform(program, Symbol("plight.diff_intensity"),     pointlight.diffuse)
+    return gluniform(program, Symbol("plight.diff_intensity"), pointlight.diffuse)
 end

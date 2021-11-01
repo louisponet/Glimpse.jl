@@ -3,7 +3,7 @@ include("systems/core.jl")
 include("systems/camera.jl")
 include("systems/mesher.jl")
 
-abstract type AbstractRenderSystem  <: System end
+abstract type AbstractRenderSystem <: System end
 include("systems/rendering/prerenderer.jl")
 include("systems/rendering/default.jl")
 include("systems/rendering/lines.jl")

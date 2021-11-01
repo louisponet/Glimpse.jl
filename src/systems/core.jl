@@ -6,8 +6,8 @@ Overseer.requested_components(::Timer) = (TimingData,)
 function Overseer.update(::Timer, m::AbstractLedger)
     for t in m[TimingData]
         nt = time()
-        t.dtime = t.reversed ? - nt + t.time : nt - t.time
-        t.time    = nt
+        t.dtime = t.reversed ? -nt + t.time : nt - t.time
+        t.time = nt
         t.frames += 1
     end
 end
@@ -19,8 +19,8 @@ function Overseer.update(::Sleeper, m::AbstractLedger)
     sd = m[TimingData]
     @timeit sd[1].timer "swapping" swapbuffers(m[Canvas][1])
     curtime    = time()
-    dt = (curtime - sd[1].time)
-    sleep_time = 1/sd[1].preferred_fps - dt
+    dt         = (curtime - sd[1].time)
+    sleep_time = 1 / sd[1].preferred_fps - dt
     st         = sleep_time - 0.002
     if st > 0.0
         sleep(st)
@@ -34,7 +34,7 @@ Overseer.requested_components(::Resizer) = (Canvas, IOTarget)
 
 function Overseer.update(::Resizer, m::AbstractLedger)
     c = singleton(m, Canvas)
-    iofbo = singleton(m, IOTarget)    
+    iofbo = singleton(m, IOTarget)
 
     fwh = c.framebuffer_size
     resize!(c, fwh)
@@ -45,6 +45,5 @@ function Overseer.update(::Resizer, m::AbstractLedger)
     end
     bind(iofbo)
     draw(iofbo)
-    clear!(iofbo)
+    return clear!(iofbo)
 end
-

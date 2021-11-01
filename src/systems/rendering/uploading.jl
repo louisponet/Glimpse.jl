@@ -1,7 +1,9 @@
 struct Uploader <: System end
 
-Overseer.requested_components(::Uploader) =
-    (Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram, PeelingProgram, PeelingVao, LineGeometry, Alpha, Visible)
+function Overseer.requested_components(::Uploader)
+    return (Mesh, BufferColor, DefaultVao, DefaultProgram, LineVao, LineProgram,
+            PeelingProgram, PeelingVao, LineGeometry, Alpha, Visible)
+end
 
 shaders(::Type{DefaultProgram}) = default_shaders()
 shaders(::Type{PeelingProgram}) = peeling_shaders()
@@ -10,7 +12,7 @@ shaders(::Type{InstancedPeelingProgram}) = instanced_peeling_shaders()
 shaders(::Type{PeelingCompositingProgram}) = peeling_compositing_shaders()
 shaders(::Type{CompositingProgram}) = compositing_shaders()
 shaders(::Type{BlendProgram}) = blending_shaders()
-shaders(::Type{FXAAProgram})  = fxaa_shaders()
+shaders(::Type{FXAAProgram}) = fxaa_shaders()
 #TODO there is some preparation doubling here!
 
 #TODO cleanup: really not the place to do this
@@ -27,19 +29,19 @@ function Overseer.update(::Uploader, m::AbstractLedger)
     mesh, bcolor, ucolor = m[Mesh], m[BufferColor], m[UniformColor]
     default_vao = m[DefaultVao]
     peeling_vao = m[PeelingVao]
-    line_vao    = m[LineVao]
-    peeling_prog= singleton(m, PeelingProgram)
-    default_prog= singleton(m, DefaultProgram)
-    line_prog   = singleton(m, LineProgram)
+    line_vao = m[LineVao]
+    peeling_prog = singleton(m, PeelingProgram)
+    default_prog = singleton(m, DefaultProgram)
+    line_prog = singleton(m, LineProgram)
     uc = singleton(m, UpdatedComponents)
     alpha = m[Alpha]
 
     #Buffer color entities are always not instanced
     for e in @entities_in(mesh && bcolor && !default_vao && !peeling_vao)
         gen_vao = prog -> begin
-    		buffers = [generate_buffers(prog, e.mesh);
-    	               generate_buffers(prog, GEOMETRY_DIVISOR, color=e.color)]
-            return VertexArray(buffers, map(x-> x.-GLint(1), faces(e.mesh)))
+            buffers = [generate_buffers(prog, e.mesh);
+                       generate_buffers(prog, GEOMETRY_DIVISOR; color = e.color)]
+            return VertexArray(buffers, map(x -> x .- GLint(1), faces(e.mesh)))
         end
 
         if e in alpha && alpha[e].α < 1
@@ -63,12 +65,17 @@ function Overseer.update(::Uploader, m::AbstractLedger)
         end
 
         if !(e in line_vao)
-            color_attach = BufferAttachmentInfo(:color, color_loc, Buffer(color_vec), GEOMETRY_DIVISOR)
-            points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e.points), GEOMETRY_DIVISOR)
-            line_vao[e] = LineVao(VertexArray([points_attach, color_attach], GL_LINE_STRIP_ADJACENCY))
-        else 
-            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer, e.points)
-            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer, color_vec)
+            color_attach = BufferAttachmentInfo(:color, color_loc, Buffer(color_vec),
+                                                GEOMETRY_DIVISOR)
+            points_attach = BufferAttachmentInfo(:vertices, vert_loc, Buffer(e.points),
+                                                 GEOMETRY_DIVISOR)
+            line_vao[e] = LineVao(VertexArray([points_attach, color_attach],
+                                              GL_LINE_STRIP_ADJACENCY))
+        else
+            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :vertices).buffer,
+                             e.points)
+            GLA.upload_data!(GLA.bufferinfo(line_vao[e].vertexarray, :color).buffer,
+                             color_vec)
         end
     end
 
@@ -80,18 +87,17 @@ function Overseer.update(::Uploader, m::AbstractLedger)
             vis[e] = Visible()
         end
     end
-            
 end
 
 struct InstancedUploader <: System end
 
 function Overseer.update(::InstancedUploader, m::AbstractLedger)
-    default_prog = m[InstancedDefaultProgram][1].program    
-    peeling_prog = m[InstancedPeelingProgram][1].program    
+    default_prog = m[InstancedDefaultProgram][1].program
+    peeling_prog = m[InstancedPeelingProgram][1].program
     default_vao  = m[InstancedDefaultVao]
     peeling_vao  = m[InstancedPeelingVao]
-    idc = m[Selectable]
-    mesh = m[Mesh]
+    idc          = m[Selectable]
+    mesh         = m[Mesh]
     if isempty(mesh)
         return
     end
@@ -100,7 +106,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     material = m[Material]
     alpha = m[Alpha]
     vis = m[Visible]
-    
+
     default_entities = @entities_in(mesh && ucolor && modelmat && material && !alpha)
     peeling_entities = @entities_in(mesh && ucolor && modelmat && material && alpha)
     n_default = length(default_entities)
@@ -108,25 +114,35 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
 
     ndef = isempty(default_vao) ? 0 : sum(x -> x.vertexarray.ninst, default_vao)
     npeel = isempty(peeling_vao) ? 0 : sum(x -> x.vertexarray.ninst, peeling_vao)
-        
+
     if n_default == ndef && n_peeling == npeel
         return
     end
 
     max_entities = maximum(mesh.group_size)
-    modelmats    = Vector{ModelMat}(undef,   max_entities) 
-    materials    = Vector{Material}(undef, max_entities) 
-    ids          = Vector{Entity}(undef,   max_entities)
-    colors       = Vector{UniformColor}(undef,    max_entities)
-    idcolors     = Vector{RGBf0}(undef,    max_entities)
-    alphas       = Vector{Alpha}(undef,  max_entities)
-    
+    modelmats    = Vector{ModelMat}(undef, max_entities)
+    materials    = Vector{Material}(undef, max_entities)
+    ids          = Vector{Entity}(undef, max_entities)
+    colors       = Vector{UniformColor}(undef, max_entities)
+    idcolors     = Vector{RGBf0}(undef, max_entities)
+    alphas       = Vector{Alpha}(undef, max_entities)
+
     for (i, m) in enumerate(mesh)
-        default_it = @entities_in(entity_group(mesh, i) && ucolor && modelmat && material && !alpha)
-        peeling_it = @entities_in(entity_group(mesh, i) && ucolor && modelmat && material && alpha)
-        for (it, vao, prog, vao_T) in zip((default_it, peeling_it), (default_vao, peeling_vao), (default_prog, peeling_prog), (InstancedDefaultVao, InstancedPeelingVao))
+        default_it = @entities_in(entity_group(mesh, i) &&
+                                  ucolor &&
+                                  modelmat &&
+                                  material &&
+                                  !alpha)
+        peeling_it = @entities_in(entity_group(mesh, i) &&
+                                  ucolor &&
+                                  modelmat &&
+                                  material &&
+                                  alpha)
+        for (it, vao, prog, vao_T) in
+            zip((default_it, peeling_it), (default_vao, peeling_vao),
+                (default_prog, peeling_prog), (InstancedDefaultVao, InstancedPeelingVao))
             tot = length(it)
-            if i <= length(vao.group_size) && tot == vao.data[i].vertexarray.ninst 
+            if i <= length(vao.group_size) && tot == vao.data[i].vertexarray.ninst
                 # Nothing to be done for this meshgroup
                 continue
             end
@@ -139,7 +155,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                 if e in idc
                     idcolors[ie] = idc[e].color
                 else
-                    idcolors[ie] = RGBf0(1,1,1)
+                    idcolors[ie] = RGBf0(1, 1, 1)
                 end
                 if !(e in vis)
                     vis[e] = Visible()
@@ -150,24 +166,23 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                     alphas[ie] = vis[e].visible ? Alpha(1) : Alpha(0)
                 end
             end
-                            
-            
+
             if (tot > 0 && length(vao.group_size) < i)
                 # Mesh needs to be uploaded, only time when a vao gets created
                 buffers = [generate_buffers(prog, m.mesh);
-                           generate_buffers(prog, GLA.UNIFORM_DIVISOR,
-                                        color    = view(colors, 1:tot),
-                                        modelmat = view(modelmats, 1:tot),
-                                        material  = view(materials, 1:tot),
-                                        object_id_color = view(idcolors, 1:tot),
-                                        alpha = view(alphas, 1:tot)
-                                        )]
-                vao[ids[1]] = vao_T(VertexArray(buffers, map(x->x.-GLint(1), m.mesh.faces), tot))
+                           generate_buffers(prog, GLA.UNIFORM_DIVISOR;
+                                            color = view(colors, 1:tot),
+                                            modelmat = view(modelmats, 1:tot),
+                                            material = view(materials, 1:tot),
+                                            object_id_color = view(idcolors, 1:tot),
+                                            alpha = view(alphas, 1:tot))]
+                vao[ids[1]] = vao_T(VertexArray(buffers,
+                                                map(x -> x .- GLint(1), m.mesh.faces), tot))
                 for e in ids[2:tot]
                     vao[e] = ids[1]
                 end
-                
-            elseif i <= length(vao.group_size) && tot != vao.data[i].vertexarray.ninst 
+
+            elseif i <= length(vao.group_size) && tot != vao.data[i].vertexarray.ninst
                 # buffers need to be reuploaded because entities were added
                 upload_buffer!(vao.data[i], view(colors, 1:tot))
                 upload_buffer!(vao.data[i], view(modelmats, 1:tot))
@@ -196,8 +211,10 @@ end
 
 struct UniformUploader <: System end
 
-Overseer.requested_components(::UniformUploader) =
-    (InstancedDefaultVao, InstancedPeelingVao, ModelMat, Selectable, UniformColor, UpdatedComponents)
+function Overseer.requested_components(::UniformUploader)
+    return (InstancedDefaultVao, InstancedPeelingVao, ModelMat, Selectable, UniformColor,
+            UpdatedComponents)
+end
 
 # function find_contiguous_bounds(indices)
 #     ranges = UnitRange[]
@@ -235,7 +252,8 @@ function upload_buffer!(vao, vec::AbstractVector{T}, sym = shader_symbol(T)) whe
     end
 end
 
-function upload_to_vao!(f::Function, vao_comp, comp, buffer = Vector{eltype(comp)}(undef, maximum(vao_comp.group_size)))
+function upload_to_vao!(f::Function, vao_comp, comp,
+                        buffer = Vector{eltype(comp)}(undef, maximum(vao_comp.group_size)))
     for (i, v) in enumerate(vao_comp)
         for (ie, e) in enumerate(entity_group(vao_comp, i))
             buffer[ie] = f(comp, e)
@@ -243,7 +261,9 @@ function upload_to_vao!(f::Function, vao_comp, comp, buffer = Vector{eltype(comp
         upload_buffer!(v, view(buffer, 1:vao_comp.group_size[i]))
     end
 end
-upload_to_vao!(vao_comp::Overseer.AbstractComponent, args...) = upload_to_vao!((c, e) -> (@inbounds c[e]), vao_comp, args...)
+function upload_to_vao!(vao_comp::Overseer.AbstractComponent, args...)
+    return upload_to_vao!((c, e) -> (@inbounds c[e]), vao_comp, args...)
+end
 
 function Overseer.update(::UniformUploader, m::AbstractLedger)
     uc = m[UpdatedComponents][1]
@@ -251,7 +271,8 @@ function Overseer.update(::UniformUploader, m::AbstractLedger)
     alpha = m[Alpha]
     peel = m[InstancedPeelingVao]
     default = m[InstancedDefaultVao]
-    maxsize = max(isempty(peel) ? 0 : maximum(peel.group_size), isempty(default) ? 0 : maximum(default.group_size))
+    maxsize = max(isempty(peel) ? 0 : maximum(peel.group_size),
+                  isempty(default) ? 0 : maximum(default.group_size))
     if maxsize == 0
         return
     end

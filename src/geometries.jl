@@ -1,18 +1,19 @@
 import GeometryBasics: Sphere, decompose, normals
 
-
 #-----------------------------Generated geometries------------------------#
-function generate_sphere(complexity=2)
-    X = .525731112f0
-    Z = .850650808f0
-    vertices = Point3f0[(-X,0,Z), (X,0,Z), (-X,0,-Z), (X,0,-Z),
-        (0,Z,X), (0,Z,-X), (0,-Z,X), (0,-Z,-X),
-        (Z,X,0), (-Z,X,0), (Z,-X,0), (-Z,-X,0)]
+function generate_sphere(complexity = 2)
+    X = 0.525731112f0
+    Z = 0.850650808f0
+    vertices = Point3f0[(-X, 0, Z), (X, 0, Z), (-X, 0, -Z), (X, 0, -Z), (0, Z, X),
+                        (0, Z, -X), (0, -Z, X), (0, -Z, -X), (Z, X, 0), (-Z, X, 0),
+                        (Z, -X, 0), (-Z, -X, 0)]
 
-    faces = map(x-> x.+1, TriangleFace{Int32}[(1,4,0), (4,9,0), (4,5,9), (8,5,4), (1,8,4),
-          (1,10,8), (10,3,8), (8,3,5), (3,2,5), (3,7,2),
-        (3,10,7), (10,6,7), (6,11,7), (6,0,11), (6,1,0),
-        (10,1,6), (11,0,9), (2,11,9), (5,2,9), (11,2,7)])
+    faces = map(x -> x .+ 1,
+                TriangleFace{Int32}[(1, 4, 0), (4, 9, 0), (4, 5, 9), (8, 5, 4), (1, 8, 4),
+                                    (1, 10, 8), (10, 3, 8), (8, 3, 5), (3, 2, 5), (3, 7, 2),
+                                    (3, 10, 7), (10, 6, 7), (6, 11, 7), (6, 0, 11),
+                                    (6, 1, 0), (10, 1, 6), (11, 0, 9), (2, 11, 9),
+                                    (5, 2, 9), (11, 2, 7)])
 
     outverts, outfaces = subdivide(vertices, faces, complexity)
     normals = Vec3f0.(copy(outverts))
@@ -22,7 +23,7 @@ end
 function subdivide(vertices, faces, level)
     outvertices = Point3f0[]
     outfaces    = TriangleFace{Int32}[]
-    newfaces = TriangleFace{Int32}[]
+    newfaces    = TriangleFace{Int32}[]
     newvertices = Point3f0[]
     if level > 0
         for face in faces
@@ -46,10 +47,10 @@ function subdivide(vertices, faces, level)
     return vertices, faces
 end
 
-function sphere(dio::Diorama, pos, radius, complexity=2, attributes_...; uniforms...)
+function sphere(dio::Diorama, pos, radius, complexity = 2, attributes_...; uniforms...)
     sphpos = convert(Point3f0, pos)
     sphrad = convert(Float32, radius)
-    modelmat = translmat(sphpos) * scalemat(Point3f0(sphrad,sphrad,sphrad))
+    modelmat = translmat(sphpos) * scalemat(Point3f0(sphrad, sphrad, sphrad))
 
     verts, norms, faces = Sphere(complexity)
     atdict = SymAnyDict(attributes_)
@@ -61,11 +62,12 @@ function sphere(dio::Diorama, pos, radius, complexity=2, attributes_...; uniform
     elseif haskey(atdict, :colors)
         colors = pop!(atdict, :colors)
     else
-        colors = fill(RGB{Float32}(0,0,0), length(verts))
+        colors = fill(RGB{Float32}(0, 0, 0), length(verts))
     end
     unidict[:modelmat] = modelmat
     mesh = AttributeMesh((color = colors,), BasicMesh(verts, faces, norms))
-    sphrend = InstancedMeshRenderable(:sphere, mesh, unidict, Dict(:default=>false), false)
+    sphrend = InstancedMeshRenderable(:sphere, mesh, unidict, Dict(:default => false),
+                                      false)
     add!(dio, sphrend)
     return sphrend
 end
@@ -74,15 +76,16 @@ end
 
 loadobj(filename::String) = load(joinpath(@__DIR__, "../../assets/obj", filename))
 
-function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attributes...; uniforms...)
+function cylinder(dio::Diorama, startpos, endpos, radius, name = "cylinder", attributes...;
+                  uniforms...)
     startp = convert(Point3f0, startpos)
     endp   = convert(Point3f0, endpos)
     cylrad = convert(Float32, radius)
     rotmat = rotate(startp, endp)
-    scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp-startp)))
+    scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp - startp)))
     tmat   = translmat(startp)
 
-    modelmat =  tmat * rotmat * scalm
+    modelmat = tmat * rotmat * scalm
 
     cylmesh = loadobj("cylinder.obj")
 
@@ -91,7 +94,7 @@ function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attri
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(cylmesh.vertices))
     else
-        atdict[:color] = fill(RGB{Float32}(0,0,0), length(cylmesh.vertices))
+        atdict[:color] = fill(RGB{Float32}(0, 0, 0), length(cylmesh.vertices))
     end
     unidict[:modelmat] = modelmat
 
@@ -100,11 +103,12 @@ function cylinder(dio::Diorama, startpos, endpos, radius, name="cylinder", attri
     return cylrend
 end
 
-function rectangle(dio::Diorama, startpos, endpos, widths, name="rectangle", attributes...; uniforms...)
+function rectangle(dio::Diorama, startpos, endpos, widths, name = "rectangle",
+                   attributes...; uniforms...)
     startp = convert(Point3f0, startpos)
     endp   = convert(Point3f0, endpos)
     rotmat = rotate(startp, endp)
-    scalm  = scalemat(Point3f0(widths[1], widths[2], norm(endp-startp)))
+    scalm  = scalemat(Point3f0(widths[1], widths[2], norm(endp - startp)))
     tmat   = translmat(startp)
 
     modelmat = tmat * rotmat * scalm
@@ -116,7 +120,7 @@ function rectangle(dio::Diorama, startpos, endpos, widths, name="rectangle", att
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(cubmesh.vertices))
     else
-        atdict[:color] = fill(RGB{Float32}(0,0,0), length(cubmesh.vertices))
+        atdict[:color] = fill(RGB{Float32}(0, 0, 0), length(cubmesh.vertices))
     end
     unidict[:modelmat] = modelmat
     cubrend = MeshRenderable(0, name, cubmesh, atdict...; unidict...)
@@ -124,12 +128,13 @@ function rectangle(dio::Diorama, startpos, endpos, widths, name="rectangle", att
     return cubrend
 end
 
-function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...; uniforms...)
+function cone(dio::Diorama, startpos, endpos, radius, name = "cone", attributes...;
+              uniforms...)
     startp = convert(Point3f0, startpos)
     endp   = convert(Point3f0, endpos)
     cylrad = convert(Float32, radius)
     rotmat = rotate(startp, endp)
-    scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp-startp)))
+    scalm  = scalemat(Point3f0(cylrad, cylrad, norm(endp - startp)))
     tmat   = translmat(startp)
 
     modelmat = tmat * rotmat * scalm
@@ -141,7 +146,7 @@ function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(cylmesh.vertices))
     else
-        atdict[:color] = fill(RGB{Float32}(0,0,0), length(cylmesh.vertices))
+        atdict[:color] = fill(RGB{Float32}(0, 0, 0), length(cylmesh.vertices))
     end
     unidict[:modelmat] = modelmat
 
@@ -150,36 +155,37 @@ function cone(dio::Diorama, startpos, endpos, radius, name="cone", attributes...
     return cylrend
 end
 
-function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name="arrow", headratio=1/4, attributes...;uniforms...)
+function arrow(dio::Diorama, startpos, endpos, rad1, rad2, name = "arrow",
+               headratio = 1 / 4, attributes...; uniforms...)
     startp = convert(Point3f0, startpos)
     endp   = convert(Point3f0, endpos)
 
-    rotmat = rotate(startp, endp)
-    scalm  = scalemat(Point3f0(rad1, rad1, norm(endp-startp)))
-    tmat   = translmat(startp)
+    rotmat   = rotate(startp, endp)
+    scalm    = scalemat(Point3f0(rad1, rad1, norm(endp - startp)))
+    tmat     = translmat(startp)
     modelmat = tmat * rotmat * scalm
     conemesh = loadobj("cone.obj")
     cylmesh  = loadobj("cylinder.obj")
 
-    cyllen = norm(endp - startp) * (1-headratio)
+    cyllen = norm(endp - startp) * (1 - headratio)
     conelen = norm(endp - startp) * headratio
 
     conetrans = translmat(Point3f0(0, 0, cyllen))
-    conescale = scalemat(Point3f0(rad2/rad1, rad2/rad1, conelen))
+    conescale = scalemat(Point3f0(rad2 / rad1, rad2 / rad1, conelen))
     conemat = conetrans * conescale
-    coneverts = [Point3f0((conemat * Vec4f0(v[1],v[2],v[3],1.0f0))[1:3]...) for v in conemesh.vertices]
-    conefaces = [v .+ Int32(length(cylmesh.vertices)+1) for v in conemesh.faces]
-    allverts = Point3f0.([cylmesh.vertices;coneverts])
-    allnorms = [cylmesh.normals;conemesh.normals]
-    allfaces = TriangleFace{Int32}.([cylmesh.faces;conefaces])
-
+    coneverts = [Point3f0((conemat*Vec4f0(v[1], v[2], v[3], 1.0f0))[1:3]...)
+                 for v in conemesh.vertices]
+    conefaces = [v .+ Int32(length(cylmesh.vertices) + 1) for v in conemesh.faces]
+    allverts = Point3f0.([cylmesh.vertices; coneverts])
+    allnorms = [cylmesh.normals; conemesh.normals]
+    allfaces = TriangleFace{Int32}.([cylmesh.faces; conefaces])
 
     atdict = SymAnyDict(attributes)
     unidict = SymAnyDict(uniforms)
     if haskey(unidict, :color)
         atdict[:color] = fill(pop!(unidict, :color), length(allverts))
     else
-        atdict[:color] = fill(RGB{Float32}(0,0,0), length(allverts))
+        atdict[:color] = fill(RGB{Float32}(0, 0, 0), length(allverts))
     end
     unidict[:modelmat] = modelmat
     atdict[:vertices] = allverts

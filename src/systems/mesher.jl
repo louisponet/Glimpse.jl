@@ -22,9 +22,9 @@ function Overseer.update(::Union{M}, m::AbstractLedger) where {M<:Mesher}
     mesh = m[Mesh]
     geom = m[geometry_type(M)]
     it = @entities_in(geom && !mesh)
-    
+
     length(it) == 0 && return
-    
+
     for e in it
         parid = Entity(geom, findfirst(x -> x.geometry == e.geometry, geom.data))
         if parid == e # Geometry was not added to meshes yet
@@ -43,7 +43,7 @@ struct DensityMesher <: Mesher end
 
 Overseer.requested_components(::DensityMesher) = (DensityGeometry, DensityColor, Mesh, Grid)
 
-function Overseer.update(::Union{FunctionMesher, DensityMesher}, m::AbstractLedger)
+function Overseer.update(::Union{FunctionMesher,DensityMesher}, m::AbstractLedger)
     mesh = m[Mesh]
     grid = m[Grid]
     dens_c = m[DensityColor]
@@ -54,12 +54,13 @@ function Overseer.update(::Union{FunctionMesher, DensityMesher}, m::AbstractLedg
             if isempty(vertices)
                 continue
             end
-            faces         = [GeometryBasics.TriangleFace{GLint}(i,i+1,i+2) for i=1:3:length(vertices)]
-            norms =  length(faces) == 0 ? Vec3f0[] : normals(vertices, faces) 
+            faces = [GeometryBasics.TriangleFace{GLint}(i, i + 1, i + 2)
+                     for i in 1:3:length(vertices)]
+            norms = length(faces) == 0 ? Vec3f0[] : normals(vertices, faces)
             mesh[e] = Mesh(BasicMesh(vertices, faces, norms))
             if e in dens_c
                 d = dens_c[e]
-                m[BufferColor][e] = BufferColor(map(x->d.color[x...], ids))
+                m[BufferColor][e] = BufferColor(map(x -> d.color[x...], ids))
             end
         end
     end

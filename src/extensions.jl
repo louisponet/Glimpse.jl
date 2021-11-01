@@ -2,42 +2,45 @@ import GLAbstraction: FrameBuffer, VertexArray, Buffer, Program, BufferAttachmen
 import GLAbstraction: textureformat_from_type_sym, getfirst, gluniform, clear!
 
 #----------------GLAbstraction-------------------------#
-default_framebuffer(fb_size) = FrameBuffer(fb_size, DepthStencil{GLAbstraction.Float24, N0f8}, RGBA{N0f8}, Vec{2, GLushort}, RGBA{N0f8})
+function default_framebuffer(fb_size)
+    return FrameBuffer(fb_size, DepthStencil{GLAbstraction.Float24,N0f8}, RGBA{N0f8},
+                       Vec{2,GLushort}, RGBA{N0f8})
+end
 
-clear!(fbo::FrameBuffer, color::RGBA) = clear!(fbo, (color.r, color.g, color.b, color.alpha))
+function clear!(fbo::FrameBuffer, color::RGBA)
+    return clear!(fbo, (color.r, color.g, color.b, color.alpha))
+end
 
-const fullscreen_pos = [Vec3f0(-1, 1, 0), Vec3f0(-1, -1, 0),
-                        Vec3f0(1, 1, 0) , Vec3f0(1, -1, 0)]
+const fullscreen_pos = [Vec3f0(-1, 1, 0), Vec3f0(-1, -1, 0), Vec3f0(1, 1, 0),
+                        Vec3f0(1, -1, 0)]
 
-const fullscreen_uv = [Vec2f0(0, 1), Vec2f0(0, 0),
-                       Vec2f0(1, 1), Vec2f0(1, 0)]
-
+const fullscreen_uv = [Vec2f0(0, 1), Vec2f0(0, 0), Vec2f0(1, 1), Vec2f0(1, 0)]
 
 #REVIEW: not used
 function glenum2julia(x::UInt32)
-    x == GL_FLOAT      && return Float32
+    x == GL_FLOAT && return Float32
     x == GL_FLOAT_VEC3 && return Vec3f0
     x == GL_FLOAT_VEC4 && return Vec4f0
     x == GL_FLOAT_MAT2 && return Mat2f0
     x == GL_FLOAT_MAT3 && return Mat3f0
     x == GL_FLOAT_MAT4 && return Mat4f0
 
-    x == GL_DOUBLE      && return f64
+    x == GL_DOUBLE && return f64
     x == GL_DOUBLE_VEC3 && return Vec3{f64}
     x == GL_DOUBLE_VEC4 && return Vec4{f64}
     x == GL_DOUBLE_MAT2 && return Mat2{f64}
     x == GL_DOUBLE_MAT3 && return Mat3{f64}
     x == GL_DOUBLE_MAT4 && return Mat4{f64}
 
-    x == GL_INT       && return i32
-    x == GL_INT_VEC2  && return Vec2{i32}
-    x == GL_INT_VEC3  && return Vec3{i32}
-    x == GL_INT_VEC4  && return Vec4{i32}
+    x == GL_INT && return i32
+    x == GL_INT_VEC2 && return Vec2{i32}
+    x == GL_INT_VEC3 && return Vec3{i32}
+    x == GL_INT_VEC4 && return Vec4{i32}
 
-    x == GL_UNSIGNED_INT        && return u32
-    x == GL_UNSIGNED_INT_VEC2   && return Vec2{u32}
-    x == GL_UNSIGNED_INT_VEC3   && return Vec3{u32}
-    x == GL_UNSIGNED_INT_VEC4   && return Vec4{u32}
+    x == GL_UNSIGNED_INT && return u32
+    x == GL_UNSIGNED_INT_VEC2 && return Vec2{u32}
+    x == GL_UNSIGNED_INT_VEC3 && return Vec3{u32}
+    return x == GL_UNSIGNED_INT_VEC4 && return Vec4{u32}
 end
 
 function mergepop!(d1, d2)
@@ -56,26 +59,26 @@ Base.size(::Type{<:Number}) = 1
 
 #this stuff is here because of world age stuff I think
 function gluniform(location::Integer, x::Mat4{Float32})
-    glUniformMatrix4fv(location, 1, GL_FALSE, reinterpret(Float32,[x]))
+    return glUniformMatrix4fv(location, 1, GL_FALSE, reinterpret(Float32, [x]))
 end
 
 function uniformfunc(typ::DataType, dims::Tuple{Int})
-    Symbol(string("glUniform", first(dims), GLAbstraction.opengl_postfix(typ)))
+    return Symbol(string("glUniform", first(dims), GLAbstraction.opengl_postfix(typ)))
 end
 
-function uniformfunc(typ::DataType, dims::Tuple{Int, Int})
+function uniformfunc(typ::DataType, dims::Tuple{Int,Int})
     M, N = dims
-    Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)", opengl_postfix(typ)))
+    return Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)",
+                         opengl_postfix(typ)))
 end
 
-function gluniform(location::Integer, x::FSA) where FSA
+function gluniform(location::Integer, x::FSA) where {FSA}
     GLAbstraction.glasserteltype(FSA)
     xref = [x]
-    gluniform(location, xref)
+    return gluniform(location, xref)
 end
 
-
-@generated function gluniform(location::Integer, x::Vector{FSA}) where FSA
+@generated function gluniform(location::Integer, x::Vector{FSA}) where {FSA}
     GLAbstraction.glasserteltype(eltype(FSA))
     func = uniformfunc(eltype(FSA), size(FSA))
     callexpr = if ndims(FSA) == 2
@@ -142,30 +145,35 @@ function generate_buffers(program::Program, divisor::GLint; name_buffers...)
     for (name, val) in pairs(name_buffers)
         loc = attribute_location(program, name)
         if loc != INVALID_ATTRIBUTE
-            buflen = buflen == 0 ? length(val) : buflen 
+            buflen = buflen == 0 ? length(val) : buflen
             vallen = length(val)
             if vallen == buflen
-                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(val, usage=GL_DYNAMIC_DRAW), divisor))
+                push!(buffers,
+                      BufferAttachmentInfo(name, loc, Buffer(val; usage = GL_DYNAMIC_DRAW),
+                                           divisor))
             elseif !isa(val, Vector)
-                push!(buffers, BufferAttachmentInfo(name, loc, Buffer(fill(val, buflen), usage=GL_DYNAMIC_DRAW), divisor))
+                push!(buffers,
+                      BufferAttachmentInfo(name, loc,
+                                           Buffer(fill(val, buflen);
+                                                  usage = GL_DYNAMIC_DRAW), divisor))
             end
         end
     end
     return buffers
 end
 ## StaticArrays
-const Area            = Rect2D
-const X_AXIS          = Vec3f0(1.0f0, 0.0  , 0.0)
-const Y_AXIS          = Vec3f0(0.0,   1.0f0, 0.0)
-const Z_AXIS          = Vec3f0(0.0,   0.0  , 1.0f0)
+const Area   = Rect2D
+const X_AXIS = Vec3f0(1.0f0, 0.0, 0.0)
+const Y_AXIS = Vec3f0(0.0, 1.0f0, 0.0)
+const Z_AXIS = Vec3f0(0.0, 0.0, 1.0f0)
 
-GeometryBasics.Vec3f0(v::Vec2, nr=0.0) = Vec3f0(v..., nr)
+GeometryBasics.Vec3f0(v::Vec2, nr = 0.0) = Vec3f0(v..., nr)
 GeometryBasics.Vec3f0(v::Vec3) = Vec3f0(v...)
-GeometryBasics.Vec4f0(v::Vec2, n1=0.0, n2=0.0) = Vec4f0(v..., n1, n2)
-GeometryBasics.Vec4f0(v::Vec3, n1=0.0) = Vec4f0(v..., n1)
+GeometryBasics.Vec4f0(v::Vec2, n1 = 0.0, n2 = 0.0) = Vec4f0(v..., n1, n2)
+GeometryBasics.Vec4f0(v::Vec3, n1 = 0.0) = Vec4f0(v..., n1)
 
 #----------------GeometryBasics-------------------------#
-struct Cone{T} <: GeometryPrimitive{3, T}
+struct Cone{T} <: GeometryPrimitive{3,T}
     origin::Point3{T}
     extremity::Point3{T}
     r::T
@@ -177,52 +185,58 @@ GeometryBasics.radius(c::Cone{T}) where {T}    = c.r
 GeometryBasics.height(c::Cone{T}) where {T}    = norm(c.extremity - c.origin)
 GeometryBasics.direction(c::Cone{T}) where {T} = (c.extremity .- c.origin) ./ GeometryBasics.height(c)
 
-function GeometryBasics.rotation(c::Cone{T}) where T
-    d3 = direction(c); u = GeometryBasics.@SVector [d3[1], d3[2], d3[3]]
+function GeometryBasics.rotation(c::Cone{T}) where {T}
+    d3 = direction(c)
+    u = GeometryBasics.@SVector [d3[1], d3[2], d3[3]]
     if abs(u[1]) > 0 || abs(u[2]) > 0
         v = GeometryBasics.@MVector [u[2], -u[1], T(0)]
     else
         v = GeometryBasics.@MVector [T(0), -u[3], u[2]]
     end
     normalize!(v)
-    w = GeometryBasics.@SVector [u[2] * v[3] - u[3] * v[2], -u[1] * v[3] + u[3] * v[1], u[1] * v[2] - u[2] * v[1]]
+    w = GeometryBasics.@SVector [u[2] * v[3] - u[3] * v[2], -u[1] * v[3] + u[3] * v[1],
+                                 u[1] * v[2] - u[2] * v[1]]
     return hcat(v, w, u)
 end
 
-function GeometryBasics.decompose(PT::Type{Point{3, T}}, c::Cone, resolution = 30) where T
+function GeometryBasics.decompose(PT::Type{Point{3,T}}, c::Cone, resolution = 30) where {T}
     isodd(resolution) && (resolution = 2 * div(resolution, 2))
-    resolution = max(8, resolution); nbv = div(resolution, 2)
+    resolution = max(8, resolution)
+    nbv = div(resolution, 2)
     M = GeometryBasics.rotation(c)
     h = GeometryBasics.height(c)
-    position = 1; vertices = Vector{PT}(undef, nbv+2)
-    for j = 1:nbv
+    position = 1
+    vertices = Vector{PT}(undef, nbv + 2)
+    for j in 1:nbv
         phi = T((2π * (j - 1)) / nbv)
-        vertices[j] = PT(M * Point{3, T}(c.r * cos(phi), c.r * sin(phi),0)) + PT(c.origin)
+        vertices[j] = PT(M * Point{3,T}(c.r * cos(phi), c.r * sin(phi), 0)) + PT(c.origin)
     end
     vertices[end-1] = PT(c.origin)
     vertices[end] = PT(c.extremity)
     return vertices
 end
 
-function GeometryBasics.decompose(::Type{FT}, c::Cone, resolution = 30) where FT <: GeometryBasics.AbstractFace
+function GeometryBasics.decompose(::Type{FT}, c::Cone,
+                                  resolution = 30) where {FT<:GeometryBasics.AbstractFace}
     isodd(resolution) && (resolution = 2 * div(resolution, 2))
-    resolution = max(8, resolution); nbv = div(resolution, 2)
+    resolution = max(8, resolution)
+    nbv = div(resolution, 2)
     indexes = Vector{FT}(undef, resolution)
     index = 1
-    for j = 1:nbv-1
-        indexes[index] = (index,  nbv+1, index + 1)
-        indexes[index+nbv] = (index,  index+1, nbv+2)
+    for j in 1:nbv-1
+        indexes[index] = (index, nbv + 1, index + 1)
+        indexes[index+nbv] = (index, index + 1, nbv + 2)
         index += 1
     end
     # indexes[index] = (index,  index + 1, nbv+1)
     # indexes[index+nbv] = (index,  nbv+2, index + 1)
-    indexes[nbv] = (1, nbv+2, nbv)
-    indexes[end] = (1, nbv, nbv+1)
+    indexes[nbv] = (1, nbv + 2, nbv)
+    indexes[end] = (1, nbv, nbv + 1)
     # indexes[end] = (1, 1, 1)
     return indexes
 end
 
-struct Arrow{T} <: GeometryPrimitive{3, T}
+struct Arrow{T} <: GeometryPrimitive{3,T}
     origin::Point3{T}
     extremity::Point3{T}
     r::T #cylinder ratio
@@ -236,16 +250,21 @@ GeometryBasics.radius(c::Arrow)    = c.r
 GeometryBasics.height(c::Arrow)    = norm(c.extremity - c.origin)
 GeometryBasics.direction(c::Arrow) = (c.extremity .- c.origin) ./ GeometryBasics.height(c)
 
-GeometryBasics.Cylinder(c::Arrow) =
-    Cylinder(c.origin, direction(c) * height(c) / (1 + c.length_ratio), c.r)
+function GeometryBasics.Cylinder(c::Arrow)
+    return Cylinder(c.origin, direction(c) * height(c) / (1 + c.length_ratio), c.r)
+end
 
-Cone(c::Arrow) =
-    Cone(direction(c) * height(c)/(1 + c.length_ratio), c.extremity, c.r * c.radius_ratio)
+function Cone(c::Arrow)
+    return Cone(direction(c) * height(c) / (1 + c.length_ratio), c.extremity,
+                c.r * c.radius_ratio)
+end
 
-GeometryBasics.decompose(PT::Type{<:Point}, c::Arrow, resolution = 30) =
-    [decompose(PT, Cylinder(c), resolution); decompose(PT, Cone(c), resolution)]
+function GeometryBasics.decompose(PT::Type{<:Point}, c::Arrow, resolution = 30)
+    return [decompose(PT, Cylinder(c), resolution); decompose(PT, Cone(c), resolution)]
+end
 
-function GeometryBasics.decompose(::Type{FT}, c::Arrow, resolution = 30) where FT <: GeometryBasics.AbstractFace
+function GeometryBasics.decompose(::Type{FT}, c::Arrow,
+                                  resolution = 30) where {FT<:GeometryBasics.AbstractFace}
     cylinder_indices = decompose(FT, Cylinder(c), resolution)
     last_id = maximum(maximum.(cylinder_indices))
     cone_indices = [id .+ last_id for id in decompose(FT, Cone(c), resolution)]
@@ -274,7 +293,6 @@ end
 #
 # basicmesh(mesh::InstancedAttributeMesh) = mesh.basic
 
-
 #----------------------GLFW----------------------------#
 glfw_destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
 
@@ -282,35 +300,36 @@ glfw_destroy_current_context() = GLFW.DestroyWindow(GLFW.GetCurrentContext())
 Standard window hints for creating a plain context without any multisampling
 or extra buffers beside the color buffer
 """
-const GLFW_DEFAULT_WINDOW_HINTS = [(GLFW.SAMPLES,      0),
-                                   (GLFW.DEPTH_BITS,   32),
-
-                                   (GLFW.ALPHA_BITS,   8),
-                                   (GLFW.RED_BITS,     8),
-                                   (GLFW.GREEN_BITS,   8),
-                                   (GLFW.BLUE_BITS,    8),
-
-                                   (GLFW.STENCIL_BITS, 0),
-                                   (GLFW.AUX_BUFFERS,  0),
+const GLFW_DEFAULT_WINDOW_HINTS = [(GLFW.SAMPLES, 0), (GLFW.DEPTH_BITS, 32),
+                                   (GLFW.ALPHA_BITS, 8), (GLFW.RED_BITS, 8),
+                                   (GLFW.GREEN_BITS, 8), (GLFW.BLUE_BITS, 8),
+                                   (GLFW.STENCIL_BITS, 0), (GLFW.AUX_BUFFERS, 0),
                                    (GLFW.SCALE_TO_MONITOR, 1)]
 
-glfw_standard_screen_resolution() =
-    GLFW.GetPrimaryMonitor() |> GLFW.GetMonitorPhysicalSize |> values .|> x -> div(x, 1)
+function glfw_standard_screen_resolution()
+    return GLFW.GetPrimaryMonitor() |>
+           GLFW.GetMonitorPhysicalSize |>
+           values .|>
+           x -> div(x, 1)
+end
 
 ## Colorutils
 import ColorTypes: RGBA, Colorant, RGB
-ColorTypes.RGBA(x::T) where T<:Real = RGBA{T}(x,x,x,x)
-ColorTypes.RGBA{T}(x) where T<:Real = RGBA{T}(T(x),T(x),T(x),T(x))
+ColorTypes.RGBA(x::T) where {T<:Real} = RGBA{T}(x, x, x, x)
+ColorTypes.RGBA{T}(x) where {T<:Real} = RGBA{T}(T(x), T(x), T(x), T(x))
 
 Base.length(::Type{<:RGBA}) = 4
 Base.size(x::Type{<:Colorant}) = (length(x),)
 Base.size(x::Type{<:RGB{Float32}}) = (3,)
 Base.ndims(x::Type{Colorant}) = 1
+Base.convert(::Type{RGB{Float32}}, x) = RGB{Float32}(x...)
+Base.convert(::Type{RGB{Float32}}, x::RGB{Float32}) = x
 
-const RGBAf0          = RGBA{Float32}
-const RGBf0           = RGB{Float32}
-const BLUE            = RGBf0(0.0, 0.0, 1.0)
-const GREEN           = RGBf0(0.0, 1.0, 0.0)
-const RED             = RGBf0(1.0, 0.0, 0.0)
-const BLACK           = RGBf0(0.0, 0.0, 0.0)
-
+const RGBAf0 = RGBA{Float32}
+const RGBf0 = RGB{Float32}
+const BLUE = RGBf0(0.0, 0.0, 1.0)
+const GREEN = RGBf0(0.0, 1.0, 0.0)
+const RED = RGBf0(1.0, 0.0, 0.0)
+const BLACK = RGBf0(0.0, 0.0, 0.0)
+const DEFAULT_COLOR = RGBf0(0.0, 0.4, 0.8)
+const GREY = RGBf0(0.4, 0.4, 0.4)

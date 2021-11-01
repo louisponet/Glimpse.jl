@@ -1,8 +1,8 @@
 
 # Masked Arrays are used in systems
 struct Mask
-    start::Int
-    len  ::Int
+    start :: Int
+    len   :: Int
 end
 
 function Base.sum(v::Vector{Mask})
@@ -13,13 +13,13 @@ function Base.sum(v::Vector{Mask})
     return t
 end
 
-struct MaskedArray{T, N} <: AbstractArray{T, N}
-    base::DenseArray{T, N}
+struct MaskedArray{T,N} <: AbstractArray{T,N}
+    base::DenseArray{T,N}
     masks::Vector{Mask}
 end
 
 function masked_index(A::MaskedArray, i::Int)
-    t_id = i 
+    t_id = i
     for g in A.masks
         if t_id >= g.start
             t_id += g.len
@@ -28,7 +28,7 @@ function masked_index(A::MaskedArray, i::Int)
     return t_id
 end
 
-Base.size(A::MaskedArray)                 = size(A.base)   .- sum(A.masks)
+Base.size(A::MaskedArray)                 = size(A.base) .- sum(A.masks)
 Base.length(A::MaskedArray)               = length(A.base) .- sum(A.masks)
 Base.getindex(A::MaskedArray, i::Int)     = A.base[masked_index(A, i)]
 Base.setindex!(A::MaskedArray, v, i::Int) = A.base[masked_index(A, i)] = v

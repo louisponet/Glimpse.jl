@@ -5,46 +5,28 @@ const currentdio = Base.RefValue{Diorama}()
 getcurrentdio() = currentdio[]
 iscurrentdio(x) = x == currentdio[]
 function makecurrentdio(x)
-    currentdio[] = x
+    return currentdio[] = x
 end
 
 Overseer.ledger(dio::Diorama) = dio.ledger
 
 function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
     m = Ledger(Stage(:start, [Timer(), EventPoller()]),
-                Stage(:setup, [MousePicker(),
-                               PolygonMesher(),
-                               DensityMesher(),
-                               VectorMesher(),
-                               FunctionMesher(),
-                               FunctionColorizer(),
-                               IDColorGenerator(),
-                               Uploader(),
-                               InstancedUploader(),
-                               TextUploader()]),
-                extra_stages...,
-
-                Stage(:simulation, [Oscillator(),
-                                    Mover(),
-                                    Editor(),
-                                    UniformCalculator()]),
-
-                Stage(:rendering, [PreRenderer(),
-                                   Resizer(),
-                                   LineRenderer(),
-                                   UniformUploader(),
-                                   DefaultRenderer(),
-                                   DepthPeelingRenderer(),
-                                   FinalRenderer(),
-                                   TextRenderer(),
-                                   GuiRenderer()]),
-
-                Stage(:stop, [CameraOperator(), Sleeper()]))
+               Stage(:setup,
+                     [MousePicker(), PolygonMesher(), DensityMesher(), VectorMesher(),
+                      FunctionMesher(), FunctionColorizer(), IDColorGenerator(), Uploader(),
+                      InstancedUploader(), TextUploader()]), extra_stages...,
+               Stage(:simulation, [Oscillator(), Mover(), Editor(), UniformCalculator()]),
+               Stage(:rendering,
+                     [PreRenderer(), Resizer(), LineRenderer(), UniformUploader(),
+                      DefaultRenderer(), DepthPeelingRenderer(), FinalRenderer(),
+                      TextRenderer(), GuiRenderer()]),
+               Stage(:stop, [CameraOperator(), Sleeper()]))
 
     #assemble all rendering, canvas and camera components
     t = Diorama(name, m, stages(m))
     e = Entity(t)
-    t[UpdatedComponents][e] = UpdatedComponents() 
+    t[UpdatedComponents][e] = UpdatedComponents()
     t[e] = DioEntity()
     t[e] = TimingData()
     fetch(glimpse_call() do
@@ -52,25 +34,31 @@ function Diorama(extra_stages::Stage...; name = :Glimpse, kwargs...) #Defaults
               make_current(c)
               m[e] = c
               wh = size(c)
-              m[e] = IOTarget(GLA.FrameBuffer(wh, GLA.Texture(RGBAf0, wh, internalformat=GL_RGBA), GLA.Texture(RGBAf0, wh, internalformat=GL_RGBA), GLA.Texture(GLA.Depth{Float32}, wh)), c.background)
+              m[e] = IOTarget(GLA.FrameBuffer(wh,
+                                              GLA.Texture(RGBAf0, wh;
+                                                          internalformat = GL_RGBA),
+                                              GLA.Texture(RGBAf0, wh;
+                                                          internalformat = GL_RGBA),
+                                              GLA.Texture(GLA.Depth{Float32}, wh)),
+                              c.background)
               m[e] = FullscreenVao()
               m[e] = UpdatedComponents(DataType[])
-              m[e] = Mouse(div.(wh, 2)..., 0, 0, (0, 0), (0, 0), GLFW.MOUSE_BUTTON_1, GLFW.RELEASE)
+              m[e] = Mouse(div.(wh, 2)..., 0, 0, (0, 0), (0, 0), GLFW.MOUSE_BUTTON_1,
+                           GLFW.RELEASE)
               m[e] = Keyboard(GLFW.KEY_UNKNOWN, 0, GLFW.RELEASE)
               for v in assemble_camera3d(Int32.(size(c))...)
                   m[e] = v
               end
-              Entity(t, DioEntity(), Spatial(position=Point3f0(200f0)),
-                        PointLight(),
-                        UniformColor(RGBf0(1.0,1.0,1.0)))
+              return Entity(t, DioEntity(), Spatial(; position = Point3f0(200.0f0)),
+                            PointLight(), UniformColor(RGBf0(1.0, 1.0, 1.0)))
           end)
-       
+
     fetch(glimpse_call(() -> Overseer.prepare(t)))
     return t
 end
 
 function Base.show(io::IO, d::Diorama)
-    println(io, "Diorama with $(length(entities(d))) entities.")
+    return println(io, "Diorama with $(length(entities(d))) entities.")
 end
 # "Darken all the lights in the dio by a certain amount"
 # darken!(dio::Diorama, percentage)  = darken!.(dio.lights, percentage)
@@ -87,18 +75,21 @@ function canvas_command(command::Function, dio::Diorama, catchcommand = x -> not
     end
 end
 
-function expose(dio::Diorama;  kwargs...)
+function expose(dio::Diorama; kwargs...)
     if dio.loop === nothing
-        canvas_command(dio, x -> m[Entity(m[DioEntity],1)] = Overseer.Entity(dio, Canvas(dio.name; kwargs...))) do x
+        canvas_command(dio,
+                       x -> m[Entity(m[DioEntity], 1)] = Overseer.Entity(dio,
+                                                                         Canvas(dio.name;
+                                                                                kwargs...))) do x
             make_current(x)
             expose(x)
-            renderloop(dio)
+            return renderloop(dio)
         end
     end
     return dio
 end
 
-function Overseer.update(dio::Diorama, init=false)
+function Overseer.update(dio::Diorama, init = false)
     timer = singleton(dio, TimingData).timer
     mesg = init ? "Init" : "Running"
     @timeit timer mesg for stage in dio.renderloop_stages
@@ -110,7 +101,7 @@ end
 
 #TODO move control over this to diorama itself
 function renderloop(dio)
-    dio.loop = canvas_command(dio) do canvas
+    return dio.loop = canvas_command(dio) do canvas
         Overseer.prepare(dio)
         try
             @info "Initializing render..."
@@ -141,14 +132,14 @@ function reload(dio::Diorama)
             sleep(0.01)
         end
         dio.reupload = true
-        expose(dio)
+        return expose(dio)
     end
 end
 
 function close(dio::Diorama)
     canvas_command(canvas -> should_close!(canvas, true), dio)
     if dio.loop === nothing
-        canvas_command(canvas->close(canvas), dio)
+        canvas_command(canvas -> close(canvas), dio)
     end
 end
 
@@ -156,8 +147,10 @@ free!(dio::Diorama) = (close(dio); canvas_command(c -> free!(c), dio))
 
 isrendering(dio::Diorama) = dio.loop !== nothing
 
-Base.size(dio::Diorama)  = canvas_command(c -> windowsize(c), dio, x -> (0,0))
-set_background_color!(dio::Diorama, color) = canvas_command(c -> set_background_color!(c, color), dio)
+Base.size(dio::Diorama) = canvas_command(c -> windowsize(c), dio, x -> (0, 0))
+function set_background_color!(dio::Diorama, color)
+    return canvas_command(c -> set_background_color!(c, color), dio)
+end
 background_color(dio::Diorama) = canvas_command(c -> c.background, dio)
 
 print_debug_timers(dio::Diorama) = print_timer(singleton(dio, TimingData).timer)
@@ -172,8 +165,8 @@ function center_cameras(dio::Diorama)
     cam = dio[Camera3D]
     lights = dio[PointLight]
     center = zero(Point3f0)
-    e_counter = 0 
-    for e in @entities_in(spat && !cam && !lights) 
+    e_counter = 0
+    for e in @entities_in(spat && !cam && !lights)
         center += e.position
         e_counter += 1
     end
@@ -183,18 +176,20 @@ function center_cameras(dio::Diorama)
         current_pos  = e.position
         current_dist = norm(e.lookat - current_pos)
         # we want to keep the distance to the lookat constant
-        u_forward    = unitforward(current_pos, center)
-        new_pos      = center - current_dist * u_forward
-        e[Spatial]     = Spatial(new_pos, e.velocity)
+        u_forward = unitforward(current_pos, center)
+        new_pos = center - current_dist * u_forward
+        e[Spatial] = Spatial(new_pos, e.velocity)
         e.lookat = Vec3f0(center)
     end
 end
 
-push_system(dio::Diorama, s::System) =
-    (dio.ledger = push_system(dio.ledger, s); glimpse_call(() -> Overseer.prepare(dio)))
-    
-insert_system(dio::Diorama, id::Integer, s::System) =
-    (dio.ledger = insert_system(dio.ledger, id, s); glimpse_call(() ->Overseer.prepare(dio)))
+function push_system(dio::Diorama, s::System)
+    return (dio.ledger = push_system(dio.ledger, s); glimpse_call(() -> Overseer.prepare(dio)))
+end
+
+function insert_system(dio::Diorama, id::Integer, s::System)
+    return (dio.ledger = insert_system(dio.ledger, id, s); glimpse_call(() -> Overseer.prepare(dio)))
+end
 
 debug_timer(dio::Diorama) = singleton(dio, TimingData).timer
 
@@ -205,7 +200,7 @@ function Base.empty!(dio::Diorama)
             schedule_delete!(dio.ledger, e)
         end
     end
-    delete_scheduled!(dio.ledger)
+    return delete_scheduled!(dio.ledger)
 end
 
 #TODO make a sanitize camera stuff
@@ -214,17 +209,18 @@ function center_camera!(dio::Diorama, p::Point3f0)
     camera_entity   = Entity(first(dio[Camera3D].indices))
     eye             = dio[Spatial][camera_entity].position
     lookat          = camera.lookat
-    shift           = p-lookat
+    shift           = p - lookat
     camera.lookat   = p
-    new_eye = eye+shift
+    new_eye         = eye + shift
     camera.view     = lookatmat(new_eye, p, camera.up)
     camera.projview = camera.proj * camera.view
-    dio[Spatial][camera_entity] = Spatial(dio[Spatial][camera_entity], position = new_eye)
+    return dio[Spatial][camera_entity] = Spatial(dio[Spatial][camera_entity];
+                                                 position = new_eye)
 end
 
 function Base.setindex!(dio::Diorama, v::T, e::Entity) where {T<:ComponentData}
-   setindex!(dio.ledger, v, e)
-   update_component!(dio, T)
+    setindex!(dio.ledger, v, e)
+    return update_component!(dio, T)
 end
 
 function update_component!(dio::Diorama, ::Type{T}) where {T<:ComponentData}
@@ -235,12 +231,13 @@ function update_component!(dio::Diorama, ::Type{T}) where {T<:ComponentData}
 end
 
 function reload_shaders(dio::Diorama)
-    glimpse_call(() -> for prog in components(dio, RenderProgram)
-        ProgType = eltype(prog)
-        dio[Entity(1)] = ProgType(Program(shaders(ProgType)))
-    end)
+    return glimpse_call(() -> for prog in components(dio, RenderProgram)
+                            ProgType = eltype(prog)
+                            dio[Entity(1)] = ProgType(Program(shaders(ProgType)))
+                        end)
 end
 
-register_update(dio::Diorama, ::Type{T}) where {T<:ComponentData} =
-    T ∈ singleton(dio, UpdatedComponents) ? nothing : push!(singleton(dio, UpdatedComponents), T)
-
+function register_update(dio::Diorama, ::Type{T}) where {T<:ComponentData}
+    return T ∈ singleton(dio, UpdatedComponents) ? nothing :
+           push!(singleton(dio, UpdatedComponents), T)
+end

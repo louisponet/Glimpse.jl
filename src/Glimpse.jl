@@ -44,6 +44,7 @@ include("geometries.jl")
 include("marching_cubes.jl")
 
 export RGBAf0
+export RGBf0
 
 #package exports, types & enums
 export Diorama

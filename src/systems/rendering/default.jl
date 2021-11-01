@@ -8,9 +8,11 @@ import GLAbstraction: gluniform
 
 struct DefaultRenderer <: AbstractRenderSystem end
 
-Overseer.requested_components(::DefaultRenderer) =
-    (DefaultVao, DefaultProgram, InstancedDefaultVao, InstancedDefaultProgram,
-     ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D, IOTarget)
+function Overseer.requested_components(::DefaultRenderer)
+    return (DefaultVao, DefaultProgram, InstancedDefaultVao, InstancedDefaultProgram,
+            ModelMat, Material, PointLight, UniformColor, BufferColor, Spatial, Camera3D,
+            IOTarget)
+end
 
 function Overseer.update(::DefaultRenderer, m::AbstractLedger)
     fbo   = singleton(m, IOTarget)
@@ -27,11 +29,13 @@ function Overseer.update(::DefaultRenderer, m::AbstractLedger)
 
     bind(prog)
 
-    light, ucolor, spat, cam, modelmat, material, vao, vis =
-        m[PointLight], m[UniformColor],  m[Spatial], m[Camera3D], m[ModelMat], m[Material], m[DefaultVao], m[Visible]
+    light, ucolor, spat, cam, modelmat, material, vao, vis = m[PointLight], m[UniformColor],
+                                                             m[Spatial], m[Camera3D],
+                                                             m[ModelMat], m[Material],
+                                                             m[DefaultVao], m[Visible]
 
     set_light_camera_uniforms = (prog) -> begin
-        for e in @entities_in(m, PointLight  && UniformColor && Spatial)
+        for e in @entities_in(m, PointLight && UniformColor && Spatial)
             gluniform(prog, e[PointLight], e[UniformColor], e[Spatial])
         end
 
