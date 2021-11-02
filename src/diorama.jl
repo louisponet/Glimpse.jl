@@ -143,7 +143,19 @@ function close(dio::Diorama)
     end
 end
 
-free!(dio::Diorama) = (close(dio); canvas_command(c -> free!(c), dio))
+function free!(dio::Diorama)
+    close(dio)
+    canvas_command(dio) do c
+        for c in components(dio)
+            if eltype(c) <: Vao
+                for v in c
+                    finalize(v)
+                end
+            end
+        end
+        finalize(c)
+    end
+end
 
 isrendering(dio::Diorama) = dio.loop !== nothing
 
