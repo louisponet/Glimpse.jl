@@ -322,8 +322,7 @@ Base.length(::Type{<:RGBA}) = 4
 Base.size(x::Type{<:Colorant}) = (length(x),)
 Base.size(x::Type{<:RGB{Float32}}) = (3,)
 Base.ndims(x::Type{Colorant}) = 1
-Base.convert(::Type{RGB{Float32}}, x) = RGB{Float32}(x...)
-Base.convert(::Type{RGB{Float32}}, x::RGB{Float32}) = x
+Base.convert(::Type{RGB{Float32}}, x::Union{AbstractVector, <:NTuple{3}}) = RGB{Float32}(x...)
 
 const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
