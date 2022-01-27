@@ -17,7 +17,7 @@ end
 
 macro instanced_vao(name)
     return esc(quote
-                   @grouped_component @with_kw mutable struct $name <: Vao
+                   @pooled_component @with_kw mutable struct $name <: Vao
                        vertexarray::VertexArray
                    end
                end)
@@ -101,7 +101,7 @@ Base.eltype(::Type{PointLight}) = Float32
 end
 
 # Meshing and the like
-@grouped_component struct Mesh
+@pooled_component struct Mesh
     mesh::Any
 end
 
@@ -143,7 +143,7 @@ end
     color::Cycle{Union{RGBAf0,Vector{RGBAf0}}}
 end
 
-@grouped_component struct Grid
+@pooled_component struct Grid
     points::Array{Point3f0,3}
 end
 
