@@ -4,13 +4,6 @@ shader_symbol(::Type{<:ComponentData}) = :none
 
 @component struct DioEntity end
 
-#TODO get rid of this in favor of a correct iterator
-function shared_entities(c::SharedComponent{T}, dat::T) where {T}
-    ids = Int[]
-    id = findfirst(x -> x == dat, c.shared)
-    return findall(x -> x == id, data(c))
-end
-
 # DEFAULT COMPONENTS
 abstract type Vao <: ComponentData end
 
@@ -150,7 +143,7 @@ end
     color::Cycle{Union{RGBAf0,Vector{RGBAf0}}}
 end
 
-@shared_component struct Grid
+@grouped_component struct Grid
     points::Array{Point3f0,3}
 end
 
