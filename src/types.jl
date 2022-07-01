@@ -44,4 +44,4 @@ include("meshes.jl")
 include("system.jl")
 include("diorama.jl")
 
-glimpse_call(func::Function) = @tspawnat 2 func()
+glimpse_call(func::Function) = func()

@@ -5,7 +5,8 @@ const Gl = Glimpse
 using Glimpse: Spatial, Line, BufferColor, LineGeometry, VectorGeometry
 using NearestNeighbors
 using StaticArrays
-@component @with_kw struct WallPlane <: ComponentData
+using LinearAlgebra
+@component Base.@kwdef struct WallPlane
     w1::Vec3{Float64} = Vec3(1.0, 0.0, 0.0)
     w2::Vec3{Float64} = Vec3(0.0, 1.0, 0.0)
     normal::Vec3{Float64} = normalize(cross(w1, w2))
@@ -119,14 +120,17 @@ end
 dio = Gl.Diorama(Stage(:boids, [Boids(), WallBouncer(), VelocityDrawer()]);
                  background = RGBAf0(0.0, 0.0, 0.0, 1.0));
 cube_planes(dio, Vec3(-60.0), Vec3(60.0))
-expose(dio);
 for i in -1000:1000
     t = Entity(dio,
-               Gl.assemble_sphere(Point3f0(10 * (0.5 - rand(Point3f0)));
-                                  velocity = 8 * normalize(0.5f0 - rand(Vec3f0)),
-                                  radius = 0.5f0)..., Gl.LineOptions(),
+               Gl.assemble_sphere(Point3f0(10 .* (0.5 .- rand(Point3f0)));
+                                  velocity = 8 .* normalize(0.5f0 .- rand(Vec3f0)),
+                                  radius = 0.5f0,
+                                  color = rand(RGBf0))..., Gl.LineOptions(),
                Gl.Spring(; k = 0.00001), Boid())
 end
+expose(dio);
+
+#%%
 empty!(dio)
 #%%
 Gl.glfw_destroy_current_context()

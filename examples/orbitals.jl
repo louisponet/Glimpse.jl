@@ -18,20 +18,17 @@ end
 function colorfunc(p, orb, cscheme)
     ψ = orb(p)
     if norm(ψ) == 0
-        return RGBAf0(0.0, 0.0, 0.0, 0.6)
+        return RGBf0(0.0, 0.0, 0.0, 0.6)
     else
-        c = get(cscheme, 0.5 + 0.5 * real(ψ' * sz * ψ / (ψ' * ψ)))
-        return c::RGBAf0
+        c = RGBf0(get(cscheme, 0.5 + 0.5 * real(ψ' * sz * ψ / (ψ' * ψ))))
+        return c
     end
 end
-grid = Gl.Grid([Point3f0(a, b, c) for a in -30:0.3:30, b in -30:0.3:30, c in -30:0.3:30])
+grid = Gl.Grid([Gl.Point3f0(a, b, c) for a in -30:0.3:30, b in -30:0.3:30, c in -30:0.3:30])
 
 ccomp = Gl.FunctionColor(p -> colorfunc(p, ψ, cscheme))
 dcomp = Gl.FunctionGeometry(p -> densfunc(p, ψ), 0.001f0)
 
 dio = Diorama(; background = RGBAf0(0.0, 0.0, 0.0, 1.0))
-Gl.new_entity!(dio;
-               separate = [Gl.Spatial(), Gl.Material(), Gl.Shape(), ccomp, dcomp,
-                           Gl.ProgramTag{Gl.PeelingProgram}()],
-               shared = Gl.ComponentData[grid])
-dio.loop = @async Gl.renderloop(dio)
+Entity(dio, Gl.Spatial(), Gl.Material(), Gl.Shape(), ccomp, dcomp,grid)
+expose(dio);

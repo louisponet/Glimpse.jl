@@ -119,7 +119,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
         return
     end
 
-    max_entities = maximum(mesh.group_size)
+    max_entities = maximum(mesh.pool_size)
     modelmats    = Vector{ModelMat}(undef, max_entities)
     materials    = Vector{Material}(undef, max_entities)
     ids          = Vector{Entity}(undef, max_entities)
@@ -128,12 +128,12 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     alphas       = Vector{Alpha}(undef, max_entities)
 
     for (i, m) in enumerate(mesh)
-        default_it = @entities_in(entity_group(mesh, i) &&
+        default_it = @entities_in(entity_pool(mesh, i) &&
                                   ucolor &&
                                   modelmat &&
                                   material &&
                                   !alpha)
-        peeling_it = @entities_in(entity_group(mesh, i) &&
+        peeling_it = @entities_in(entity_pool(mesh, i) &&
                                   ucolor &&
                                   modelmat &&
                                   material &&
@@ -142,7 +142,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
             zip((default_it, peeling_it), (default_vao, peeling_vao),
                 (default_prog, peeling_prog), (InstancedDefaultVao, InstancedPeelingVao))
             tot = length(it)
-            if i <= length(vao.group_size) && tot == vao.data[i].vertexarray.ninst
+            if i <= length(vao.pool_size) && tot == vao.data[i].vertexarray.ninst
                 # Nothing to be done for this meshgroup
                 continue
             end
@@ -167,7 +167,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                 end
             end
 
-            if (tot > 0 && length(vao.group_size) < i)
+            if (tot > 0 && length(vao.pool_size) < i)
                 # Mesh needs to be uploaded, only time when a vao gets created
                 buffers = [generate_buffers(prog, m.mesh);
                            generate_buffers(prog, GLA.UNIFORM_DIVISOR;
@@ -182,7 +182,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                     vao[e] = ids[1]
                 end
 
-            elseif i <= length(vao.group_size) && tot != vao.data[i].vertexarray.ninst
+            elseif i <= length(vao.pool_size) && tot != vao.data[i].vertexarray.ninst
                 # buffers need to be reuploaded because entities were added
                 upload_buffer!(vao.data[i], view(colors, 1:tot))
                 upload_buffer!(vao.data[i], view(modelmats, 1:tot))
@@ -191,7 +191,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
                 upload_buffer!(vao.data[i], view(alphas, 1:tot))
                 vao.data[i].vertexarray.ninst = tot
                 to_remove = Entity[]
-                for e in entity_group(vao, i)
+                for e in entity_pool(vao, i)
                     if !in(e, it)
                         push!(to_remove, e)
                     end
@@ -253,12 +253,12 @@ function upload_buffer!(vao, vec::AbstractVector{T}, sym = shader_symbol(T)) whe
 end
 
 function upload_to_vao!(f::Function, vao_comp, comp,
-                        buffer = Vector{eltype(comp)}(undef, maximum(vao_comp.group_size)))
+                        buffer = Vector{eltype(comp)}(undef, maximum(vao_comp.pool_size)))
     for (i, v) in enumerate(vao_comp)
-        for (ie, e) in enumerate(entity_group(vao_comp, i))
+        for (ie, e) in enumerate(entity_pool(vao_comp, i))
             buffer[ie] = f(comp, e)
         end
-        upload_buffer!(v, view(buffer, 1:vao_comp.group_size[i]))
+        upload_buffer!(v, view(buffer, 1:vao_comp.pool_size[i]))
     end
 end
 function upload_to_vao!(vao_comp::Overseer.AbstractComponent, args...)
@@ -271,8 +271,8 @@ function Overseer.update(::UniformUploader, m::AbstractLedger)
     alpha = m[Alpha]
     peel = m[InstancedPeelingVao]
     default = m[InstancedDefaultVao]
-    maxsize = max(isempty(peel) ? 0 : maximum(peel.group_size),
-                  isempty(default) ? 0 : maximum(default.group_size))
+    maxsize = max(isempty(peel) ? 0 : maximum(peel.pool_size),
+                  isempty(default) ? 0 : maximum(default.pool_size))
     if maxsize == 0
         return
     end
