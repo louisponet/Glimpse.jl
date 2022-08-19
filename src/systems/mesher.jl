@@ -26,7 +26,7 @@ function Overseer.update(::Union{M}, m::AbstractLedger) where {M<:Mesher}
     length(it) == 0 && return
 
     for e in it
-        parid = Entity(geom, findfirst(x -> x.geometry == e.geometry, geom.data))
+        parid = entity(geom, findfirst(x -> x.geometry == e.geometry, geom.data))
         if parid == e # Geometry was not added to meshes yet
             mesh[e] = Mesh(BasicMesh(e.geometry))
         else

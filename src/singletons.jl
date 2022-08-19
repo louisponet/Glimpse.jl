@@ -204,7 +204,7 @@ draw(v::FullscreenVao) = draw(v.vao)
 unbind(v::FullscreenVao) = unbind(v.vao)
 
 # I'm not sure this is nice design idk
-abstract type RenderTarget <: ComponentData end
+abstract type RenderTarget end
 
 macro render_target(name)
     return esc(quote
@@ -242,8 +242,8 @@ Base.resize!(r::RenderTarget, args...) = resize!(r.target, args...)
     timer::TimerOutput     = TimerOutput()
 end
 
-abstract type RenderProgram <: ComponentData end
-
+abstract type RenderProgram end
+ 
 macro render_program(name)
     return esc(quote
                    @component struct $name <: RenderProgram
@@ -270,10 +270,10 @@ Base.empty!(uc::UpdatedComponents) = empty!(uc.components)
 
 Base.iterate(uc::UpdatedComponents, r...) = iterate(uc.components, r...)
 
-Base.push!(uc::UpdatedComponents, t::T) where {T<:ComponentData} = push!(uc.components, T)
+Base.push!(uc::UpdatedComponents, t::T) where {T} = push!(uc.components, T)
 Base.push!(uc::UpdatedComponents, t::DataType)                   = push!(uc.components, t)
 
-function update_component!(uc::UpdatedComponents, ::Type{T}) where {T<:ComponentData}
+function update_component!(uc::UpdatedComponents, ::Type{T}) where {T}
     if !in(T, uc.components)
         push!(uc, T)
     end

@@ -8,7 +8,7 @@ function Overseer.requested_components(::FinalRenderer)
 end
 
 function Overseer.prepare(::FinalRenderer, dio::Diorama)
-    e = Entity(dio[DioEntity], 1)
+    e = entity(dio[DioEntity], 1)
     if isempty(dio[CompositingProgram])
         dio[e] = CompositingProgram(Program(compositing_shaders()))
     end

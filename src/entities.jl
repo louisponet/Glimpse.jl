@@ -7,7 +7,7 @@ function assemble_sphere(position = zero(Point3f0); velocity = zero(Vec3f0),
                          specpow = 0.8f0)
     return (Spatial(position, velocity), PolygonGeometry(Sphere(Point3f0(0.0), radius)),
             Material(specint, specpow),
-            (color isa ComponentData ? color : UniformColor(color)), Shape(radius))
+            UniformColor(color), Shape(radius))
 end
 
 function box_coordinates()

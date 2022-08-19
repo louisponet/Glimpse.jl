@@ -1,11 +1,9 @@
 import Base.Iterators: Cycle
 
-shader_symbol(::Type{<:ComponentData}) = :none
-
 @component struct DioEntity end
 
 # DEFAULT COMPONENTS
-abstract type Vao <: ComponentData end
+abstract type Vao end
 
 macro vao(name)
     return esc(quote
@@ -34,7 +32,6 @@ GLA.upload!(vao::Vao; kwargs...) = GLA.upload!(vao.vertexarray; kwargs...)
     visible::Bool = true
 end
 
-# NON rendering Components
 @component struct Dynamic end
 @component @with_kw struct Spatial
     position::Point3f0 = zero(Point3f0)
@@ -76,6 +73,7 @@ Base.length(::Type{ModelMat}) = 16
 Base.eltype(::Type{ModelMat}) = Float32
 shader_symbol(::Type{ModelMat}) = :modelmat
 Base.size(::Type{ModelMat}) = size(Mat4f0)
+shader_symbol(::Type{<:Any}) = :none 
 
 @component @with_kw struct Material
     specpow::Float32 = 0.8f0
@@ -112,7 +110,7 @@ Base.length(::Type{Alpha}) = 1
 Base.eltype(::Type{Alpha}) = Float32
 shader_symbol(::Type{Alpha}) = :alpha
 
-abstract type Color <: ComponentData end
+abstract type Color end
 
 # one color, will be put as a uniform in the shader
 @component @with_kw struct UniformColor <: Color
@@ -147,7 +145,7 @@ end
     points::Array{Point3f0,3}
 end
 
-abstract type Geometry <: ComponentData end
+abstract type Geometry end
 
 @component struct PolygonGeometry <: Geometry #spheres and the like
     geometry::Any

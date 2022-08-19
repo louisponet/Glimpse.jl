@@ -127,7 +127,7 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     idcolors     = Vector{RGBf0}(undef, max_entities)
     alphas       = Vector{Alpha}(undef, max_entities)
 
-    for (i, m) in enumerate(mesh)
+    for (i, m) in enumerate(mesh.data)
         default_it = @entities_in(entity_pool(mesh, i) &&
                                   ucolor &&
                                   modelmat &&
@@ -254,7 +254,7 @@ end
 
 function upload_to_vao!(f::Function, vao_comp, comp,
                         buffer = Vector{eltype(comp)}(undef, maximum(vao_comp.pool_size)))
-    for (i, v) in enumerate(vao_comp)
+    for (i, v) in enumerate(vao_comp.data)
         for (ie, e) in enumerate(entity_pool(vao_comp, i))
             buffer[ie] = f(comp, e)
         end

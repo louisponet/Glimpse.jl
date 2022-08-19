@@ -230,12 +230,12 @@ function center_camera!(dio::Diorama, p::Point3f0)
                                                  position = new_eye)
 end
 
-function Base.setindex!(dio::Diorama, v::T, e::Entity) where {T<:ComponentData}
+function Base.setindex!(dio::Diorama, v::T, e::Entity) where {T}
     setindex!(dio.ledger, v, e)
     return update_component!(dio, T)
 end
 
-function update_component!(dio::Diorama, ::Type{T}) where {T<:ComponentData}
+function update_component!(dio::Diorama, ::Type{T}) where {T}
     uc = singleton(dio, UpdatedComponents)
     if !in(T, uc.components)
         push!(uc, T)
@@ -249,7 +249,7 @@ function reload_shaders(dio::Diorama)
                         end)
 end
 
-function register_update(dio::Diorama, ::Type{T}) where {T<:ComponentData}
+function register_update(dio::Diorama, ::Type{T}) where {T}
     return T ∈ singleton(dio, UpdatedComponents) ? nothing :
            push!(singleton(dio, UpdatedComponents), T)
 end

@@ -391,7 +391,7 @@ struct TextUploader <: System end
 Overseer.requested_components(::TextUploader) = (Text, TextVao, TextProgram, FontStorage)
 
 function Overseer.prepare(::TextUploader, dio::Diorama)
-    e = Entity(dio[DioEntity], 1)
+    e = entity(dio[DioEntity], 1)
     if isempty(dio[TextProgram])
         dio[e] = TextProgram(Program(text_shaders()))
     end
@@ -499,7 +499,7 @@ function Overseer.update(::TextRenderer, m::AbstractLedger)
     #Absolutely no clue why this needs to be here?...
     if isempty(m[FontStorage])
         fontstorage = FontStorage()
-        m[Entity(m[DioEntity], 1)] = fontstorage
+        m[entity(m[DioEntity], 1)] = fontstorage
     else
         fontstorage = singleton(m, FontStorage)
     end
