@@ -5,7 +5,7 @@ data_id(e::Entity, id::Int) = getfirst(x -> x.comp_id == id, e.data_ids).data_id
 function assemble_sphere(position = zero(Point3f0); velocity = zero(Vec3f0),
                          color = DEFAULT_COLOR, radius = 1.0f0, specint = 0.8f0,
                          specpow = 0.8f0)
-    return (Spatial(position, velocity), PolygonGeometry(Sphere(Point3f0(0.0), radius)),
+    return (Spatial(position, velocity), PolygonGeometry(Sphere(Point3f0(0.0), 1.0f0)),
             Material(specint, specpow),
             UniformColor(color), Shape(radius))
 end

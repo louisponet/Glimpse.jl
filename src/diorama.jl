@@ -93,7 +93,7 @@ function Overseer.update(dio::Diorama, init = false)
     timer = singleton(dio, TimingData).timer
     mesg = init ? "Init" : "Running"
     @timeit timer mesg for stage in dio.renderloop_stages
-        for sys in last(stage)
+        for sys in stage.steps
             timeit(() -> update(sys, dio), timer, string(typeof(sys)))
         end
     end

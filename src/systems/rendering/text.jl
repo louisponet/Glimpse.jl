@@ -296,7 +296,7 @@ function glyph_positions(str::AbstractString, font, fontscale_px, halign, valign
 
     extents = map(char_groups) do group
         # TODO: scale as SVector not Number
-        return [get_extent(font, char) .* SVector(fontscale_px, fontscale_px)
+        return [get_extent(font, char) .* Vec(fontscale_px, fontscale_px)
                 for char in group]
     end
 

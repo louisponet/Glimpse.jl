@@ -126,84 +126,111 @@ function Overseer.update(::InstancedUploader, m::AbstractLedger)
     colors       = Vector{UniformColor}(undef, max_entities)
     idcolors     = Vector{RGBf0}(undef, max_entities)
     alphas       = Vector{Alpha}(undef, max_entities)
+    ents         = Vector{Entity}(undef, max_entities)
 
-    for (i, m) in enumerate(mesh.data)
-        default_it = @entities_in(entity_pool(mesh, i) &&
-                                  ucolor &&
-                                  modelmat &&
-                                  material &&
-                                  !alpha)
-        peeling_it = @entities_in(entity_pool(mesh, i) &&
-                                  ucolor &&
-                                  modelmat &&
-                                  material &&
-                                  alpha)
-        for (it, vao, prog, vao_T) in
-            zip((default_it, peeling_it), (default_vao, peeling_vao),
-                (default_prog, peeling_prog), (InstancedDefaultVao, InstancedPeelingVao))
-            tot = length(it)
-            if i <= length(vao.pool_size) && tot == vao.data[i].vertexarray.ninst
-                # Nothing to be done for this meshgroup
-                continue
-            end
-
-            for (ie, e) in enumerate(it)
-                modelmats[ie] = e[ModelMat]
-                materials[ie] = e[Material]
-                ids[ie] = e.e
-                colors[ie] = e[UniformColor]
-                if e in idc
-                    idcolors[ie] = idc[e].color
-                else
-                    idcolors[ie] = RGBf0(1, 1, 1)
-                end
+    for (i, (m, es)) in enumerate(pools(mesh))
+        # All default entities are at the start of the vectors
+        # All peeling are at then end
+        cur_default = 1
+        cur_peeling = max_entities
+        default_parent = Entity(0)
+        peeling_parent = Entity(0)
+        for e in es
+            if e in ucolor && e in modelmat && e in material
                 if !(e in vis)
                     vis[e] = Visible()
                 end
                 if e in alpha
-                    alphas[ie] = vis[e].visible ? alpha[e] : Alpha(0)
+                    id = cur_peeling
+                    alphas[cur_peeling] = vis[e].visible ? alpha[e] : Alpha(0)
+                    cur_peeling -= 1
+                    peeling_parent = peeling_parent == Entity(0) ? e : peeling_parent
                 else
-                    alphas[ie] = vis[e].visible ? Alpha(1) : Alpha(0)
+                    id = cur_default
+                    alphas[cur_default] = vis[e].visible ? Alpha(1) : Alpha(0)
+                    cur_default += 1
+                    default_parent = default_parent == Entity(0) ? e : default_parent
+                    # Entities for default vao are at the very end of the vectors
                 end
+                modelmats[id] = modelmat[e]
+                materials[id] = material[e]
+                colors[id]    = ucolor[e]
+                if e in idc
+                    idcolors[id] = idc[e].color
+                else
+                    idcolors[id] = RGBf0(1, 1, 1)
+                end
+                ents[id] = e
             end
-
-            if (tot > 0 && length(vao.pool_size) < i)
-                # Mesh needs to be uploaded, only time when a vao gets created
-                buffers = [generate_buffers(prog, m.mesh);
-                           generate_buffers(prog, GLA.UNIFORM_DIVISOR;
-                                            color = view(colors, 1:tot),
-                                            modelmat = view(modelmats, 1:tot),
-                                            material = view(materials, 1:tot),
-                                            object_id_color = view(idcolors, 1:tot),
-                                            alpha = view(alphas, 1:tot))]
-                vao[ids[1]] = vao_T(VertexArray(buffers,
-                                                map(x -> x .- GLint(1), m.mesh.faces), tot))
-                for e in ids[2:tot]
-                    vao[e] = ids[1]
-                end
-
-            elseif i <= length(vao.pool_size) && tot != vao.data[i].vertexarray.ninst
-                # buffers need to be reuploaded because entities were added
-                upload_buffer!(vao.data[i], view(colors, 1:tot))
-                upload_buffer!(vao.data[i], view(modelmats, 1:tot))
-                upload_buffer!(vao.data[i], view(materials, 1:tot))
-                upload_buffer!(vao.data[i], view(idcolors, 1:tot), :object_id_color)
-                upload_buffer!(vao.data[i], view(alphas, 1:tot))
-                vao.data[i].vertexarray.ninst = tot
+        end
+        ndefault = cur_default - 1
+        npeeling = max_entities - cur_peeling 
+        if default_parent != Entity(0)
+            if default_parent in default_vao
+                vao = default_vao[default_parent]
+                upload_buffer!(vao, view(colors,    1:ndefault))
+                upload_buffer!(vao, view(modelmats, 1:ndefault))
+                upload_buffer!(vao, view(materials, 1:ndefault))
+                upload_buffer!(vao, view(idcolors,  1:ndefault), :object_id_color)
+                upload_buffer!(vao, view(alphas,    1:ndefault))
+                vao.vertexarray.ninst = ndefault
                 to_remove = Entity[]
-                for e in entity_pool(vao, i)
-                    if !in(e, it)
+                for e in entity_pool(default_vao, default_parent)
+                    if e in alpha || !(e in ucolor && e in modelmat && e in material)
                         push!(to_remove, e)
                     end
                 end
-                delete!(vao, to_remove)
-                p = parent(vao, i)
-                for e in ids
-                    if e == p
-                        continue
-                    end
-                    vao[e] = p
+                delete!(default_vao, to_remove)
+            else
+                buffers = [generate_buffers(default_prog, m.mesh);
+                           generate_buffers(default_prog, GLA.UNIFORM_DIVISOR;
+                                            color = view(colors, 1:ndefault),
+                                            modelmat = view(modelmats, 1:ndefault),
+                                            material = view(materials, 1:ndefault),
+                                            object_id_color = view(idcolors, 1:ndefault),
+                                            alpha = view(alphas, 1:ndefault))]
+                default_vao[default_parent] = InstancedDefaultVao(VertexArray(buffers,
+                                                map(x -> x .- GLint(1), m.mesh.faces), ndefault))
+            end
+            for ie = 1:ndefault
+                if ents[ie] == default_parent
+                    continue
                 end
+                default_vao[ents[ie]] = default_parent
+            end
+        end
+        if peeling_parent != Entity(0)
+            if peeling_parent in peeling_vao
+                vao = peeling_vao[peeling_parent]
+                upload_buffer!(vao, view(colors,    1:npeeling))
+                upload_buffer!(vao, view(modelmats, 1:npeeling))
+                upload_buffer!(vao, view(materials, 1:npeeling))
+                upload_buffer!(vao, view(idcolors,  1:npeeling), :object_id_color)
+                upload_buffer!(vao, view(alphas,    1:npeeling))
+                vao.vertexarray.ninst = npeeling
+                to_remove = Entity[]
+                for e in entity_pool(peeling_vao, peeling_parent)
+                    if e in alpha || !(e in ucolor && e in modelmat && e in material)
+                        push!(to_remove, e)
+                    end
+                end
+                delete!(peeling_vao, to_remove)
+            else
+                buffers = [generate_buffers(peeling_prog, m.mesh);
+                           generate_buffers(peeling_prog, GLA.UNIFORM_DIVISOR;
+                                            color = view(colors, 1:npeeling),
+                                            modelmat = view(modelmats, 1:npeeling),
+                                            material = view(materials, 1:npeeling),
+                                            object_id_color = view(idcolors, 1:npeeling),
+                                            alpha = view(alphas, 1:npeeling))]
+                peeling_vao[peeling_parent] = InstancedPeelingVao(VertexArray(buffers,
+                                                                  map(x -> x .- GLint(1), m.mesh.faces), npeeling))
+            end
+            for ie = 1:npeeling
+                if ents[ie] == peeling_parent
+                    continue
+                end
+                peeling_vao[ents[ie]] = peeling_parent
             end
         end
     end
